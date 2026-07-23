@@ -1,0 +1,20 @@
+@keyframes fade-rise { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-rise { animation: fade-rise .8s ease-out both; }
+.animate-fade-rise-delay { animation: fade-rise .8s ease-out .2s both; }
+.animate-fade-rise-delay-2 { animation: fade-rise .8s ease-out .4s both; }
+@media (prefers-reduced-motion: reduce) { .animate-fade-rise, .animate-fade-rise-delay, .animate-fade-rise-delay-2 { animation: none; } }
+
+@keyframes landscape-breathe { 0%,100% { transform:scale(1.035) translate3d(-.25%,0,0); } 50% { transform:scale(1.085) translate3d(.3%,-.55%,0); } }
+@keyframes landscape-clouds { 0%,100% { transform:translate3d(-3%,0,0); opacity:.25; } 50% { transform:translate3d(4%,-1%,0); opacity:.48; } }
+@keyframes landscape-light { 0%,100% { opacity:.15; transform:scale(.94); } 50% { opacity:.5; transform:scale(1.08); } }
+@keyframes landscape-river { 0%,100% { opacity:.08; transform:translate3d(-4%,0,0) skewX(-8deg); } 50% { opacity:.32; transform:translate3d(5%,-1%,0) skewX(-8deg); } }
+@keyframes kite-drift-one { 0%,100% { transform:translate3d(0,0,0) rotate(-8deg); } 48% { transform:translate3d(22px,-20px,0) rotate(10deg); } }
+@keyframes kite-drift-two { 0%,100% { transform:translate3d(0,0,0) rotate(6deg); } 52% { transform:translate3d(-28px,17px,0) rotate(-8deg); } }
+.living-landscape-scene { animation:landscape-breathe 22s ease-in-out infinite; will-change:transform; }
+.living-landscape-clouds { background:radial-gradient(ellipse 36% 13% at 18% 32%,rgba(255,255,255,.82),transparent 72%),radial-gradient(ellipse 34% 12% at 77% 27%,rgba(255,255,255,.7),transparent 75%); filter:blur(14px); animation:landscape-clouds 18s ease-in-out infinite; }
+.living-landscape-sun { background:radial-gradient(circle at 67% 22%,rgba(255,248,204,.84),transparent 17%); mix-blend-mode:screen; animation:landscape-light 9s ease-in-out infinite; }
+.living-landscape-river { background:linear-gradient(108deg,transparent 18%,rgba(255,255,255,.9) 48%,transparent 76%); filter:blur(8px); mix-blend-mode:soft-light; animation:landscape-river 6s ease-in-out infinite; }
+.living-landscape-kite { position:absolute; width:38px; filter:drop-shadow(0 4px 5px rgba(38,61,69,.18)); }
+.living-landscape-kite-one { top:31%; left:63%; animation:kite-drift-one 9s ease-in-out infinite; }
+.living-landscape-kite-two { top:38%; right:18%; width:30px; animation:kite-drift-two 11s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .living-landscape *, .living-landscape-scene { animation:none !important; } }

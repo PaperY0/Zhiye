@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.figma-dev.log
+.figma-dev-error.log
+.superpowers/
+*.local

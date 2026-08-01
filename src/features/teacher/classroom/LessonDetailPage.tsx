@@ -100,7 +100,12 @@ export interface LessonDetailPageProps {
 }
 
 export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
-  const { lessons, publishLesson, updateLessonRecap } = usePrototype()
+  const {
+    lessons,
+    publishLesson,
+    updateLessonRecap,
+    updateLessonSuggestionStatus,
+  } = usePrototype()
   const lesson = lessons.find((item) => item.id === lessonId)
   const [tab, setTab] = useState<LessonTab>("transcript")
   const [recapDraft, setRecapDraft] = useState(lesson?.recap ?? "")
@@ -153,6 +158,7 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
     id: string,
     status: LessonSuggestion["status"],
   ) => {
+    updateLessonSuggestionStatus(lessonId, id, status)
     setSuggestions((current) =>
       current.map((suggestion) =>
         suggestion.id === id ? { ...suggestion, status } : suggestion,

@@ -43,6 +43,11 @@ export type PrototypeContextValue = {
   auditEvents: AuditEvent[]
   createLesson(): string
   updateLessonStatus(id: string, status: Lesson["status"]): void
+  updateLessonSuggestionStatus(
+    lessonId: string,
+    suggestionId: string,
+    status: Lesson["suggestions"][number]["status"],
+  ): void
   publishLesson(id: string): void
   updateLessonRecap(id: string, recap: string): void
   addPlan(plan: PlanDraft): void
@@ -121,6 +126,22 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
         setLessons((current) =>
           current.map((lesson) =>
             lesson.id === id ? { ...lesson, status } : lesson,
+          ),
+        )
+      },
+      updateLessonSuggestionStatus(lessonId, suggestionId, status) {
+        setLessons((current) =>
+          current.map((lesson) =>
+            lesson.id === lessonId
+              ? {
+                  ...lesson,
+                  suggestions: lesson.suggestions.map((suggestion) =>
+                    suggestion.id === suggestionId
+                      ? { ...suggestion, status }
+                      : suggestion,
+                  ),
+                }
+              : lesson,
           ),
         )
       },

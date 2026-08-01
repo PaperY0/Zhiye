@@ -80,6 +80,25 @@ describe("PrototypeProvider", () => {
     ).toBe("processing")
   })
 
+  it("persists a teacher decision on an AI lesson suggestion", () => {
+    const { result } = renderHook(() => usePrototype(), { wrapper })
+
+    act(() =>
+      result.current.updateLessonSuggestionStatus(
+        "lesson-fractions",
+        "suggestion-fractions-01",
+        "accepted",
+      ),
+    )
+
+    expect(
+      result.current.lessons
+        .find((item) => item.id === "lesson-fractions")
+        ?.suggestions.find((item) => item.id === "suggestion-fractions-01")
+        ?.status,
+    ).toBe("accepted")
+  })
+
   it("publishes a lesson, edits its recap, and sends a local message", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
 

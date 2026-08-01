@@ -1,8 +1,9 @@
 @import './styles/fonts.css';
 @import 'tailwindcss';
 @import './styles/theme.css';
+@import './styles/prototype.css';
 
-@theme { --font-display: "Instrument Serif", Georgia, serif; --font-serif: "Iowan Old Style", "Songti SC", "STSong", serif; --font-sans: Inter, "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif; }
+@theme { --font-display: "Instrument Serif", Georgia, serif; --font-brand: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif; --font-handwriting: "Ma Shan Zheng", "KaiTi", "STKaiti", cursive; --font-serif: "Iowan Old Style", "Songti SC", "STSong", serif; --font-sans: Inter, "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif; }
 
 @layer base { html { background:#071c1e; } body { margin:0; min-width:320px; font-family:var(--font-sans); } button, a { -webkit-tap-highlight-color:transparent; } button { cursor:pointer; } }
 

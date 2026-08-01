@@ -1,15 +1,10 @@
-import { useState } from "react"
-import WelcomeScreen from "./components/WelcomeScreen"
-import WorkspaceScreen from "./components/WorkspaceScreen"
-
-type Screen = "welcome" | "workspace"
+import AppRouter from "./app/AppRouter"
+import { PrototypeProvider } from "./app/prototype/PrototypeContext"
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("welcome")
-
-  return screen === "welcome" ? (
-    <WelcomeScreen onEnter={() => setScreen("workspace")} />
-  ) : (
-    <WorkspaceScreen onBackToWelcome={() => setScreen("welcome")} />
+  return (
+    <PrototypeProvider>
+      <AppRouter />
+    </PrototypeProvider>
   )
 }

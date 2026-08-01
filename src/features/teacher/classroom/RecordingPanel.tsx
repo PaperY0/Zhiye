@@ -17,24 +17,34 @@ export interface RecordingPanelProps {
   open: boolean
   onClose: () => void
   onOpenDraft: () => void
+  onStatusChange?: (status: Exclude<RecordingState, "idle">) => void
 }
 
 export function RecordingPanel({
   open,
   onClose,
   onOpenDraft,
+  onStatusChange,
 }: RecordingPanelProps) {
   const [status, setStatus] = useState<RecordingState>("idle")
 
   useEffect(() => {
     if (!open || status !== "processing") return
-    const timer = window.setTimeout(() => setStatus("draft-ready"), 800)
+    const timer = window.setTimeout(() => {
+      setStatus("draft-ready")
+      onStatusChange?.("draft-ready")
+    }, 800)
     return () => window.clearTimeout(timer)
-  }, [open, status])
+  }, [onStatusChange, open, status])
 
   useEffect(() => {
     if (open) setStatus("idle")
   }, [open])
+
+  const changeStatus = (nextStatus: Exclude<RecordingState, "idle">) => {
+    setStatus(nextStatus)
+    onStatusChange?.(nextStatus)
+  }
 
   const tone =
     status === "draft-ready"
@@ -81,7 +91,7 @@ export function RecordingPanel({
           {status === "idle" ? (
             <button
               className="inline-flex items-center gap-2 rounded-full bg-[#142219] px-5 py-3 font-bold text-white"
-              onClick={() => setStatus("recording")}
+              onClick={() => changeStatus("recording")}
               type="button"
             >
               <Mic aria-hidden="true" size={18} />
@@ -92,7 +102,7 @@ export function RecordingPanel({
             <>
               <button
                 className="inline-flex items-center gap-2 rounded-full border border-[#cbd8c8] bg-white/75 px-5 py-3 font-bold text-[#294833]"
-                onClick={() => setStatus("paused")}
+                onClick={() => changeStatus("paused")}
                 type="button"
               >
                 <Pause aria-hidden="true" size={18} />
@@ -100,7 +110,7 @@ export function RecordingPanel({
               </button>
               <button
                 className="inline-flex items-center gap-2 rounded-full bg-[#142219] px-5 py-3 font-bold text-white"
-                onClick={() => setStatus("processing")}
+                onClick={() => changeStatus("processing")}
                 type="button"
               >
                 <Square aria-hidden="true" size={16} />
@@ -112,7 +122,7 @@ export function RecordingPanel({
             <>
               <button
                 className="inline-flex items-center gap-2 rounded-full border border-[#cbd8c8] bg-white/75 px-5 py-3 font-bold text-[#294833]"
-                onClick={() => setStatus("recording")}
+                onClick={() => changeStatus("recording")}
                 type="button"
               >
                 <Play aria-hidden="true" size={18} />
@@ -120,7 +130,7 @@ export function RecordingPanel({
               </button>
               <button
                 className="inline-flex items-center gap-2 rounded-full bg-[#142219] px-5 py-3 font-bold text-white"
-                onClick={() => setStatus("processing")}
+                onClick={() => changeStatus("processing")}
                 type="button"
               >
                 <Square aria-hidden="true" size={16} />

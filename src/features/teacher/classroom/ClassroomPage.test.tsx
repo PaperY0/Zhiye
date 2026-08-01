@@ -66,16 +66,29 @@ describe("ClassroomPage", () => {
     )
     expect(within(dialog).getByText("正在整理课堂内容")).toBeInTheDocument()
 
+    fireEvent.click(within(dialog).getByRole("button", { name: "关闭新课堂录音" }))
+    expect(screen.getByText("处理中")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "开始新课堂录音" }))
+    const reopenedDialog = screen.getByRole("dialog", { name: "新课堂录音" })
+
     act(() => vi.advanceTimersByTime(799))
     expect(
-      within(dialog).queryByRole("button", { name: "查看 AI 初稿" }),
+      within(reopenedDialog).queryByRole("button", { name: "查看 AI 初稿" }),
     ).not.toBeInTheDocument()
 
     act(() => vi.advanceTimersByTime(1))
-    expect(within(dialog).getByText("AI 初稿已就绪")).toBeInTheDocument()
+    expect(within(reopenedDialog).getByText("等待开始")).toBeInTheDocument()
+
+    fireEvent.click(within(reopenedDialog).getByRole("button", { name: "开始录音" }))
+    fireEvent.click(
+      within(reopenedDialog).getByRole("button", { name: "结束并生成 AI 初稿" }),
+    )
+    act(() => vi.advanceTimersByTime(800))
+    expect(within(reopenedDialog).getByText("AI 初稿已就绪")).toBeInTheDocument()
 
     fireEvent.click(
-      within(dialog).getByRole("button", { name: "查看 AI 初稿" }),
+      within(reopenedDialog).getByRole("button", { name: "查看 AI 初稿" }),
     )
     expect(onNavigate).toHaveBeenCalledWith({
       role: "teacher",

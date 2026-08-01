@@ -106,7 +106,7 @@ export interface ClassroomPageProps {
 }
 
 export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
-  const { lessons } = usePrototype()
+  const { lessons, updateLessonStatus } = usePrototype()
   const [filter, setFilter] = useState<LessonFilter>("all")
   const [recordingOpen, setRecordingOpen] = useState(false)
 
@@ -185,6 +185,7 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
 
       <RecordingPanel
         onClose={() => setRecordingOpen(false)}
+        onStatusChange={(status) => updateLessonStatus("lesson-fractions", status)}
         onOpenDraft={() => {
           setRecordingOpen(false)
           openLesson("lesson-fractions")

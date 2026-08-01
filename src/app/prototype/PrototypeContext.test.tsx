@@ -53,6 +53,16 @@ describe("prototype fixtures", () => {
 })
 
 describe("PrototypeProvider", () => {
+  it("updates a lesson status for the shared classroom workflow", () => {
+    const { result } = renderHook(() => usePrototype(), { wrapper })
+
+    act(() => result.current.updateLessonStatus("lesson-fractions", "processing"))
+
+    expect(
+      result.current.lessons.find((item) => item.id === "lesson-fractions")?.status,
+    ).toBe("processing")
+  })
+
   it("publishes a lesson, edits its recap, and sends a local message", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
 

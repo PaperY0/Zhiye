@@ -41,6 +41,7 @@ export type PrototypeContextValue = {
   parentSummary: ParentSummary
   safetyCases: SafetyCase[]
   auditEvents: AuditEvent[]
+  updateLessonStatus(id: string, status: Lesson["status"]): void
   publishLesson(id: string): void
   updateLessonRecap(id: string, recap: string): void
   addPlan(plan: PlanDraft): void
@@ -87,6 +88,13 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       parentSummary,
       safetyCases,
       auditEvents,
+      updateLessonStatus(id, status) {
+        setLessons((current) =>
+          current.map((lesson) =>
+            lesson.id === id ? { ...lesson, status } : lesson,
+          ),
+        )
+      },
       publishLesson(id) {
         setLessons((current) =>
           current.map((lesson) =>

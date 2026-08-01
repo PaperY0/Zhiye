@@ -104,6 +104,7 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
     lessons,
     publishLesson,
     updateLessonRecap,
+    updateLessonProgress,
     updateLessonSuggestionStatus,
   } = usePrototype()
   const lesson = lessons.find((item) => item.id === lessonId)
@@ -461,7 +462,10 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
               <div className="flex justify-center">
                 <button
                   className="inline-flex items-center gap-2 rounded-full bg-[#24462f] px-5 py-3 font-black text-white"
-                  onClick={() => setNotice(`课程进度已更新为 ${progress}%`)}
+                  onClick={() => {
+                    updateLessonProgress(lesson.id, progress, nextStep)
+                    setNotice("课程进度保存成功 · 已同步到课堂记录")
+                  }}
                   type="button"
                 >
                   <Save aria-hidden="true" size={17} />

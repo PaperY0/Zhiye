@@ -108,7 +108,9 @@ describe("LessonDetailPage", () => {
     await user.type(nextStep, "通分综合练习")
     await user.click(screen.getByRole("button", { name: "保存课程进度" }))
 
-    expect(screen.getByText("课程进度已更新为 80%")).toBeInTheDocument()
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "课程进度保存成功 · 已同步到课堂记录",
+    )
     expect(nextStep).toHaveValue("通分综合练习")
   })
 

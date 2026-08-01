@@ -41,6 +41,7 @@ export type PrototypeContextValue = {
   parentSummary: ParentSummary
   safetyCases: SafetyCase[]
   auditEvents: AuditEvent[]
+  createLesson(): string
   updateLessonStatus(id: string, status: Lesson["status"]): void
   publishLesson(id: string): void
   updateLessonRecap(id: string, recap: string): void
@@ -88,6 +89,34 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       parentSummary,
       safetyCases,
       auditEvents,
+      createLesson() {
+        const id = `lesson-recording-${lessons.length + 1}`
+        setLessons((current) => [
+          ...current,
+          {
+            id,
+            title: "新课堂录音",
+            subject: "数学",
+            grade: "五年级",
+            className: "五年级（2）班",
+            date: "2026-07-26",
+            durationMinutes: 0,
+            status: "scheduled",
+            syncStatus: "local",
+            studentVisibility: "hidden",
+            recap: "",
+            recapTags: [],
+            transcript: [],
+            suggestions: [],
+            progress: {
+              chapter: "待识别",
+              completedPercent: 0,
+              nextStep: "等待课堂内容整理",
+            },
+          },
+        ])
+        return id
+      },
       updateLessonStatus(id, status) {
         setLessons((current) =>
           current.map((lesson) =>

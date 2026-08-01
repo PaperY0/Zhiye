@@ -106,9 +106,10 @@ export interface ClassroomPageProps {
 }
 
 export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
-  const { lessons, updateLessonStatus } = usePrototype()
+  const { createLesson, lessons, updateLessonStatus } = usePrototype()
   const [filter, setFilter] = useState<LessonFilter>("all")
   const [recordingOpen, setRecordingOpen] = useState(false)
+  const [recordingLessonId, setRecordingLessonId] = useState<string | null>(null)
 
   const filteredLessons = useMemo(
     () =>
@@ -138,7 +139,10 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
         </div>
         <button
           className="inline-flex items-center justify-center gap-2 rounded-full bg-[#142219] px-5 py-3 font-black text-white shadow-[0_12px_25px_rgba(20,34,25,.18)]"
-          onClick={() => setRecordingOpen(true)}
+          onClick={() => {
+            setRecordingLessonId(createLesson())
+            setRecordingOpen(true)
+          }}
           type="button"
         >
           <Mic aria-hidden="true" size={18} />
@@ -185,10 +189,12 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
 
       <RecordingPanel
         onClose={() => setRecordingOpen(false)}
-        onStatusChange={(status) => updateLessonStatus("lesson-fractions", status)}
+        onStatusChange={(status) => {
+          if (recordingLessonId) updateLessonStatus(recordingLessonId, status)
+        }}
         onOpenDraft={() => {
           setRecordingOpen(false)
-          openLesson("lesson-fractions")
+          if (recordingLessonId) openLesson(recordingLessonId)
         }}
         open={recordingOpen}
       />

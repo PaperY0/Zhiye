@@ -90,11 +90,13 @@ describe("ClassroomPage", () => {
     fireEvent.click(
       within(reopenedDialog).getByRole("button", { name: "查看 AI 初稿" }),
     )
-    expect(onNavigate).toHaveBeenCalledWith({
-      role: "teacher",
-      page: "lesson-detail",
-      lessonId: "lesson-fractions",
-    })
+    expect(onNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        role: "teacher",
+        page: "lesson-detail",
+        lessonId: expect.stringMatching(/^lesson-recording-/),
+      }),
+    )
   })
 
   it("opens an existing lesson from its card", async () => {

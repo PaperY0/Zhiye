@@ -53,6 +53,23 @@ describe("prototype fixtures", () => {
 })
 
 describe("PrototypeProvider", () => {
+  it("creates a local lesson record for a new classroom recording", () => {
+    const { result } = renderHook(() => usePrototype(), { wrapper })
+    let lessonId = ""
+
+    act(() => {
+      lessonId = result.current.createLesson()
+    })
+
+    expect(lessonId).toMatch(/^lesson-recording-/)
+    expect(result.current.lessons.at(-1)).toMatchObject({
+      id: lessonId,
+      title: "新课堂录音",
+      status: "scheduled",
+      syncStatus: "local",
+    })
+  })
+
   it("updates a lesson status for the shared classroom workflow", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
 

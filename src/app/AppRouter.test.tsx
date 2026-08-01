@@ -87,6 +87,47 @@ describe("AppRouter", () => {
     }
   })
 
+  it("keeps every routed role inside the shared shell with the correct active item", () => {
+    const cases = [
+      ["#/teacher/workspace", "教师端主导航", "工作台"],
+      ["#/teacher/classroom", "教师端主导航", "课堂"],
+      ["#/teacher/classroom/lesson-fractions", "教师端主导航", "课堂"],
+      ["#/teacher/insights", "教师端主导航", "班级洞察"],
+      ["#/teacher/planning", "教师端主导航", "备课与测验"],
+      ["#/teacher/students", "教师端主导航", "学生档案"],
+      ["#/teacher/students/student-lin-xiaoyu", "教师端主导航", "学生档案"],
+      ["#/teacher/tasks", "教师端主导航", "任务"],
+      ["#/teacher/messages", "教师端主导航", "消息"],
+      ["#/teacher/settings", "教师端主导航", "设置"],
+      ["#/student/home", "学生端主导航", "首页"],
+      ["#/student/review/lesson-fractions", "学生端主导航", "首页"],
+      ["#/student/tutoring", "学生端主导航", "拍照答疑"],
+      ["#/student/learning", "学生端主导航", "知识点学习"],
+      ["#/student/mistakes", "学生端主导航", "错题本"],
+      ["#/student/tasks", "学生端主导航", "任务"],
+      ["#/student/messages", "学生端主导航", "消息"],
+      ["#/parent/home", "家长端主导航", "学习摘要"],
+      ["#/parent/messages", "家长端主导航", "联系老师"],
+      ["#/admin/home", "管理端主导航", "管理概览"],
+      ["#/admin/safety", "管理端主导航", "保护性反馈"],
+      ["#/admin/audit", "管理端主导航", "审计记录"],
+      ["#/admin/settings", "管理端主导航", "学校设置"],
+    ] as const
+
+    for (const [hash, navigationName, activeLabel] of cases) {
+      window.history.replaceState(null, "", hash)
+      const view = render(<App />)
+      const navigation = within(view.container).getByRole("navigation", {
+        name: navigationName,
+      })
+      expect(
+        within(navigation).getByRole("button", { name: activeLabel }),
+      ).toHaveAttribute("aria-current", "page")
+      expect(view.container.querySelector("main#main-content")).toBeInTheDocument()
+      view.unmount()
+    }
+  })
+
   it("falls back to welcome for unknown hashes", () => {
     window.history.replaceState(null, "", "#/unknown/page")
     render(<App />)

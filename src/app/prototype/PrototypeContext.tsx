@@ -48,6 +48,7 @@ export type PrototypeContextValue = {
     suggestionId: string,
     status: Lesson["suggestions"][number]["status"],
   ): void
+  updateLessonProgress(id: string, completedPercent: number, nextStep: string): void
   publishLesson(id: string): void
   updateLessonRecap(id: string, recap: string): void
   addPlan(plan: PlanDraft): void
@@ -140,6 +141,22 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
                       ? { ...suggestion, status }
                       : suggestion,
                   ),
+                }
+              : lesson,
+          ),
+        )
+      },
+      updateLessonProgress(id, completedPercent, nextStep) {
+        setLessons((current) =>
+          current.map((lesson) =>
+            lesson.id === id
+              ? {
+                  ...lesson,
+                  progress: {
+                    ...lesson.progress,
+                    completedPercent: Math.min(100, Math.max(0, completedPercent)),
+                    nextStep: nextStep.trim(),
+                  },
                 }
               : lesson,
           ),

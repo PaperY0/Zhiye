@@ -99,6 +99,20 @@ describe("PrototypeProvider", () => {
     ).toBe("accepted")
   })
 
+  it("persists course progress edits for a lesson", () => {
+    const { result } = renderHook(() => usePrototype(), { wrapper })
+
+    act(() =>
+      result.current.updateLessonProgress("lesson-fractions", 80, "通分综合练习"),
+    )
+
+    expect(result.current.lessons.find((item) => item.id === "lesson-fractions")?.progress).toEqual({
+      chapter: "第四单元 · 分数的意义和性质",
+      completedPercent: 80,
+      nextStep: "通分综合练习",
+    })
+  })
+
   it("publishes a lesson, edits its recap, and sends a local message", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
 

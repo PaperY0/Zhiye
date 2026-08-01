@@ -1,15 +1,23 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { expect, it, vi } from "vitest"
+import { RoleShell } from "../../../components/shell/RoleShell"
 import TeacherWorkspacePage from "./TeacherWorkspacePage"
 
 it("connects workspace navigation cards to teacher routes", async () => {
   const user = userEvent.setup()
   const onNavigate = vi.fn()
-  render(<TeacherWorkspacePage onNavigate={onNavigate} />)
+  render(
+    <RoleShell
+      route={{ role: "teacher", page: "workspace" }}
+      onNavigate={onNavigate}
+    >
+      <TeacherWorkspacePage onNavigate={onNavigate} />
+    </RoleShell>,
+  )
 
   await user.click(
-    within(screen.getByRole("navigation", { name: "教师功能导航" })).getByRole(
+    within(screen.getByRole("navigation", { name: "教师端主导航" })).getByRole(
       "button",
       { name: "课堂" },
     ),

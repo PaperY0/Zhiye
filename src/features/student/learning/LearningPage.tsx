@@ -14,6 +14,8 @@ import {
 
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 
+import { usePrototype } from "../../../app/prototype/PrototypeContext"
+
 import { StatusChip } from "../../../components/shared/StatusChip"
 
 type TopicId = "fractions" | "units" | "decimals"
@@ -175,6 +177,7 @@ function createEntryId(prefix: string, index: number) {
 }
 
 export function LearningPage() {
+  const { addStudentTimelineEvent } = usePrototype()
   const [activeTopicId, setActiveTopicId] = useState<TopicId>("fractions")
 
   const [conversations, setConversations] =
@@ -218,6 +221,15 @@ export function LearningPage() {
     const normalized = body.trim()
 
     if (!normalized) return
+
+    addStudentTimelineEvent("student-lin-xiaoyu", {
+      id: `timeline-learning-question-${Date.now()}`,
+      type: "message",
+      title: `提问：${activeTopic.title}`,
+      detail: normalized,
+      occurredAt: "2026-08-02T10:00:00+08:00",
+      fact: true,
+    })
 
     setConversations((current) => {
       const nextIndex = current[activeTopicId].length

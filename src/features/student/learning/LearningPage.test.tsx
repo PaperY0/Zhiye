@@ -1,12 +1,21 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
+import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
 import { LearningPage } from "./LearningPage"
+
+function renderLearning() {
+  return render(
+    <PrototypeProvider>
+      <LearningPage />
+    </PrototypeProvider>,
+  )
+}
 
 describe("LearningPage", () => {
   it("opens topic history and returns a deterministic explanation, example, and knowledge card", async () => {
     const user = userEvent.setup()
-    render(<LearningPage />)
+    renderLearning()
 
     expect(
       screen.getByRole("heading", { name: "知识点学习" }),
@@ -40,7 +49,7 @@ describe("LearningPage", () => {
 
   it("supports simulated voice input without collecting real audio", async () => {
     const user = userEvent.setup()
-    render(<LearningPage />)
+    renderLearning()
 
     expect(screen.getByText(/不会采集或上传真实音频/)).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "开始模拟语音输入" }))
@@ -64,7 +73,7 @@ describe("LearningPage", () => {
 
   it("accepts a self-explanation and asks a deterministic Feynman follow-up", async () => {
     const user = userEvent.setup()
-    render(<LearningPage />)
+    renderLearning()
 
     await user.click(screen.getByRole("button", { name: "我来讲一遍" }))
     await user.type(

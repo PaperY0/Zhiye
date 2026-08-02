@@ -53,6 +53,24 @@ describe("prototype fixtures", () => {
 })
 
 describe("PrototypeProvider", () => {
+  it("restores shared prototype state when persistence is enabled", () => {
+    localStorage.clear()
+    const persistedWrapper = ({ children }: { children: ReactNode }) => (
+      <PrototypeProvider persist>{children}</PrototypeProvider>
+    )
+    const first = renderHook(() => usePrototype(), { wrapper: persistedWrapper })
+
+    act(() => first.result.current.updateLessonProgress("lesson-fractions", 81, "通分"))
+    first.unmount()
+
+    const second = renderHook(() => usePrototype(), { wrapper: persistedWrapper })
+    expect(
+      second.result.current.lessons.find((item) => item.id === "lesson-fractions")?.progress,
+    ).toMatchObject({ completedPercent: 81, nextStep: "通分" })
+    second.unmount()
+    localStorage.clear()
+  })
+
   it("creates a local lesson record for a new classroom recording", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
     let lessonId = ""

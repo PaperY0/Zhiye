@@ -1,6 +1,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -71,26 +72,86 @@ export type PrototypeContextValue = {
 }
 
 const PrototypeContext = createContext<PrototypeContextValue | null>(null)
+const prototypeStorageKey = "zhiye-prototype-state-v1"
+
+type PrototypeSnapshot = Pick<
+  PrototypeContextValue,
+  | "lessons"
+  | "students"
+  | "plans"
+  | "quizzes"
+  | "tasks"
+  | "conversations"
+  | "safetyCases"
+  | "auditEvents"
+>
+
+function readPrototypeSnapshot(): Partial<PrototypeSnapshot> | null {
+  try {
+    const raw = window.localStorage.getItem(prototypeStorageKey)
+    return raw ? (JSON.parse(raw) as Partial<PrototypeSnapshot>) : null
+  } catch {
+    return null
+  }
+}
 
 function cloneFixture<T>(fixture: T): T {
   return structuredClone(fixture)
 }
 
-export function PrototypeProvider({ children }: { children: ReactNode }) {
-  const [lessons, setLessons] = useState(() => cloneFixture(lessonFixtures))
-  const [students, setStudents] = useState(() => cloneFixture(studentFixtures))
+export function PrototypeProvider({
+  children,
+  persist = false,
+}: {
+  children: ReactNode
+  persist?: boolean
+}) {
+  const persisted = persist ? readPrototypeSnapshot() : null
+  const [lessons, setLessons] = useState(() =>
+    cloneFixture(persisted?.lessons ?? lessonFixtures),
+  )
+  const [students, setStudents] = useState(() =>
+    cloneFixture(persisted?.students ?? studentFixtures),
+  )
   const [signals] = useState(() => cloneFixture(knowledgeSignalFixtures))
-  const [plans, setPlans] = useState(() => cloneFixture(planFixtures))
-  const [quizzes, setQuizzes] = useState(() => cloneFixture(quizFixtures))
-  const [tasks, setTasks] = useState(() => cloneFixture(taskFixtures))
+  const [plans, setPlans] = useState(() =>
+    cloneFixture(persisted?.plans ?? planFixtures),
+  )
+  const [quizzes, setQuizzes] = useState(() =>
+    cloneFixture(persisted?.quizzes ?? quizFixtures),
+  )
+  const [tasks, setTasks] = useState(() =>
+    cloneFixture(persisted?.tasks ?? taskFixtures),
+  )
   const [conversations, setConversations] = useState(() =>
-    cloneFixture(conversationFixtures),
+    cloneFixture(persisted?.conversations ?? conversationFixtures),
   )
   const [parentSummary] = useState(() => cloneFixture(parentSummaryFixture))
   const [safetyCases, setSafetyCases] = useState(() =>
-    cloneFixture(safetyCaseFixtures),
+    cloneFixture(persisted?.safetyCases ?? safetyCaseFixtures),
   )
-  const [auditEvents, setAuditEvents] = useState(() => cloneFixture(auditEventFixtures))
+  const [auditEvents, setAuditEvents] = useState(() =>
+    cloneFixture(persisted?.auditEvents ?? auditEventFixtures),
+  )
+
+  useEffect(() => {
+    if (!persist) return
+    try {
+      const snapshot: PrototypeSnapshot = {
+        lessons,
+        students,
+        plans,
+        quizzes,
+        tasks,
+        conversations,
+        safetyCases,
+        auditEvents,
+      }
+      window.localStorage.setItem(prototypeStorageKey, JSON.stringify(snapshot))
+    } catch {
+      // Storage is best-effort in the prototype; in-memory state remains usable.
+    }
+  }, [auditEvents, conversations, lessons, persist, plans, quizzes, safetyCases, students, tasks])
 
   const value = useMemo<PrototypeContextValue>(
     () => ({

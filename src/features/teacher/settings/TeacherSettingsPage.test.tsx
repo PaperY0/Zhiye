@@ -158,6 +158,12 @@ describe("TeacherSettingsPage", () => {
     await user.type(screen.getByRole("textbox", { name: "教师姓名" }), "李敏")
     await user.click(screen.getByRole("button", { name: "保存设置" }))
     await user.click(screen.getByRole("button", { name: "重置演示数据" }))
+    await user.click(
+      within(screen.getByRole("dialog", { name: "确认重置演示数据" })).getByRole(
+        "button",
+        { name: "确认重置" },
+      ),
+    )
 
     expect(screen.getByRole("textbox", { name: "教师姓名" })).toHaveValue("李老师")
     expect(localStorage.getItem("zhiye-teacher-settings-v1")).toBeNull()

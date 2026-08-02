@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
+import { Dialog } from "../../../components/shared/Dialog"
 import { StatusChip } from "../../../components/shared/StatusChip"
 import {
   ToastRegion,
@@ -160,6 +161,7 @@ export function TeacherSettingsPage() {
   const { resetPrototype } = usePrototype()
   const [settings, setSettings] = useState<TeacherSettings>(readSavedSettings)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
 
   function updateSetting<Key extends keyof TeacherSettings>(
     key: Key,
@@ -199,18 +201,7 @@ export function TeacherSettingsPage() {
         <div className="flex flex-wrap gap-3">
           <button
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#cbd9cb] bg-white/70 px-5 text-sm font-black text-[#46614c]"
-            onClick={() => {
-              resetPrototype()
-              setSettings(initialSettings)
-              setToasts([
-                {
-                  id: "prototype-reset",
-                  title: "演示数据已重置",
-                  description: "课堂、任务和学生记录已恢复为初始示例。",
-                  tone: "success",
-                },
-              ])
-            }}
+            onClick={() => setResetConfirmOpen(true)}
             type="button"
           >
             重置演示数据
@@ -225,6 +216,47 @@ export function TeacherSettingsPage() {
           </button>
         </div>
       </header>
+
+      <Dialog
+        description="这会恢复课堂、任务、学生和角色设置的初始示例。"
+        footer={
+          <div className="flex justify-end gap-3">
+            <button
+              className="rounded-full border border-[#cbd9cb] bg-white/70 px-5 py-2.5 text-sm font-black text-[#526158]"
+              onClick={() => setResetConfirmOpen(false)}
+              type="button"
+            >
+              取消
+            </button>
+            <button
+              className="rounded-full bg-[#8a4f3f] px-5 py-2.5 text-sm font-black text-white"
+              onClick={() => {
+              resetPrototype()
+              setSettings(initialSettings)
+              setResetConfirmOpen(false)
+              setToasts([
+                {
+                  id: "prototype-reset",
+                  title: "演示数据已重置",
+                  description: "课堂、任务和学生记录已恢复为初始示例。",
+                  tone: "success",
+                },
+              ])
+              }}
+              type="button"
+            >
+              确认重置
+            </button>
+          </div>
+        }
+        onClose={() => setResetConfirmOpen(false)}
+        open={resetConfirmOpen}
+        title="确认重置演示数据"
+      >
+        <p className="text-sm leading-7 text-[#53675a]">
+          已保存的课堂进度、任务完成状态、错题记录和角色设置都会恢复为初始示例。
+        </p>
+      </Dialog>
 
       <div className="mb-6 flex items-start gap-3 rounded-[22px] border border-[#d8c691]/45 bg-[#fff8df]/70 px-4 py-3.5 text-sm leading-6 text-[#67582d] shadow-[inset_0_1px_0_rgba(255,255,255,.8)]">
         <ShieldCheck aria-hidden="true" className="mt-0.5 shrink-0" size={19} />

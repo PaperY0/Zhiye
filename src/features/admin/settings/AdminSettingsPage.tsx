@@ -34,6 +34,19 @@ const initialSettings: AdminSettings = {
   auditDays: "365",
 }
 
+const adminSettingsStorageKey = "zhiye-admin-settings-v1"
+
+function readSavedSettings(): AdminSettings {
+  try {
+    const saved = window.localStorage.getItem(adminSettingsStorageKey)
+    return saved
+      ? { ...initialSettings, ...(JSON.parse(saved) as Partial<AdminSettings>) }
+      : initialSettings
+  } catch {
+    return initialSettings
+  }
+}
+
 const inputClassName =
   "mt-2 min-h-11 w-full rounded-2xl border border-white/80 bg-white/60 px-4 text-sm font-semibold text-[#263b2d] outline-none transition placeholder:text-[#91a097] focus:border-[#7f9b84] focus:ring-4 focus:ring-[#6f9475]/18"
 const labelClassName = "text-sm font-bold text-[#33483a]"
@@ -68,9 +81,9 @@ function SettingsSection({
 }
 
 export function AdminSettingsPage() {
-  const [settings, setSettings] = useState<AdminSettings>(initialSettings)
+  const [settings, setSettings] = useState<AdminSettings>(readSavedSettings)
   const [savedRetentionDays, setSavedRetentionDays] =
-    useState<AdminSettings["retentionDays"]>(initialSettings.retentionDays)
+    useState<AdminSettings["retentionDays"]>(readSavedSettings().retentionDays)
   const [invitationCode, setInvitationCode] = useState<string | null>(null)
   const [bindingCode, setBindingCode] = useState("")
   const [bindingFeedback, setBindingFeedback] = useState("")
@@ -93,13 +106,14 @@ export function AdminSettingsPage() {
   }
 
   function confirmSave() {
+    window.localStorage.setItem(adminSettingsStorageKey, JSON.stringify(settings))
     setSavedRetentionDays(settings.retentionDays)
     setConfirmOpen(false)
     setToasts([
       {
         id: "admin-settings-saved",
         title: "管理设置已保存到当前原型",
-        description: `课堂原始音频留存时间：${settings.retentionDays} 天。刷新后不会保留，也不会上传。`,
+        description: `课堂原始音频留存时间：${settings.retentionDays} 天。刷新后仍会保留，不会上传。`,
         tone: "success",
       },
     ])

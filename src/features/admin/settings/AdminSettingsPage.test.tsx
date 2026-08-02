@@ -1,7 +1,11 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it } from "vitest"
 import { AdminSettingsPage } from "./AdminSettingsPage"
+
+beforeEach(() => {
+  localStorage.clear()
+})
 
 describe("AdminSettingsPage", () => {
   it("edits response contacts and keeps every control explicitly local to the prototype", async () => {
@@ -78,5 +82,27 @@ describe("AdminSettingsPage", () => {
       }),
     )
     expect(within(notifications).queryByRole("status")).not.toBeInTheDocument()
+  })
+
+  it("restores saved retention settings after remounting", async () => {
+    const user = userEvent.setup()
+    const first = render(<AdminSettingsPage />)
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "课堂原始音频留存时间" }),
+      "30",
+    )
+    await user.click(screen.getByRole("button", { name: "保存管理设置" }))
+    await user.click(
+      within(screen.getByRole("dialog", { name: "确认更新管理设置" })).getByRole(
+        "button",
+        { name: "确认保存" },
+      ),
+    )
+    first.unmount()
+
+    render(<AdminSettingsPage />)
+    expect(
+      screen.getByRole("combobox", { name: "课堂原始音频留存时间" }),
+    ).toHaveValue("30")
   })
 })

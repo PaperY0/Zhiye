@@ -1,11 +1,20 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
+import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
 import { TeacherSettingsPage } from "./TeacherSettingsPage"
+
+function renderSettings() {
+  render(
+    <PrototypeProvider>
+      <TeacherSettingsPage />
+    </PrototypeProvider>,
+  )
+}
 
 describe("TeacherSettingsPage", () => {
   it("presents every teacher setting area and explains prototype-only local state", () => {
-    render(<TeacherSettingsPage />)
+    renderSettings()
 
     expect(
       screen.getByRole("heading", { name: "教师设置" }),
@@ -34,7 +43,7 @@ describe("TeacherSettingsPage", () => {
 
   it("edits textbook scope, AI detail, dialect, notifications, retention and privacy choices", async () => {
     const user = userEvent.setup()
-    render(<TeacherSettingsPage />)
+    renderSettings()
 
     await user.clear(screen.getByRole("textbox", { name: "教师姓名" }))
     await user.type(screen.getByRole("textbox", { name: "教师姓名" }), "李敏")
@@ -102,7 +111,7 @@ describe("TeacherSettingsPage", () => {
 
   it("saves the current local draft and shows a dismissible confirmation toast", async () => {
     const user = userEvent.setup()
-    render(<TeacherSettingsPage />)
+    renderSettings()
 
     await user.clear(screen.getByRole("textbox", { name: "教师姓名" }))
     await user.type(screen.getByRole("textbox", { name: "教师姓名" }), "李敏")

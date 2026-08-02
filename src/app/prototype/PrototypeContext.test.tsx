@@ -71,6 +71,23 @@ describe("PrototypeProvider", () => {
     localStorage.clear()
   })
 
+  it("resets shared state and removes the persisted snapshot", () => {
+    const persistedWrapper = ({ children }: { children: ReactNode }) => (
+      <PrototypeProvider persist>{children}</PrototypeProvider>
+    )
+    const { result } = renderHook(() => usePrototype(), { wrapper: persistedWrapper })
+
+    act(() => {
+      result.current.updateLessonProgress("lesson-fractions", 91, "新的下一步")
+      result.current.resetPrototype()
+    })
+
+    expect(
+      result.current.lessons.find((item) => item.id === "lesson-fractions")?.progress,
+    ).toMatchObject({ completedPercent: 72, nextStep: "约分与通分" })
+    expect(localStorage.getItem("zhiye-prototype-state-v1")).toContain('"completedPercent":72')
+  })
+
   it("creates a local lesson record for a new classroom recording", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
     let lessonId = ""

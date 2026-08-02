@@ -12,6 +12,7 @@ import {
   UserRound,
 } from "lucide-react"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
+import { usePrototype } from "../../../app/prototype/PrototypeContext"
 import { StatusChip } from "../../../components/shared/StatusChip"
 import {
   ToastRegion,
@@ -143,6 +144,7 @@ function ToggleRow({
 }
 
 export function TeacherSettingsPage() {
+  const { resetPrototype } = usePrototype()
   const [settings, setSettings] = useState<TeacherSettings>(initialSettings)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
 
@@ -180,14 +182,33 @@ export function TeacherSettingsPage() {
             辅助方式、通知和数据边界。所有选择都由教师确认后生效。
           </p>
         </div>
-        <button
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#15251b] px-6 text-sm font-black text-white shadow-[0_12px_28px_rgba(20,40,27,.18)] transition hover:-translate-y-0.5 hover:bg-[#223b2a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#66886d]/30"
-          onClick={saveSettings}
-          type="button"
-        >
-          <Save aria-hidden="true" size={18} />
-          保存设置
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#cbd9cb] bg-white/70 px-5 text-sm font-black text-[#46614c]"
+            onClick={() => {
+              resetPrototype()
+              setToasts([
+                {
+                  id: "prototype-reset",
+                  title: "演示数据已重置",
+                  description: "课堂、任务和学生记录已恢复为初始示例。",
+                  tone: "success",
+                },
+              ])
+            }}
+            type="button"
+          >
+            重置演示数据
+          </button>
+          <button
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#15251b] px-6 text-sm font-black text-white shadow-[0_12px_28px_rgba(20,40,27,.18)] transition hover:-translate-y-0.5 hover:bg-[#223b2a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#66886d]/30"
+            onClick={saveSettings}
+            type="button"
+          >
+            <Save aria-hidden="true" size={18} />
+            保存设置
+          </button>
+        </div>
       </header>
 
       <div className="mb-6 flex items-start gap-3 rounded-[22px] border border-[#d8c691]/45 bg-[#fff8df]/70 px-4 py-3.5 text-sm leading-6 text-[#67582d] shadow-[inset_0_1px_0_rgba(255,255,255,.8)]">

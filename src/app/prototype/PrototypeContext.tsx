@@ -67,6 +67,7 @@ export type PrototypeContextValue = {
   addMistake(studentId: string, mistake: Student["mistakes"][number]): void
   updateMistake(studentId: string, mistakeId: string, patch: Partial<Mistake>): void
   addStudentTimelineEvent(studentId: string, event: StudentTimelineEvent): void
+  resetPrototype(): void
   updateSafetyCase(id: string, patch: Partial<SafetyCase>): void
   addAuditEvent(event: AuditEvent): void
 }
@@ -358,6 +359,16 @@ export function PrototypeProvider({
               : student,
           ),
         )
+      },
+      resetPrototype() {
+        setLessons(cloneFixture(lessonFixtures))
+        setStudents(cloneFixture(studentFixtures))
+        setPlans(cloneFixture(planFixtures))
+        setQuizzes(cloneFixture(quizFixtures))
+        setTasks(cloneFixture(taskFixtures))
+        setConversations(cloneFixture(conversationFixtures))
+        setSafetyCases(cloneFixture(safetyCaseFixtures))
+        setAuditEvents(cloneFixture(auditEventFixtures))
       },
       updateSafetyCase(id, patch) {
         setSafetyCases((current) =>

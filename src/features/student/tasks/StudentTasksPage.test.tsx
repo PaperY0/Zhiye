@@ -35,11 +35,13 @@ describe("StudentTasksPage", () => {
 
     await user.click(within(dialog).getByRole("button", { name: "开始任务" }))
     expect(within(dialog).getByText("正在完成")).toBeInTheDocument()
+    expect(screen.getByText("任务已开始，进度已同步")).toBeInTheDocument()
 
     await user.click(
       within(dialog).getByRole("button", { name: "标记为已完成" }),
     )
     expect(within(dialog).getByText("已完成，等待老师查看")).toBeInTheDocument()
+    expect(screen.getByText("任务已提交，等待老师查看")).toBeInTheDocument()
 
     await user.click(
       within(dialog).getByRole("button", { name: "关闭单位换算巩固练习" }),

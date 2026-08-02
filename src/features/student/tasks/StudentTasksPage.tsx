@@ -64,6 +64,7 @@ export function StudentTasksPage() {
   )
   const [filter, setFilter] = useState<TaskFilter>("all")
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [notice, setNotice] = useState("")
   const [progress, setProgress] = useState<Record<string, StudentTaskState>>(
     () =>
       Object.fromEntries(
@@ -260,6 +261,7 @@ export function StudentTasksPage() {
                         ...current,
                         [selectedTask.id]: "in-progress",
                       }))
+                      setNotice("任务已开始，进度已同步")
                     })()
                   }
                   type="button"
@@ -282,6 +284,7 @@ export function StudentTasksPage() {
                         ...current,
                         [selectedTask.id]: "completed",
                       }))
+                      setNotice("任务已提交，等待老师查看")
                     })()
                   }
                   type="button"
@@ -299,6 +302,15 @@ export function StudentTasksPage() {
             </div>
           </section>
         </div>
+      ) : null}
+      {notice ? (
+        <p
+          aria-live="polite"
+          className="rounded-2xl bg-[#e7f1e5] px-4 py-3 text-sm font-black text-[#36563d]"
+          role="status"
+        >
+          {notice}
+        </p>
       ) : null}
     </section>
   )

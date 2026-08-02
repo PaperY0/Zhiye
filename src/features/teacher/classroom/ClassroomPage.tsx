@@ -10,7 +10,13 @@ import {
 } from "../../../components/shared/StatusChip"
 import { RecordingPanel } from "./RecordingPanel"
 
-type LessonFilter = "all" | "scheduled" | "draft-ready" | "published"
+type LessonFilter =
+  | "all"
+  | "scheduled"
+  | "in-progress"
+  | "processing"
+  | "draft-ready"
+  | "published"
 
 type FilterOption = {
   value: LessonFilter
@@ -27,6 +33,8 @@ type LessonStatusMeta = {
 const filters: FilterOption[] = [
   { value: "all", label: "全部" },
   { value: "scheduled", label: "待开始" },
+  { value: "in-progress", label: "进行中" },
+  { value: "processing", label: "处理中" },
   { value: "draft-ready", label: "AI 初稿" },
   { value: "published", label: "已发布" },
 ]
@@ -115,7 +123,11 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
     () =>
       filter === "all"
         ? lessons
-        : lessons.filter((lesson) => lesson.status === filter),
+        : lessons.filter((lesson) =>
+            filter === "in-progress"
+              ? lesson.status === "recording" || lesson.status === "paused"
+              : lesson.status === filter,
+          ),
     [filter, lessons],
   )
 

@@ -27,6 +27,8 @@ describe("ClassroomPage", () => {
     expect(screen.getByText("分数的基本性质")).toBeInTheDocument()
     expect(screen.getByText("单位换算中的乘除步骤")).toBeInTheDocument()
     expect(screen.getByText("小数乘法估算")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "进行中" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "处理中" })).toBeInTheDocument()
     expect(screen.getAllByText(/40 分钟|42 分钟/).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/已同步|仅本机/).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/学生可见|学生不可见/).length).toBeGreaterThan(0)
@@ -67,7 +69,7 @@ describe("ClassroomPage", () => {
     expect(within(dialog).getByText("正在整理课堂内容")).toBeInTheDocument()
 
     fireEvent.click(within(dialog).getByRole("button", { name: "关闭新课堂录音" }))
-    expect(screen.getByText("处理中")).toBeInTheDocument()
+    expect(screen.getAllByText("处理中").length).toBeGreaterThanOrEqual(2)
 
     fireEvent.click(screen.getByRole("button", { name: "开始新课堂录音" }))
     const reopenedDialog = screen.getByRole("dialog", { name: "新课堂录音" })

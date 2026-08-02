@@ -35,7 +35,7 @@ describe("StudentHomePage", () => {
     expect(screen.getByRole("region", { name: "我的进度" })).toHaveTextContent(
       "任务完成率",
     )
-    expect(screen.getByText("72%", { selector: "strong" })).toBeInTheDocument()
+    expect(screen.getByText("100%", { selector: "strong" })).toBeInTheDocument()
     expect(screen.getByRole("region", { name: "最近学习记录" })).toHaveTextContent(
       "完成教师任务",
     )

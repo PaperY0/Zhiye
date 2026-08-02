@@ -81,6 +81,23 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
       task.audience.studentIds.includes(student?.id ?? "")
     )
   })
+  const trackedTasks = tasks.filter((task) => {
+    if (task.status === "draft") return false
+    return (
+      task.audience.kind === "class" ||
+      task.audience.studentIds.includes(student?.id ?? "")
+    )
+  })
+  const completedTaskCount = trackedTasks.filter((task) =>
+    task.completions.some(
+      (completion) =>
+        completion.studentId === student?.id &&
+        (completion.status === "submitted" || completion.status === "reviewed"),
+    ),
+  ).length
+  const taskCompletionRate = trackedTasks.length
+    ? Math.round((completedTaskCount / trackedTasks.length) * 100)
+    : student.taskCompletionRate
   const nextTask =
     studentTasks.find((task) => task.status === "review") ?? studentTasks[0]
   const latestMistake = student?.mistakes[0]
@@ -256,7 +273,7 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
             <div>
               <p className="text-xs font-bold text-[#7a8980]">任务完成率</p>
               <strong className="mt-1 block text-3xl font-black text-[#31523a]">
-                {student.taskCompletionRate}%
+                {taskCompletionRate}%
               </strong>
             </div>
             <div className="text-right text-xs font-bold leading-6 text-[#708078]">
@@ -265,16 +282,16 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
             </div>
           </div>
           <div
-            aria-label={`任务完成率 ${student.taskCompletionRate}%`}
+            aria-label={`任务完成率 ${taskCompletionRate}%`}
             className="mt-auto h-2 overflow-hidden rounded-full bg-[#dfe7df]"
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-valuenow={student.taskCompletionRate}
+              aria-valuenow={taskCompletionRate}
           >
             <div
               className="h-full rounded-full bg-[#6f9978]"
-              style={{ width: `${student.taskCompletionRate}%` }}
+              style={{ width: `${taskCompletionRate}%` }}
             />
           </div>
         </GlassSurface>

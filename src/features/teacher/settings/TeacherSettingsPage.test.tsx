@@ -1,16 +1,20 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it } from "vitest"
 import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
 import { TeacherSettingsPage } from "./TeacherSettingsPage"
 
 function renderSettings() {
-  render(
+  return render(
     <PrototypeProvider>
       <TeacherSettingsPage />
     </PrototypeProvider>,
   )
 }
+
+beforeEach(() => {
+  localStorage.clear()
+})
 
 describe("TeacherSettingsPage", () => {
   it("presents every teacher setting area and explains prototype-only local state", () => {
@@ -34,8 +38,8 @@ describe("TeacherSettingsPage", () => {
       ).toBeInTheDocument()
     }
 
-    expect(screen.getByText(/设置仅保存在当前页面状态/)).toBeInTheDocument()
-    expect(screen.getByText(/刷新页面后不会保留/)).toBeInTheDocument()
+    expect(screen.getByText(/设置会保存在当前浏览器/)).toBeInTheDocument()
+    expect(screen.getByText(/不会上传或改变真实学校数据/)).toBeInTheDocument()
     expect(
       screen.getByText(/角色切换只用于体验不同端的原型页面/),
     ).toBeInTheDocument()
@@ -122,7 +126,7 @@ describe("TeacherSettingsPage", () => {
       "设置已保存到当前原型",
     )
     expect(within(notifications).getByRole("status")).toHaveTextContent(
-      "刷新页面后不会保留",
+      "刷新页面后仍会保留",
     )
 
     await user.click(
@@ -131,5 +135,18 @@ describe("TeacherSettingsPage", () => {
       }),
     )
     expect(within(notifications).queryByRole("status")).not.toBeInTheDocument()
+  })
+
+  it("restores saved teacher settings after remounting", async () => {
+    const user = userEvent.setup()
+    const first = renderSettings()
+
+    await user.clear(screen.getByRole("textbox", { name: "教师姓名" }))
+    await user.type(screen.getByRole("textbox", { name: "教师姓名" }), "李敏")
+    await user.click(screen.getByRole("button", { name: "保存设置" }))
+    first?.unmount?.()
+
+    renderSettings()
+    expect(screen.getByRole("textbox", { name: "教师姓名" })).toHaveValue("李敏")
   })
 })

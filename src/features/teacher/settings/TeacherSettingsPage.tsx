@@ -67,6 +67,19 @@ const initialSettings: TeacherSettings = {
   hideStudentRankings: true,
 }
 
+const teacherSettingsStorageKey = "zhiye-teacher-settings-v1"
+
+function readSavedSettings(): TeacherSettings {
+  try {
+    const saved = window.localStorage.getItem(teacherSettingsStorageKey)
+    return saved
+      ? { ...initialSettings, ...(JSON.parse(saved) as Partial<TeacherSettings>) }
+      : initialSettings
+  } catch {
+    return initialSettings
+  }
+}
+
 const inputClassName =
   "mt-2 min-h-11 w-full rounded-2xl border border-white/80 bg-white/65 px-4 py-2.5 text-sm font-semibold text-[#193025] shadow-[inset_0_1px_0_rgba(255,255,255,.95)] outline-none transition focus:border-[#719174] focus:ring-4 focus:ring-[#86a988]/15"
 
@@ -145,7 +158,7 @@ function ToggleRow({
 
 export function TeacherSettingsPage() {
   const { resetPrototype } = usePrototype()
-  const [settings, setSettings] = useState<TeacherSettings>(initialSettings)
+  const [settings, setSettings] = useState<TeacherSettings>(readSavedSettings)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
 
   function updateSetting<Key extends keyof TeacherSettings>(
@@ -156,11 +169,12 @@ export function TeacherSettingsPage() {
   }
 
   function saveSettings() {
+    window.localStorage.setItem(teacherSettingsStorageKey, JSON.stringify(settings))
     setToasts([
       {
         id: "teacher-settings-saved",
         title: "设置已保存到当前原型",
-        description: "这些修改仅保存在页面内存中，刷新页面后不会保留。",
+        description: "这些修改已保存到当前浏览器，刷新页面后仍会保留。",
         tone: "success",
       },
     ])
@@ -215,7 +229,7 @@ export function TeacherSettingsPage() {
         <ShieldCheck aria-hidden="true" className="mt-0.5 shrink-0" size={19} />
         <p>
           <strong>原型说明：</strong>
-          设置仅保存在当前页面状态，刷新页面后不会保留，也不会上传或改变真实学校数据。
+          设置会保存在当前浏览器，但不会上传或改变真实学校数据。
         </p>
       </div>
 

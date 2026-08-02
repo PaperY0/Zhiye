@@ -113,7 +113,7 @@ function StudentCard({
 }
 
 export function StudentsPage({ onNavigate }: StudentsPageProps) {
-  const { students } = usePrototype()
+  const { students, tasks } = usePrototype()
   const [query, setQuery] = useState("")
   const [focus, setFocus] = useState("all")
   const [attention, setAttention] = useState<AttentionFilter>("all")
@@ -143,8 +143,23 @@ export function StudentsPage({ onNavigate }: StudentsPageProps) {
   }, [attention, focus, query, students])
 
   const averageCompletion = Math.round(
-    students.reduce((sum, student) => sum + student.taskCompletionRate, 0) /
-      Math.max(students.length, 1),
+    students.reduce((sum, student) => {
+      const trackedTasks = tasks.filter(
+        (task) =>
+          task.status !== "draft" &&
+          (task.audience.kind === "class" ||
+            task.audience.studentIds.includes(student.id)),
+      )
+      if (trackedTasks.length === 0) return sum + student.taskCompletionRate
+      const completed = trackedTasks.filter((task) =>
+        task.completions.some(
+          (completion) =>
+            completion.studentId === student.id &&
+            (completion.status === "submitted" || completion.status === "reviewed"),
+        ),
+      ).length
+      return sum + Math.round((completed / trackedTasks.length) * 100)
+    }, 0) / Math.max(students.length, 1),
   )
   const reviewCount = students.filter(
     (student) => studentAttention(student) === "needs-review",

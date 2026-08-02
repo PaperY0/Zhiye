@@ -84,6 +84,7 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
   const nextTask =
     studentTasks.find((task) => task.status === "review") ?? studentTasks[0]
   const latestMistake = student?.mistakes[0]
+  const latestTimelineEvent = student?.timeline.at(-1)
 
   if (!student) {
     return (
@@ -278,6 +279,28 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
           </div>
         </GlassSurface>
       </div>
+
+      <GlassSurface
+        aria-label="最近学习记录"
+        className="mt-5 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between"
+        role="region"
+        weight="light"
+      >
+        <div>
+          <p className="text-xs font-black tracking-[0.12em] text-[#66806b]">
+            最近学习记录
+          </p>
+          <p className="mt-2 text-base font-black text-[#2d4935]">
+            {latestTimelineEvent?.title ?? "还没有新的学习记录"}
+          </p>
+          <p className="mt-1 text-sm font-medium text-[#738178]">
+            {latestTimelineEvent?.detail ?? "完成一次复习后，这里会留下你的学习标记。"}
+          </p>
+        </div>
+        <StatusChip tone="success">
+          {latestTimelineEvent ? "已记录" : "等待记录"}
+        </StatusChip>
+      </GlassSurface>
 
       <GlassSurface
         className="mt-5 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"

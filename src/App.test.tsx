@@ -5,9 +5,11 @@ import App from "./App"
 describe("知野体验入口", () => {
   it("opens the classroom workspace from the welcome CTA", async () => {
     const user = userEvent.setup()
+    window.history.replaceState(null, "", "#/welcome")
     render(<App />)
 
     await user.click(screen.getByRole("button", { name: "进入知野 · Enter Zhiye" }))
+    await user.click(screen.getByRole("button", { name: "以教师身份进入" }))
 
     expect(
       screen.getByRole("heading", { name: "分数的基本性质" }),

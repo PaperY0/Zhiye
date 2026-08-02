@@ -22,6 +22,7 @@ import type {
   Conversation,
   KnowledgeSignal,
   Lesson,
+  Mistake,
   ParentSummary,
   PlanDraft,
   Quiz,
@@ -62,6 +63,7 @@ export type PrototypeContextValue = {
   ): void
   sendMessage(id: string, body: string): void
   addMistake(studentId: string, mistake: Student["mistakes"][number]): void
+  updateMistake(studentId: string, mistakeId: string, patch: Partial<Mistake>): void
   updateSafetyCase(id: string, patch: Partial<SafetyCase>): void
   addAuditEvent(event: AuditEvent): void
 }
@@ -264,6 +266,22 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
               ? {
                   ...student,
                   mistakes: [...student.mistakes, cloneFixture(mistake)],
+                }
+              : student,
+          ),
+        )
+      },
+      updateMistake(studentId, mistakeId, patch) {
+        setStudents((current) =>
+          current.map((student) =>
+            student.id === studentId
+              ? {
+                  ...student,
+                  mistakes: student.mistakes.map((mistake) =>
+                    mistake.id === mistakeId
+                      ? { ...mistake, ...cloneFixture(patch) }
+                      : mistake,
+                  ),
                 }
               : student,
           ),

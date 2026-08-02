@@ -63,6 +63,7 @@ export type Mistake = {
   source: "lesson" | "quiz" | "tutoring" | "task"
   createdAt: string
   reminderAt?: string
+  note?: string
   imageUrl?: string
 }
 

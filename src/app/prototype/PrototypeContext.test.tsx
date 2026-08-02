@@ -132,6 +132,26 @@ describe("PrototypeProvider", () => {
     ).toBe("submitted")
   })
 
+  it("persists a student's mistake learning record", () => {
+    const { result } = renderHook(() => usePrototype(), { wrapper })
+
+    act(() =>
+      result.current.updateMistake("student-lin-xiaoyu", "mistake-fraction-seed", {
+        mastery: "basic",
+        note: "先确认分子和分母同步变化。",
+      }),
+    )
+
+    expect(
+      result.current.students
+        .find((item) => item.id === "student-lin-xiaoyu")
+        ?.mistakes.find((item) => item.id === "mistake-fraction-seed"),
+    ).toMatchObject({
+      mastery: "basic",
+      note: "先确认分子和分母同步变化。",
+    })
+  })
+
   it("publishes a lesson, edits its recap, and sends a local message", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
 

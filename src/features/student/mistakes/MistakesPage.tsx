@@ -67,7 +67,7 @@ function isWithinDays(createdAt: string, days: number) {
 }
 
 export function MistakesPage() {
-  const { students } = usePrototype()
+  const { students, updateMistake } = usePrototype()
 
   const currentStudent = students.find(
     (student) => student.id === "student-lin-xiaoyu",
@@ -77,7 +77,7 @@ export function MistakesPage() {
     (currentStudent?.mistakes ?? []).map((mistake) => ({
       ...mistake,
 
-      note: "",
+      note: mistake.note ?? "",
 
       reminderChoice: "3-days",
     })),
@@ -134,6 +134,10 @@ export function MistakesPage() {
 
     note: string,
   ) {
+    updateMistake("student-lin-xiaoyu", mistakeId, {
+      mastery: nextMastery,
+      note,
+    })
     setRecords((current) =>
       current.map((mistake) =>
         mistake.id === mistakeId

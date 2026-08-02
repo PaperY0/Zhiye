@@ -76,7 +76,13 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
     visibleLessons[0] ?? lessons.find((lesson) => lesson.recap.trim())
   const studentTasks = tasks.filter((task) => {
     if (task.status === "draft" || task.status === "completed") return false
-    return (
+    const recentlyCompleted = task.completions.some(
+      (completion) =>
+        completion.studentId === student?.id &&
+        completion.updatedAt &&
+        (completion.status === "submitted" || completion.status === "reviewed"),
+    )
+    return !recentlyCompleted && (
       task.audience.kind === "class" ||
       task.audience.studentIds.includes(student?.id ?? "")
     )

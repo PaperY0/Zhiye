@@ -243,6 +243,42 @@ describe("PrototypeProvider", () => {
     ).toContain("下节课观察单位换算方向判断。")
   })
 
+  it("keeps teacher, student, and parent-facing facts in one shared store", () => {
+    const { result } = renderHook(() => usePrototype(), { wrapper })
+    let recordingLessonId = ""
+
+    act(() => {
+      recordingLessonId = result.current.createLesson()
+      result.current.updateLessonStatus(recordingLessonId, "draft-ready")
+      result.current.updateTaskCompletion(
+        "task-active-01",
+        "student-lin-xiaoyu",
+        "submitted",
+      )
+      result.current.addStudentTimelineEvent("student-lin-xiaoyu", {
+        id: "timeline-shared-01",
+        type: "review",
+        title: "完成新课堂复习",
+        detail: "我能讲出来",
+        occurredAt: "2026-08-02T10:00:00+08:00",
+        fact: true,
+      })
+    })
+
+    expect(result.current.lessons.find((item) => item.id === recordingLessonId)?.status).toBe(
+      "draft-ready",
+    )
+    expect(
+      result.current.tasks
+        .find((item) => item.id === "task-active-01")
+        ?.completions.find((item) => item.studentId === "student-lin-xiaoyu")
+        ?.status,
+    ).toBe("submitted")
+    expect(result.current.students.find((item) => item.id === "student-lin-xiaoyu")?.timeline.at(-1)?.detail).toBe(
+      "我能讲出来",
+    )
+  })
+
   it("publishes a lesson, edits its recap, and sends a local message", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
 

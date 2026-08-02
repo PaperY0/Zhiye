@@ -226,7 +226,8 @@
 .workspace-mobile-nav-item-active { color:#294b30; font-weight:900; }
 
 @media (min-width:1280px) {
-  .workspace-natural-shell { height:100dvh; min-height:0; }
+  .workspace-natural-shell { height:calc(100dvh - 73px); min-height:0; }
+  .workspace-natural-shell > div { height:100%; min-height:0; }
   .workspace-app-grid { height:100%; min-height:0; }
   .workspace-sidebar { height:100%; min-height:0; }
   .workspace-app-grid > div:last-child { height:100%; min-height:0; overflow:hidden; }

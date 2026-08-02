@@ -33,6 +33,29 @@ describe("AppRouter", () => {
     expect(within(main).getByText("选择题目图片")).toBeInTheDocument()
   })
 
+  it("switches between role home routes from the shared shell", async () => {
+    const user = userEvent.setup()
+    window.history.replaceState(null, "", "#/teacher/workspace")
+    render(<App />)
+
+    const roleSwitcher = screen.getByRole("combobox", { name: "切换体验角色" })
+
+    await user.selectOptions(roleSwitcher, "student")
+    expect(window.location.hash).toBe("#/student/home")
+    expect(screen.getByRole("navigation", { name: "学生端主导航" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: /林晓雨/ })).toBeInTheDocument()
+
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "切换体验角色" }),
+      "parent",
+    )
+    expect(window.location.hash).toBe("#/parent/home")
+    expect(screen.getByRole("navigation", { name: "家长端主导航" })).toBeInTheDocument()
+    expect(
+      screen.getByRole("heading", { name: "林晓雨的本周学习摘要" }),
+    ).toBeInTheDocument()
+  })
+
 
   it("renders implemented teacher pages through the shared role shell", () => {
     window.history.replaceState(null, "", "#/teacher/insights")

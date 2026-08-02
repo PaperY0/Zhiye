@@ -152,6 +152,30 @@ describe("PrototypeProvider", () => {
     })
   })
 
+  it("records a student's review self-assessment in the learning timeline", () => {
+    const { result } = renderHook(() => usePrototype(), { wrapper })
+
+    act(() =>
+      result.current.addStudentTimelineEvent("student-lin-xiaoyu", {
+        id: "timeline-review-assessment-01",
+        type: "review",
+        title: "完成分数的基本性质复习",
+        detail: "我能讲出来",
+        occurredAt: "2026-08-02T10:00:00+08:00",
+        fact: true,
+      }),
+    )
+
+    expect(
+      result.current.students
+        .find((item) => item.id === "student-lin-xiaoyu")
+        ?.timeline.at(-1),
+    ).toMatchObject({
+      type: "review",
+      detail: "我能讲出来",
+    })
+  })
+
   it("publishes a lesson, edits its recap, and sends a local message", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
 

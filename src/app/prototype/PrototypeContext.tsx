@@ -28,6 +28,7 @@ import type {
   Quiz,
   SafetyCase,
   Student,
+  StudentTimelineEvent,
   Task,
 } from "./types"
 
@@ -64,6 +65,7 @@ export type PrototypeContextValue = {
   sendMessage(id: string, body: string): void
   addMistake(studentId: string, mistake: Student["mistakes"][number]): void
   updateMistake(studentId: string, mistakeId: string, patch: Partial<Mistake>): void
+  addStudentTimelineEvent(studentId: string, event: StudentTimelineEvent): void
   updateSafetyCase(id: string, patch: Partial<SafetyCase>): void
   addAuditEvent(event: AuditEvent): void
 }
@@ -283,6 +285,15 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
                       : mistake,
                   ),
                 }
+              : student,
+          ),
+        )
+      },
+      addStudentTimelineEvent(studentId, event) {
+        setStudents((current) =>
+          current.map((student) =>
+            student.id === studentId
+              ? { ...student, timeline: [...student.timeline, cloneFixture(event)] }
               : student,
           ),
         )

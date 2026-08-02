@@ -80,7 +80,7 @@ export function StudentReviewPage({
   lessonId,
   onNavigate,
 }: StudentReviewPageProps) {
-  const { lessons, students, tasks } = usePrototype()
+  const { addStudentTimelineEvent, lessons, students, tasks } = usePrototype()
   const lesson = lessons.find((item) => item.id === lessonId)
   const student =
     students.find((item) => item.id === "student-lin-xiaoyu") ?? students[0]
@@ -122,6 +122,18 @@ export function StudentReviewPage({
 
   const details = getReviewDetails(lesson.id)
   const answerIsCorrect = answer === details.checkAnswer
+
+  function recordAssessment(nextAssessment: SelfAssessment) {
+    setAssessment(nextAssessment)
+    addStudentTimelineEvent("student-lin-xiaoyu", {
+      id: `timeline-review-${lesson.id}-${Date.now()}`,
+      type: "review",
+      title: `完成${lesson.title}复习`,
+      detail: nextAssessment,
+      occurredAt: "2026-08-02T10:00:00+08:00",
+      fact: true,
+    })
+  }
 
   function toggleReading() {
     if (isReading) {
@@ -320,7 +332,7 @@ export function StudentReviewPage({
                     aria-pressed={assessment === item}
                     className="min-h-12 rounded-2xl bg-white/70 px-5 text-sm font-black text-[#36513d] transition hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#abc4ae]/35 aria-pressed:bg-[#2b4933] aria-pressed:text-white"
                     key={item}
-                    onClick={() => setAssessment(item)}
+                    onClick={() => recordAssessment(item)}
                     type="button"
                   >
                     {assessment === item && (

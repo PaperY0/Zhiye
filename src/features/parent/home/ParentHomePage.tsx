@@ -17,7 +17,9 @@ export type ParentHomePageProps = {
 }
 
 export function ParentHomePage({ onNavigate }: ParentHomePageProps) {
-  const { parentSummary } = usePrototype()
+  const { parentSummary, students } = usePrototype()
+  const student = students.find((item) => item.id === parentSummary.studentId)
+  const latestTimelineEvent = student?.timeline.at(-1)
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioNotice, setAudioNotice] = useState("")
 
@@ -123,6 +125,28 @@ export function ParentHomePage({ onNavigate }: ParentHomePageProps) {
                 </p>
               </article>
             </div>
+          </GlassSurface>
+
+          <GlassSurface
+            aria-label="最近学习记录"
+            className="flex items-center justify-between gap-4 p-5 sm:p-7"
+            role="region"
+            weight="light"
+          >
+            <div>
+              <p className="text-xs font-black tracking-[0.12em] text-[#718276]">
+                最近学习记录
+              </p>
+              <p className="mt-2 text-base font-black text-[#28402f]">
+                {latestTimelineEvent?.title ?? "还没有新的学习记录"}
+              </p>
+              <p className="mt-1 text-sm font-medium text-[#718078]">
+                {latestTimelineEvent?.detail ?? "孩子完成学习后，这里会显示一条温和的记录。"}
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full bg-[#e5efe1] px-3 py-2 text-xs font-black text-[#4e7358]">
+              {latestTimelineEvent ? "已记录" : "等待记录"}
+            </span>
           </GlassSurface>
 
           <GlassSurface

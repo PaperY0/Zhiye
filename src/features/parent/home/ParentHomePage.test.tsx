@@ -24,6 +24,9 @@ describe("ParentHomePage", () => {
     ).toBeInTheDocument()
     expect(screen.getByText("林晓雨 · 五年级（2）班")).toBeInTheDocument()
     expect(screen.getByText("7 月 20 日—7 月 26 日")).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "最近学习记录" })).toHaveTextContent(
+      "完成教师任务",
+    )
 
     const topics = screen.getByRole("region", { name: "本周学习主题" })
     expect(topics).toHaveTextContent("分数的基本性质")

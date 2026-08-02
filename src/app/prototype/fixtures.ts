@@ -178,6 +178,7 @@ export const studentFixtures: Student[] = studentNames.map(
         ? "可能需要更多单位换算步骤提示，需结合后续练习人工确认。"
         : "近期练习节奏稳定，仍需结合课堂表现人工确认。",
     ],
+    teacherNotes: [],
     mistakes:
       id === "student-lin-xiaoyu"
         ? [

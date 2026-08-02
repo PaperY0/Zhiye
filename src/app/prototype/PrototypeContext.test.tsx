@@ -211,6 +211,22 @@ describe("PrototypeProvider", () => {
     })
   })
 
+  it("persists a teacher note on a student profile", () => {
+    const { result } = renderHook(() => usePrototype(), { wrapper })
+
+    act(() =>
+      result.current.addStudentTeacherNote(
+        "student-lin-xiaoyu",
+        "下节课观察单位换算方向判断。",
+      ),
+    )
+
+    expect(
+      result.current.students.find((item) => item.id === "student-lin-xiaoyu")
+        ?.teacherNotes,
+    ).toContain("下节课观察单位换算方向判断。")
+  })
+
   it("publishes a lesson, edits its recap, and sends a local message", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
 

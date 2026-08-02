@@ -75,10 +75,10 @@ function signalLabel(severity: KnowledgeSignal["severity"]) {
 }
 
 export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
-  const { signals, students } = usePrototype()
+  const { addStudentTeacherNote, signals, students } = usePrototype()
   const student = students.find((item) => item.id === studentId)
   const [noteDraft, setNoteDraft] = useState("")
-  const [savedNotes, setSavedNotes] = useState<string[]>([])
+  const [savedNotes, setSavedNotes] = useState<string[]>(student?.teacherNotes ?? [])
   const [correctionOpen, setCorrectionOpen] = useState(false)
   const [correctionDraft, setCorrectionDraft] = useState("")
   const [feedback, setFeedback] = useState<Feedback | null>(null)
@@ -117,6 +117,7 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
   const saveNote = () => {
     const normalized = noteDraft.trim()
     if (!normalized) return
+    addStudentTeacherNote(studentId, normalized)
     setSavedNotes((current) => [normalized, ...current])
     setNoteDraft("")
     setFeedback({ id: Date.now(), message: "教师笔记已保存" })

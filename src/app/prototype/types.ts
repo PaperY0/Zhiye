@@ -90,6 +90,7 @@ export type Student = {
   currentFocus: string[]
   facts: string[]
   aiInferences: string[]
+  teacherNotes: string[]
   mistakes: Mistake[]
   timeline: StudentTimelineEvent[]
 }

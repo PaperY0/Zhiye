@@ -67,6 +67,7 @@ export type PrototypeContextValue = {
   addMistake(studentId: string, mistake: Student["mistakes"][number]): void
   updateMistake(studentId: string, mistakeId: string, patch: Partial<Mistake>): void
   addStudentTimelineEvent(studentId: string, event: StudentTimelineEvent): void
+  addStudentTeacherNote(studentId: string, note: string): void
   resetPrototype(): void
   updateSafetyCase(id: string, patch: Partial<SafetyCase>): void
   addAuditEvent(event: AuditEvent): void
@@ -356,6 +357,17 @@ export function PrototypeProvider({
           current.map((student) =>
             student.id === studentId
               ? { ...student, timeline: [...student.timeline, cloneFixture(event)] }
+              : student,
+          ),
+        )
+      },
+      addStudentTeacherNote(studentId, note) {
+        const normalized = note.trim()
+        if (!normalized) return
+        setStudents((current) =>
+          current.map((student) =>
+            student.id === studentId
+              ? { ...student, teacherNotes: [...student.teacherNotes, normalized] }
               : student,
           ),
         )

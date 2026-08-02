@@ -152,6 +152,7 @@ export type TaskCompletion = {
   studentId: string
   status: "not-started" | "in-progress" | "submitted" | "reviewed"
   submittedAt?: string
+  updatedAt?: string
   score?: number
 }
 

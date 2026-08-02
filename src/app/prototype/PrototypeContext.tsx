@@ -283,6 +283,7 @@ export function PrototypeProvider({
                       ? {
                           ...completion,
                           status,
+                          updatedAt: "2026-08-02T10:00:00+08:00",
                           submittedAt:
                             status === "submitted" || status === "reviewed"
                               ? "2026-08-01T16:00:00+08:00"

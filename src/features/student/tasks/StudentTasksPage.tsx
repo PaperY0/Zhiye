@@ -24,6 +24,13 @@ const taskTypeLabels: Record<Task["type"], string> = {
 }
 
 function initialStudentState(task: Task): StudentTaskState {
+  const completion = task.completions.find(
+    (item) => item.studentId === STUDENT_ID && item.updatedAt,
+  )
+  if (completion?.status === "submitted" || completion?.status === "reviewed") {
+    return "completed"
+  }
+  if (completion?.status === "in-progress") return "in-progress"
   if (task.status === "completed") return "completed"
   if (task.status === "review") return "completed"
   return "not-started"

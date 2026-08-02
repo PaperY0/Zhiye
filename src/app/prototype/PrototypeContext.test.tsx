@@ -174,6 +174,7 @@ describe("PrototypeProvider", () => {
       result.current.updateMistake("student-lin-xiaoyu", "mistake-fraction-seed", {
         mastery: "basic",
         note: "先确认分子和分母同步变化。",
+        reminderAt: "2026-07-28T19:00:00+08:00",
       }),
     )
 
@@ -184,6 +185,7 @@ describe("PrototypeProvider", () => {
     ).toMatchObject({
       mastery: "basic",
       note: "先确认分子和分母同步变化。",
+      reminderAt: "2026-07-28T19:00:00+08:00",
     })
   })
 

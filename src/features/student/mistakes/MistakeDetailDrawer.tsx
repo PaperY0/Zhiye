@@ -57,6 +57,12 @@ const reminderLabels: Record<ReminderChoice, string> = {
   "7-days": "7 天后 19:00",
 }
 
+function reminderChoiceFromDate(reminderAt?: string): ReminderChoice {
+  if (reminderAt?.startsWith("2026-07-26")) return "tomorrow"
+  if (reminderAt?.startsWith("2026-08-01")) return "7-days"
+  return "3-days"
+}
+
 const reminderFeedback: Record<ReminderChoice, string> = {
   tomorrow: "已设置 7 月 26 日 19:00 的模拟提醒",
 
@@ -91,7 +97,7 @@ export function MistakeDetailDrawer({
   const [note, setNote] = useState(mistake?.note ?? "")
 
   const [reminderChoice, setReminderChoice] = useState<ReminderChoice>(
-    mistake?.reminderChoice ?? "3-days",
+    mistake?.reminderChoice ?? reminderChoiceFromDate(mistake?.reminderAt),
   )
 
   const [feedback, setFeedback] = useState("")
@@ -103,7 +109,9 @@ export function MistakeDetailDrawer({
 
     setNote(mistake.note)
 
-    setReminderChoice(mistake.reminderChoice)
+    setReminderChoice(
+      mistake.reminderChoice ?? reminderChoiceFromDate(mistake.reminderAt),
+    )
 
     setFeedback("")
   }, [mistake?.id])

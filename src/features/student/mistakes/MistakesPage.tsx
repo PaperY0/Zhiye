@@ -58,6 +58,12 @@ const sourceLabels = {
   task: "教师任务",
 } as const
 
+const reminderDates: Record<ReminderChoice, string> = {
+  tomorrow: "2026-07-26T19:00:00+08:00",
+  "3-days": "2026-07-28T19:00:00+08:00",
+  "7-days": "2026-08-01T19:00:00+08:00",
+}
+
 function isWithinDays(createdAt: string, days: number) {
   const created = new Date(createdAt)
 
@@ -148,6 +154,9 @@ export function MistakesPage() {
   }
 
   function saveReminder(mistakeId: string, choice: ReminderChoice) {
+    updateMistake("student-lin-xiaoyu", mistakeId, {
+      reminderAt: reminderDates[choice],
+    })
     setRecords((current) =>
       current.map((mistake) =>
         mistake.id === mistakeId

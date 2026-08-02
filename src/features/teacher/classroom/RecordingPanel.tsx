@@ -15,14 +15,18 @@ const stateLabels: Record<RecordingState, string> = {
 
 export interface RecordingPanelProps {
   open: boolean
+  lessonTitle: string
   onClose: () => void
+  onTitleChange: (title: string) => void
   onOpenDraft: () => void
   onStatusChange?: (status: Exclude<RecordingState, "idle">) => void
 }
 
 export function RecordingPanel({
   open,
+  lessonTitle,
   onClose,
+  onTitleChange,
   onOpenDraft,
   onStatusChange,
 }: RecordingPanelProps) {
@@ -86,6 +90,15 @@ export function RecordingPanel({
                     : "开始后可以演示完整的课堂录音工作流。"}
           </p>
         </div>
+
+        <label className="grid gap-2 text-sm font-black text-[#2a4432]">
+          课堂标题
+          <input
+            className="rounded-2xl border border-white/90 bg-white/70 px-4 py-3 outline-none focus:ring-4 focus:ring-[#789b7d]/20"
+            onChange={(event) => onTitleChange(event.target.value)}
+            value={lessonTitle}
+          />
+        </label>
 
         <div className="flex flex-wrap justify-center gap-3">
           {status === "idle" ? (

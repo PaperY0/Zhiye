@@ -45,6 +45,7 @@ export type PrototypeContextValue = {
   safetyCases: SafetyCase[]
   auditEvents: AuditEvent[]
   createLesson(): string
+  updateLessonTitle(id: string, title: string): void
   updateLessonStatus(id: string, status: Lesson["status"]): void
   updateLessonSuggestionStatus(
     lessonId: string,
@@ -194,6 +195,15 @@ export function PrototypeProvider({
           },
         ])
         return id
+      },
+      updateLessonTitle(id, title) {
+        const normalized = title.trim()
+        if (!normalized) return
+        setLessons((current) =>
+          current.map((lesson) =>
+            lesson.id === id ? { ...lesson, title: normalized } : lesson,
+          ),
+        )
       },
       updateLessonStatus(id, status) {
         setLessons((current) =>

@@ -105,6 +105,20 @@ describe("PrototypeProvider", () => {
     })
   })
 
+  it("updates the title of a newly created lesson", () => {
+    const { result } = renderHook(() => usePrototype(), { wrapper })
+    let lessonId = ""
+
+    act(() => {
+      lessonId = result.current.createLesson()
+      result.current.updateLessonTitle(lessonId, "分数复习课堂")
+    })
+
+    expect(result.current.lessons.find((item) => item.id === lessonId)?.title).toBe(
+      "分数复习课堂",
+    )
+  })
+
   it("updates a lesson status for the shared classroom workflow", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
 

@@ -106,7 +106,7 @@ export interface ClassroomPageProps {
 }
 
 export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
-  const { createLesson, lessons, updateLessonStatus } = usePrototype()
+  const { createLesson, lessons, updateLessonStatus, updateLessonTitle } = usePrototype()
   const [filter, setFilter] = useState<LessonFilter>("all")
   const [recordingOpen, setRecordingOpen] = useState(false)
   const [recordingLessonId, setRecordingLessonId] = useState<string | null>(null)
@@ -188,7 +188,14 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
       </section>
 
       <RecordingPanel
+        lessonTitle={
+          lessons.find((lesson) => lesson.id === recordingLessonId)?.title ??
+          "新课堂录音"
+        }
         onClose={() => setRecordingOpen(false)}
+        onTitleChange={(title) => {
+          if (recordingLessonId) updateLessonTitle(recordingLessonId, title)
+        }}
         onStatusChange={(status) => {
           if (recordingLessonId) updateLessonStatus(recordingLessonId, status)
         }}

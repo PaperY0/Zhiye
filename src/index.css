@@ -5,7 +5,7 @@
 
 @theme { --font-display: "Instrument Serif", Georgia, serif; --font-brand: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif; --font-handwriting: "Ma Shan Zheng", "KaiTi", "STKaiti", cursive; --font-serif: "Iowan Old Style", "Songti SC", "STSong", serif; --font-sans: Inter, "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif; }
 
-@layer base { html { background:#071c1e; } body { margin:0; min-width:320px; font-family:var(--font-sans); } button, a { -webkit-tap-highlight-color:transparent; } button { cursor:pointer; } }
+@layer base { html { background:#071c1e; overflow-x:clip; } body { margin:0; min-width:320px; overflow-x:clip; font-family:var(--font-sans); } button, a { -webkit-tap-highlight-color:transparent; } button { cursor:pointer; } }
 
 .welcome-grain { background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E"); mix-blend-mode:soft-light; }
 .welcome-orbit { animation: orbit 24s linear infinite; }

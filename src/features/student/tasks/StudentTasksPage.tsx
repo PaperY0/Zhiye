@@ -51,7 +51,7 @@ function stateTone(state: StudentTaskState) {
 }
 
 export function StudentTasksPage() {
-  const { tasks } = usePrototype()
+  const { tasks, updateTaskCompletion } = usePrototype()
   const visibleTasks = useMemo(
     () =>
       tasks.filter(
@@ -94,7 +94,7 @@ export function StudentTasksPage() {
             我的任务
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[#65736a]">
-            按自己的节奏完成。这里的进度只保存在当前原型页面，不会真实提交。
+            按自己的节奏完成，状态会同步到当前原型中的任务记录。
           </p>
         </div>
         <div className="flex gap-2" aria-label="任务概览">
@@ -250,10 +250,17 @@ export function StudentTasksPage() {
                 <button
                   className="min-h-12 rounded-2xl bg-[#183023] px-5 font-black text-white"
                   onClick={() =>
-                    setProgress((current) => ({
-                      ...current,
-                      [selectedTask.id]: "in-progress",
-                    }))
+                    (() => {
+                      updateTaskCompletion(
+                        selectedTask.id,
+                        STUDENT_ID,
+                        "in-progress",
+                      )
+                      setProgress((current) => ({
+                        ...current,
+                        [selectedTask.id]: "in-progress",
+                      }))
+                    })()
                   }
                   type="button"
                 >
@@ -265,10 +272,17 @@ export function StudentTasksPage() {
                 <button
                   className="min-h-12 rounded-2xl bg-[#183023] px-5 font-black text-white"
                   onClick={() =>
-                    setProgress((current) => ({
-                      ...current,
-                      [selectedTask.id]: "completed",
-                    }))
+                    (() => {
+                      updateTaskCompletion(
+                        selectedTask.id,
+                        STUDENT_ID,
+                        "submitted",
+                      )
+                      setProgress((current) => ({
+                        ...current,
+                        [selectedTask.id]: "completed",
+                      }))
+                    })()
                   }
                   type="button"
                 >

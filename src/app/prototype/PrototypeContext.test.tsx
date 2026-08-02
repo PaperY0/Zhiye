@@ -113,6 +113,25 @@ describe("PrototypeProvider", () => {
     })
   })
 
+  it("persists a student's task completion state", () => {
+    const { result } = renderHook(() => usePrototype(), { wrapper })
+
+    act(() =>
+      result.current.updateTaskCompletion(
+        "task-review-01",
+        "student-lin-xiaoyu",
+        "submitted",
+      ),
+    )
+
+    expect(
+      result.current.tasks
+        .find((item) => item.id === "task-review-01")
+        ?.completions.find((item) => item.studentId === "student-lin-xiaoyu")
+        ?.status,
+    ).toBe("submitted")
+  })
+
   it("publishes a lesson, edits its recap, and sends a local message", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
 

@@ -55,6 +55,11 @@ export type PrototypeContextValue = {
   addQuiz(quiz: Quiz): void
   addTask(task: Task): void
   updateTaskStatus(id: string, status: Task["status"]): void
+  updateTaskCompletion(
+    taskId: string,
+    studentId: string,
+    status: Task["completions"][number]["status"],
+  ): void
   sendMessage(id: string, body: string): void
   addMistake(studentId: string, mistake: Student["mistakes"][number]): void
   updateSafetyCase(id: string, patch: Partial<SafetyCase>): void
@@ -194,6 +199,36 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       updateTaskStatus(id, status) {
         setTasks((current) =>
           current.map((task) => (task.id === id ? { ...task, status } : task)),
+        )
+      },
+      updateTaskCompletion(taskId, studentId, status) {
+        setTasks((current) =>
+          current.map((task) => {
+            if (task.id !== taskId) return task
+            const hasCompletion = task.completions.some(
+              (completion) => completion.studentId === studentId,
+            )
+            return {
+              ...task,
+              completions: hasCompletion
+                ? task.completions.map((completion) =>
+                    completion.studentId === studentId
+                      ? {
+                          ...completion,
+                          status,
+                          submittedAt:
+                            status === "submitted" || status === "reviewed"
+                              ? "2026-08-01T16:00:00+08:00"
+                              : completion.submittedAt,
+                        }
+                      : completion,
+                  )
+                : [
+                    ...task.completions,
+                    { studentId, status },
+                  ],
+            }
+          }),
         )
       },
       sendMessage(id, body) {

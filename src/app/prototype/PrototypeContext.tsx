@@ -361,6 +361,8 @@ export function PrototypeProvider({
         )
       },
       resetPrototype() {
+        window.localStorage.removeItem("zhiye-teacher-settings-v1")
+        window.localStorage.removeItem("zhiye-admin-settings-v1")
         setLessons(cloneFixture(lessonFixtures))
         setStudents(cloneFixture(studentFixtures))
         setPlans(cloneFixture(planFixtures))

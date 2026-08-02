@@ -201,6 +201,7 @@ export function TeacherSettingsPage() {
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#cbd9cb] bg-white/70 px-5 text-sm font-black text-[#46614c]"
             onClick={() => {
               resetPrototype()
+              setSettings(initialSettings)
               setToasts([
                 {
                   id: "prototype-reset",

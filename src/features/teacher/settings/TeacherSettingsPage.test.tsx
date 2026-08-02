@@ -149,4 +149,18 @@ describe("TeacherSettingsPage", () => {
     renderSettings()
     expect(screen.getByRole("textbox", { name: "教师姓名" })).toHaveValue("李敏")
   })
+
+  it("resets saved teacher settings with the prototype data reset", async () => {
+    const user = userEvent.setup()
+    renderSettings()
+
+    await user.clear(screen.getByRole("textbox", { name: "教师姓名" }))
+    await user.type(screen.getByRole("textbox", { name: "教师姓名" }), "李敏")
+    await user.click(screen.getByRole("button", { name: "保存设置" }))
+    await user.click(screen.getByRole("button", { name: "重置演示数据" }))
+
+    expect(screen.getByRole("textbox", { name: "教师姓名" })).toHaveValue("李老师")
+    expect(localStorage.getItem("zhiye-teacher-settings-v1")).toBeNull()
+    expect(localStorage.getItem("zhiye-admin-settings-v1")).toBeNull()
+  })
 })

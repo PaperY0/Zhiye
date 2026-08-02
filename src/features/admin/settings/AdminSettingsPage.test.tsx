@@ -1,16 +1,25 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it } from "vitest"
+import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
 import { AdminSettingsPage } from "./AdminSettingsPage"
 
 beforeEach(() => {
   localStorage.clear()
 })
 
+function renderSettings() {
+  return render(
+    <PrototypeProvider>
+      <AdminSettingsPage />
+    </PrototypeProvider>,
+  )
+}
+
 describe("AdminSettingsPage", () => {
   it("edits response contacts and keeps every control explicitly local to the prototype", async () => {
     const user = userEvent.setup()
-    render(<AdminSettingsPage />)
+    renderSettings()
 
     expect(
       screen.getByRole("heading", { name: "学校与数据设置" }),
@@ -34,7 +43,7 @@ describe("AdminSettingsPage", () => {
 
   it("generates a deterministic invitation code and simulates a class binding", async () => {
     const user = userEvent.setup()
-    render(<AdminSettingsPage />)
+    renderSettings()
 
     await user.click(screen.getByRole("button", { name: "生成模拟邀请码" }))
     expect(screen.getByText("ZY-2026-0725-01")).toBeInTheDocument()
@@ -52,7 +61,7 @@ describe("AdminSettingsPage", () => {
 
   it("confirms changing retention from 7 to 14 days and shows a dismissible toast", async () => {
     const user = userEvent.setup()
-    render(<AdminSettingsPage />)
+    renderSettings()
 
     const retention = screen.getByRole("combobox", {
       name: "课堂原始音频留存时间",
@@ -86,7 +95,7 @@ describe("AdminSettingsPage", () => {
 
   it("restores saved retention settings after remounting", async () => {
     const user = userEvent.setup()
-    const first = render(<AdminSettingsPage />)
+    const first = renderSettings()
     await user.selectOptions(
       screen.getByRole("combobox", { name: "课堂原始音频留存时间" }),
       "30",
@@ -100,7 +109,7 @@ describe("AdminSettingsPage", () => {
     )
     first.unmount()
 
-    render(<AdminSettingsPage />)
+    renderSettings()
     expect(
       screen.getByRole("combobox", { name: "课堂原始音频留存时间" }),
     ).toHaveValue("30")

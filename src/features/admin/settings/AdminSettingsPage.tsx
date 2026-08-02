@@ -8,6 +8,7 @@ import {
   UserRoundCog,
 } from "lucide-react"
 import { useState } from "react"
+import { usePrototype } from "../../../app/prototype/PrototypeContext"
 import { Dialog } from "../../../components/shared/Dialog"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { StatusChip } from "../../../components/shared/StatusChip"
@@ -81,6 +82,7 @@ function SettingsSection({
 }
 
 export function AdminSettingsPage() {
+  const { resetPrototype } = usePrototype()
   const [settings, setSettings] = useState<AdminSettings>(readSavedSettings)
   const [savedRetentionDays, setSavedRetentionDays] =
     useState<AdminSettings["retentionDays"]>(readSavedSettings().retentionDays)
@@ -89,6 +91,7 @@ export function AdminSettingsPage() {
   const [bindingFeedback, setBindingFeedback] = useState("")
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const [resetOpen, setResetOpen] = useState(false)
 
   function updateSetting<Key extends keyof AdminSettings>(
     key: Key,
@@ -134,14 +137,23 @@ export function AdminSettingsPage() {
             配置人工响应联系人、学校接入凭据和数据留存边界。敏感变更必须再次确认。
           </p>
         </div>
-        <button
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#15251b] px-6 text-sm font-black text-white shadow-[0_12px_28px_rgba(20,40,27,.18)] transition hover:-translate-y-0.5 hover:bg-[#223b2a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#66886d]/30"
-          onClick={() => setConfirmOpen(true)}
-          type="button"
-        >
-          <Save aria-hidden="true" size={18} />
-          保存管理设置
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#cbd9cb] bg-white/70 px-5 text-sm font-black text-[#46614c]"
+            onClick={() => setResetOpen(true)}
+            type="button"
+          >
+            重置全部演示数据
+          </button>
+          <button
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#15251b] px-6 text-sm font-black text-white shadow-[0_12px_28px_rgba(20,40,27,.18)] transition hover:-translate-y-0.5 hover:bg-[#223b2a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#66886d]/30"
+            onClick={() => setConfirmOpen(true)}
+            type="button"
+          >
+            <Save aria-hidden="true" size={18} />
+            保存管理设置
+          </button>
+        </div>
       </header>
 
       <div className="mb-6 flex items-start gap-3 rounded-[22px] border border-[#d8c691]/45 bg-[#fff8df]/70 px-4 py-3.5 text-sm leading-6 text-[#67582d] shadow-[inset_0_1px_0_rgba(255,255,255,.8)]">
@@ -384,6 +396,48 @@ export function AdminSettingsPage() {
             本次确认只更新当前页面状态，不会更改真实学校系统，也不会自动删除、延长或上传任何数据。
           </p>
         </div>
+      </Dialog>
+
+      <Dialog
+        description="课堂、任务、学生记录和教师、管理员设置都会恢复为初始示例。"
+        footer={
+          <div className="flex justify-end gap-3">
+            <button
+              className="rounded-full border border-[#405948]/16 bg-white/65 px-5 py-2.5 text-sm font-black text-[#405448]"
+              onClick={() => setResetOpen(false)}
+              type="button"
+            >
+              取消
+            </button>
+            <button
+              className="rounded-full bg-[#8a4f3f] px-5 py-2.5 text-sm font-black text-white"
+              onClick={() => {
+                resetPrototype()
+                setSettings(initialSettings)
+                setSavedRetentionDays(initialSettings.retentionDays)
+                setResetOpen(false)
+                setToasts([
+                  {
+                    id: "admin-prototype-reset",
+                    title: "演示数据已重置",
+                    description: "业务数据和角色设置已恢复为初始示例。",
+                    tone: "success",
+                  },
+                ])
+              }}
+              type="button"
+            >
+              确认重置
+            </button>
+          </div>
+        }
+        onClose={() => setResetOpen(false)}
+        open={resetOpen}
+        title="确认重置全部演示数据"
+      >
+        <p className="text-sm leading-7 text-[#53675a]">
+          此操作会清理本地快照，不能恢复你刚才的演示修改。
+        </p>
       </Dialog>
 
       <ToastRegion

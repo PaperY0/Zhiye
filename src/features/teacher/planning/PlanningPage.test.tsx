@@ -105,6 +105,34 @@ describe("PlanningPage", () => {
     expect(screen.queryByRole("textbox", { name: "教案标题" })).not.toBeInTheDocument()
   })
 
+  it.each([
+    ["rejects", () => Promise.reject(new Error("测验服务不可用"))],
+    ["returns malformed content", () => Promise.resolve({ content: { title: "不完整测验" } })],
+  ])(
+    "keeps quizzes unchanged and offers a retry when local AI quiz generation %s",
+    async (_scenario, response) => {
+      const user = userEvent.setup()
+      vi.mocked(generateDraft).mockImplementation(response)
+      renderPlanningPage()
+
+      await user.click(screen.getByRole("tab", { name: "三题测验" }))
+      await user.click(screen.getByRole("button", { name: "生成三题测验" }))
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        _scenario === "rejects" ? "测验服务不可用" : "草稿格式不正确",
+      )
+      expect(screen.getByRole("button", { name: "重试生成" })).toBeInTheDocument()
+      expect(screen.getByLabelText("原型状态")).toHaveTextContent(
+        "测验 1 · 最新测验 分数基本性质自检 · 状态 published",
+      )
+      expect(
+        screen.queryByRole("group", { name: /第 [123] 题/ }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByText("数量变化方向")).not.toBeInTheDocument()
+      expect(screen.queryByText("关于“分数基本性质”")).not.toBeInTheDocument()
+    },
+  )
+
   it("generates, edits, previews, and publishes a three-question quiz", async () => {
     const user = userEvent.setup()
     vi.mocked(generateDraft).mockResolvedValue({

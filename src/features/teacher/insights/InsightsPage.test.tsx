@@ -134,6 +134,50 @@ describe("InsightsPage", () => {
     ).toHaveTextContent("已生成“单位换算方向补讲”")
   })
 
+  it("keeps remedial drafts unchanged and offers a retry when local AI is unavailable", async () => {
+    const user = userEvent.setup()
+    vi.mocked(generateDraft).mockRejectedValue(new Error("补讲服务不可用"))
+    renderPage()
+
+    await user.click(screen.getByRole("button", { name: /^单位换算 × 计算/ }))
+    const drawer = screen.getByRole("dialog", { name: "单位换算 · 计算步骤" })
+    await user.click(
+      within(drawer).getByRole("button", { name: "一键生成补讲方案" }),
+    )
+
+    expect(await within(drawer).findByRole("alert")).toHaveTextContent(
+      "补讲服务不可用",
+    )
+    expect(within(drawer).getByRole("button", { name: "重试生成" })).toBeInTheDocument()
+    expect(screen.getByLabelText("生成结果计数")).toHaveTextContent(
+      "方案 1 · 练习 1",
+    )
+    expect(screen.queryByRole("status", { name: "生成结果通知" })).not.toBeInTheDocument()
+    expect(screen.queryByText("回看课堂证据")).not.toBeInTheDocument()
+  })
+
+  it("keeps consolidation drafts unchanged when local AI returns malformed content", async () => {
+    const user = userEvent.setup()
+    vi.mocked(generateDraft).mockResolvedValue({ content: { title: "不完整巩固练习" } })
+    renderPage()
+
+    await user.click(screen.getByRole("button", { name: /^单位换算 × 计算/ }))
+    const drawer = screen.getByRole("dialog", { name: "单位换算 · 计算步骤" })
+    await user.click(
+      within(drawer).getByRole("button", { name: "一键生成巩固练习" }),
+    )
+
+    expect(await within(drawer).findByRole("alert")).toHaveTextContent(
+      "草稿格式不正确",
+    )
+    expect(within(drawer).getByRole("button", { name: "重试生成" })).toBeInTheDocument()
+    expect(screen.getByLabelText("生成结果计数")).toHaveTextContent(
+      "方案 1 · 练习 1",
+    )
+    expect(screen.queryByRole("status", { name: "生成结果通知" })).not.toBeInTheDocument()
+    expect(screen.queryByText("3 米等于多少厘米？先判断方向，再选择答案。")).not.toBeInTheDocument()
+  })
+
   it("generates a focused exercise from the selected signal", async () => {
     const user = userEvent.setup()
     vi.mocked(generateDraft).mockResolvedValue({

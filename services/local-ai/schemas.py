@@ -1,8 +1,6 @@
-import re
 from typing import Any, Literal
-from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator, model_validator
 
 
 GenerationKind = Literal[
@@ -16,61 +14,89 @@ GenerationKind = Literal[
     "tutoring",
 ]
 
-IMAGE_FIELD_NAMES = {
-    "attachment",
-    "base64",
-    "binary",
-    "file",
-    "image",
-    "imageurl",
-    "photo",
-    "photourl",
+class ContextModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    @field_validator("*")
+    @classmethod
+    def list_values_must_be_bounded_strings(cls, value):
+        if isinstance(value, list):
+            for item in value:
+                if not isinstance(item, str) or not item.strip() or len(item) > 2000:
+                    raise ValueError("上下文列表项必须是 1 到 2000 个字符的字符串")
+        return value
+
+
+class LessonPlanContext(ContextModel):
+    textbook: str = Field(min_length=1, max_length=200)
+    chapter: str = Field(min_length=1, max_length=300)
+    objective: str = Field(min_length=1, max_length=1000)
+    context: str = Field(min_length=1, max_length=4000)
+    evidence: list[str] = Field(min_length=1, max_length=30)
+
+
+class QuizContext(ContextModel):
+    title: str = Field(min_length=1, max_length=300)
+    topic: str = Field(min_length=1, max_length=500)
+    difficulty: str = Field(min_length=1, max_length=100)
+    focus: str = Field(min_length=1, max_length=1000)
+
+
+class RemedialPlanContext(ContextModel):
+    knowledgePoint: str = Field(min_length=1, max_length=500)
+    step: str = Field(min_length=1, max_length=1000)
+    affectedCount: StrictInt = Field(ge=0, le=10000)
+    trend: str = Field(min_length=1, max_length=300)
+    evidence: list[str] = Field(min_length=1, max_length=30)
+
+
+class LearningReplyContext(ContextModel):
+    topic: str = Field(min_length=1, max_length=500)
+    recap: str = Field(min_length=1, max_length=2000)
+    question: str = Field(min_length=1, max_length=2000)
+
+
+class RetellFollowUpContext(ContextModel):
+    topic: str = Field(min_length=1, max_length=500)
+    retell: str = Field(min_length=1, max_length=3000)
+
+
+class ParentSummaryContext(ContextModel):
+    facts: list[str] = Field(min_length=1, max_length=30)
+    teacherMessage: str = Field(min_length=1, max_length=2000)
+
+
+class StudentInferenceContext(ContextModel):
+    facts: list[str] = Field(min_length=1, max_length=30)
+    mistakes: list[str] = Field(min_length=1, max_length=30)
+
+
+class TutoringContext(ContextModel):
+    questionText: str = Field(min_length=1, max_length=4000)
+    stickingPoint: str = Field(min_length=1, max_length=1000)
+    attempt: str = Field(min_length=1, max_length=2000)
+
+
+CONTEXT_MODELS: dict[GenerationKind, type[ContextModel]] = {
+    "lesson-plan": LessonPlanContext,
+    "quiz": QuizContext,
+    "remedial-plan": RemedialPlanContext,
+    "learning-reply": LearningReplyContext,
+    "retell-follow-up": RetellFollowUpContext,
+    "parent-summary": ParentSummaryContext,
+    "student-inference": StudentInferenceContext,
+    "tutoring": TutoringContext,
 }
-IMAGE_EXTENSIONS = (".avif", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".webp")
-BASE64_PATTERN = re.compile(r"[A-Za-z0-9+/]+={0,2}")
-
-
-def reject_unsafe_context(value: Any, path: str = "context") -> None:
-    if isinstance(value, (bytes, bytearray, memoryview)):
-        raise ValueError(f"{path} 不允许二进制内容")
-    if isinstance(value, dict):
-        for key, nested_value in value.items():
-            normalized_key = str(key).lower().replace("-", "").replace("_", "")
-            if normalized_key in IMAGE_FIELD_NAMES:
-                raise ValueError(f"{path}.{key} 不允许图片或二进制内容")
-            reject_unsafe_context(nested_value, f"{path}.{key}")
-        return
-    if isinstance(value, (list, tuple)):
-        for index, nested_value in enumerate(value):
-            reject_unsafe_context(nested_value, f"{path}[{index}]")
-        return
-    if isinstance(value, str):
-        compact = "".join(value.split())
-        parsed_url = urlparse(value)
-        is_image_url = parsed_url.scheme in {"http", "https"} and (
-            parsed_url.path.lower().endswith(IMAGE_EXTENSIONS)
-            or any(extension in parsed_url.query.lower() for extension in IMAGE_EXTENSIONS)
-        )
-        is_base64 = len(compact) >= 128 and len(compact) % 4 == 0 and bool(
-            BASE64_PATTERN.fullmatch(compact)
-        )
-        if value.lower().startswith("data:image/") or is_image_url or is_base64:
-            raise ValueError(f"{path} 不允许图片、图片 URL 或 base64 内容")
-        return
-    if value is None or isinstance(value, (bool, int, float)):
-        return
-    raise ValueError(f"{path} 仅允许 JSON 基础数据")
 
 
 class GenerateRequest(BaseModel):
     kind: GenerationKind
     context: dict[str, Any]
 
-    @field_validator("context")
-    @classmethod
-    def context_must_not_contain_images_or_binary(cls, context: dict[str, Any]):
-        reject_unsafe_context(context)
-        return context
+    @model_validator(mode="after")
+    def context_must_match_generation_kind(self):
+        self.context = CONTEXT_MODELS[self.kind].model_validate(self.context).model_dump()
+        return self
 
 
 class LessonPlanDraft(BaseModel):

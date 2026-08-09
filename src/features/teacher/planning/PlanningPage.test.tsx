@@ -133,6 +133,62 @@ describe("PlanningPage", () => {
     },
   )
 
+  it.each([
+    [
+      "has fewer than three questions",
+      {
+        title: "题数不足",
+        questions: [
+          { prompt: "第 1 题", options: ["A", "B"], answer: "A" },
+          { prompt: "第 2 题", options: ["A", "B"], answer: "B" },
+        ],
+      },
+    ],
+    [
+      "uses an answer outside its options",
+      {
+        title: "答案错误",
+        questions: [
+          { prompt: "第 1 题", options: ["A", "B"], answer: "C" },
+          { prompt: "第 2 题", options: ["A", "B"], answer: "A" },
+          { prompt: "第 3 题", options: ["A", "B"], answer: "B" },
+        ],
+      },
+    ],
+    [
+      "contains empty or duplicate options",
+      {
+        title: "选项错误",
+        questions: [
+          { prompt: "第 1 题", options: ["A", ""], answer: "A" },
+          { prompt: "第 2 题", options: ["A", "A"], answer: "A" },
+          { prompt: "第 3 题", options: ["A", "B"], answer: "B" },
+        ],
+      },
+    ],
+  ])(
+    "keeps quizzes unchanged when local AI quiz content %s",
+    async (_scenario, content) => {
+      const user = userEvent.setup()
+      vi.mocked(generateDraft).mockResolvedValue({ content })
+      renderPlanningPage()
+
+      await user.click(screen.getByRole("tab", { name: "三题测验" }))
+      await user.click(screen.getByRole("button", { name: "生成三题测验" }))
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "草稿格式不正确",
+      )
+      expect(screen.getByRole("button", { name: "重试生成" })).toBeInTheDocument()
+      expect(screen.getByLabelText("原型状态")).toHaveTextContent(
+        "测验 1 · 最新测验 分数基本性质自检 · 状态 published",
+      )
+      expect(
+        screen.queryByRole("group", { name: /第 [123] 题/ }),
+      ).not.toBeInTheDocument()
+    },
+  )
+
   it("generates, edits, previews, and publishes a three-question quiz", async () => {
     const user = userEvent.setup()
     vi.mocked(generateDraft).mockResolvedValue({

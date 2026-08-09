@@ -74,20 +74,29 @@ function readLessonPlanContent(value: unknown): LessonPlanContent {
 
 function readQuizContent(value: unknown): QuizContent {
   const content = requireObject(value)
-  if (!Array.isArray(content.questions) || content.questions.length === 0) {
+  if (!Array.isArray(content.questions) || content.questions.length !== 3) {
     throw new Error("本地 AI 返回的草稿格式不正确，请重试")
   }
   return {
     title: requireString(content.title),
     questions: content.questions.map((question) => {
       const item = requireObject(question)
-      if (!isStringList(item.options)) {
+      if (
+        !isStringList(item.options) ||
+        item.options.length < 2 ||
+        item.options.some((option) => !option.trim()) ||
+        new Set(item.options).size !== item.options.length
+      ) {
+        throw new Error("本地 AI 返回的草稿格式不正确，请重试")
+      }
+      const answer = requireString(item.answer)
+      if (!item.options.includes(answer)) {
         throw new Error("本地 AI 返回的草稿格式不正确，请重试")
       }
       return {
         prompt: requireString(item.prompt),
         options: item.options,
-        answer: requireString(item.answer),
+        answer,
       }
     }),
   }

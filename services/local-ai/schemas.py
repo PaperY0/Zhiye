@@ -61,7 +61,16 @@ def decode_base64_candidate(value: str) -> bytes | None:
         return None
 
 
-def decoded_bytes_are_binary_or_image(value: bytes) -> bool:
+def contains_svg_or_image_markup(value: str) -> bool:
+    normalized = value.lower()
+    return (
+        "<svg" in normalized
+        or "<image" in normalized
+        or ("<?xml" in normalized and "http://www.w3.org/2000/svg" in normalized)
+    )
+
+
+def decoded_bytes_are_recognized_image(value: bytes) -> bool:
     if value.startswith(IMAGE_SIGNATURES):
         return True
     if value.startswith(b"RIFF") and value[8:12] == b"WEBP":
@@ -71,8 +80,8 @@ def decoded_bytes_are_binary_or_image(value: bytes) -> bool:
     try:
         decoded_text = value.decode("utf-8")
     except UnicodeDecodeError:
-        return True
-    return has_disallowed_control_characters(decoded_text)
+        return False
+    return contains_svg_or_image_markup(decoded_text)
 
 
 def reject_non_text_payload(value: str) -> str:
@@ -81,8 +90,10 @@ def reject_non_text_payload(value: str) -> str:
     lowered = value.lower()
     if lowered.startswith(("data:", "http://", "https://")):
         raise ValueError("上下文字段不允许 data URL 或 HTTP(S) URL")
+    if contains_svg_or_image_markup(value):
+        raise ValueError("上下文字段不允许 SVG/XML 图片标记")
     decoded_candidate = decode_base64_candidate(value)
-    if decoded_candidate is not None and decoded_bytes_are_binary_or_image(decoded_candidate):
+    if decoded_candidate is not None and decoded_bytes_are_recognized_image(decoded_candidate):
         raise ValueError("上下文字段不允许图片或二进制 base64 内容")
     return value
 

@@ -89,7 +89,10 @@ def test_allowlisted_text_field_rejects_binary_payloads_and_control_characters(q
         )
 
 
-@pytest.mark.parametrize("question_text", ["fractions", "2/3 > 1/2", "比较二分之三和五分之三"])
+@pytest.mark.parametrize(
+    "question_text",
+    ["fractions", "math", "test", "2/3 > 1/2", "比较二分之三和五分之三"],
+)
 def test_allowlisted_text_field_preserves_normal_learning_text(question_text):
     request = GenerateRequest(
         kind="tutoring",
@@ -101,6 +104,26 @@ def test_allowlisted_text_field_preserves_normal_learning_text(question_text):
     )
 
     assert request.context["questionText"] == question_text
+
+
+@pytest.mark.parametrize(
+    "question_text",
+    [
+        '<svg xmlns="http://www.w3.org/2000/svg"/>',
+        '<?xml version="1.0"?><root xmlns="http://www.w3.org/2000/svg"/>',
+        "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4",
+    ],
+)
+def test_allowlisted_text_field_rejects_raw_and_base64_svg_markup(question_text):
+    with pytest.raises(ValidationError):
+        GenerateRequest(
+            kind="tutoring",
+            context={
+                "questionText": question_text,
+                "stickingPoint": "通分",
+                "attempt": "先找公分母",
+            },
+        )
 
 
 def test_system_policy_forbids_personality_inference_and_diagnosis():

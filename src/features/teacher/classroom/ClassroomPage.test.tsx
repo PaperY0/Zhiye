@@ -23,9 +23,19 @@ function renderClassroom(onNavigate = vi.fn<(route: AppRoute) => void>()) {
     <PrototypeProvider>
       <ClassroomPage onNavigate={onNavigate} />
       <DraftReadyLessonIds />
+      <LessonStatuses />
     </PrototypeProvider>,
   )
   return { onNavigate }
+}
+
+function LessonStatuses() {
+  const { lessons } = usePrototype()
+  return (
+    <output data-testid="lesson-statuses">
+      {lessons.map((lesson) => `${lesson.id}:${lesson.status}`).join(",")}
+    </output>
+  )
 }
 
 function DraftReadyLessonIds() {
@@ -168,6 +178,43 @@ describe("ClassroomPage", () => {
     expect(within(dialog).queryByRole("button", { name: "查看 AI 初稿" })).not.toBeInTheDocument()
   })
 
+  it("persists an AI analysis failure after the recording panel closes", async () => {
+    lessonAnalysis.analyzeLessonAudio.mockRejectedValue(new Error("本地 AI 服务未启动"))
+    renderClassroom()
+
+    fireEvent.click(screen.getByRole("button", { name: "开始新课堂录音" }))
+    const dialog = screen.getByRole("dialog", { name: "新课堂录音" })
+    fireEvent.click(within(dialog).getByRole("button", { name: "开始录音" }))
+    await waitFor(() => expect(within(dialog).getByText("录音中")).toBeInTheDocument())
+    fireEvent.click(within(dialog).getByRole("button", { name: "结束并生成 AI 初稿" }))
+    await waitFor(() => expect(within(dialog).getByText("处理失败")).toBeInTheDocument())
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "关闭新课堂录音" }))
+
+    expect(screen.getByTestId("lesson-statuses")).toHaveTextContent(
+      /lesson-recording-\d+:failed/,
+    )
+  })
+
+  it("returns a failed lesson to scheduled before retrying a recording", async () => {
+    lessonAnalysis.analyzeLessonAudio.mockRejectedValueOnce(new Error("本地 AI 服务未启动"))
+    renderClassroom()
+
+    fireEvent.click(screen.getByRole("button", { name: "开始新课堂录音" }))
+    const dialog = screen.getByRole("dialog", { name: "新课堂录音" })
+    fireEvent.click(within(dialog).getByRole("button", { name: "开始录音" }))
+    await waitFor(() => expect(within(dialog).getByText("录音中")).toBeInTheDocument())
+    fireEvent.click(within(dialog).getByRole("button", { name: "结束并生成 AI 初稿" }))
+    await waitFor(() => expect(within(dialog).getByText("处理失败")).toBeInTheDocument())
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "重试录音" }))
+
+    expect(within(dialog).getByText("等待开始")).toBeInTheDocument()
+    expect(screen.getByTestId("lesson-statuses")).toHaveTextContent(
+      /lesson-recording-\d+:scheduled/,
+    )
+  })
+
   it("cancels recording without analyzing audio or creating a draft", async () => {
     renderClassroom()
     fireEvent.click(screen.getByRole("button", { name: "开始新课堂录音" }))
@@ -183,6 +230,34 @@ describe("ClassroomPage", () => {
     )
     fireEvent.click(screen.getByRole("button", { name: "AI 初稿" }))
     expect(screen.queryByText("新课堂录音")).not.toBeInTheDocument()
+  })
+
+  it("stops a late permission stream without starting a recorder after cancellation", async () => {
+    let resolveStream: (stream: MediaStream) => void = () => undefined
+    const permission = new Promise<MediaStream>((resolve) => {
+      resolveStream = resolve
+    })
+    const getUserMedia = vi.fn(() => permission)
+    const stop = vi.fn()
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia },
+    })
+
+    renderClassroom()
+    fireEvent.click(screen.getByRole("button", { name: "开始新课堂录音" }))
+    const dialog = screen.getByRole("dialog", { name: "新课堂录音" })
+    fireEvent.click(within(dialog).getByRole("button", { name: "开始录音" }))
+    fireEvent.click(within(dialog).getByRole("button", { name: "关闭新课堂录音" }))
+
+    resolveStream({ getTracks: () => [{ stop }] } as unknown as MediaStream)
+
+    await waitFor(() => expect(stop).toHaveBeenCalledOnce())
+    expect(TestMediaRecorder.instances).toHaveLength(0)
+    expect(lessonAnalysis.analyzeLessonAudio).not.toHaveBeenCalled()
+    expect(screen.getByTestId("lesson-statuses")).toHaveTextContent(
+      /lesson-recording-\d+:scheduled/,
+    )
   })
 
   it("uses the native recorder pause and resume operations", async () => {

@@ -31,7 +31,7 @@ export interface RecordingPanelProps {
   onTitleChange: (title: string) => void
   onOpenDraft: () => void
   onAnalysisComplete?: (result: LessonAnalysisResult, durationSeconds: number) => void
-  onStatusChange?: (status: Exclude<RecordingState, "idle">) => void
+  onStatusChange?: (status: Exclude<RecordingState, "idle"> | "scheduled") => void
 }
 
 export function RecordingPanel({
@@ -51,14 +51,30 @@ export function RecordingPanel({
   const recordingStartedAtRef = useRef<number | null>(null)
   const analysisAbortRef = useRef<AbortController | null>(null)
   const canceledRef = useRef(false)
+  const recordingAttemptRef = useRef(0)
+  const permissionPendingRef = useRef(false)
+
+  function stopStreamTracks(stream: MediaStream | null) {
+    stream?.getTracks().forEach((track) => track.stop())
+  }
 
   function stopTracks() {
-    streamRef.current?.getTracks().forEach((track) => track.stop())
+    stopStreamTracks(streamRef.current)
     streamRef.current = null
   }
 
-  function cancelRecording() {
+  function cancelRecording({ restoreLessonStatus = false } = {}) {
+    const shouldRestoreLessonStatus =
+      restoreLessonStatus &&
+      (permissionPendingRef.current ||
+        recorderRef.current !== null ||
+        analysisAbortRef.current !== null ||
+        status === "recording" ||
+        status === "paused" ||
+        status === "processing")
     canceledRef.current = true
+    recordingAttemptRef.current += 1
+    permissionPendingRef.current = false
     analysisAbortRef.current?.abort()
     analysisAbortRef.current = null
     if (recorderRef.current) {
@@ -69,6 +85,10 @@ export function RecordingPanel({
     stopTracks()
     chunksRef.current = []
     recordingStartedAtRef.current = null
+    if (shouldRestoreLessonStatus) {
+      setStatus("idle")
+      onStatusChange?.("scheduled")
+    }
   }
 
   useEffect(() => {
@@ -101,7 +121,7 @@ export function RecordingPanel({
       setErrorMessage(
         error instanceof Error ? error.message : "本地 AI 处理失败，请检查服务日志。",
       )
-      setStatus("failed")
+      changeStatus("failed")
     } finally {
       if (analysisAbortRef.current === controller) analysisAbortRef.current = null
     }
@@ -115,7 +135,7 @@ export function RecordingPanel({
     }
 
     setErrorMessage("当前浏览器没有可用的 MediaRecorder，无法录制真实课堂音频。请使用 Chrome 或 Edge。")
-    setStatus("failed")
+    changeStatus("failed")
   }
 
   async function startRecording() {
@@ -123,12 +143,19 @@ export function RecordingPanel({
     setErrorMessage("")
     if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices) {
       setErrorMessage("当前浏览器不支持真实录音，请使用 Chrome 或 Edge 并允许麦克风权限。")
-      setStatus("failed")
+      changeStatus("failed")
       return
     }
 
+    const attempt = ++recordingAttemptRef.current
+    permissionPendingRef.current = true
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      if (canceledRef.current || attempt !== recordingAttemptRef.current) {
+        stopStreamTracks(stream)
+        return
+      }
+      permissionPendingRef.current = false
       const recorder = new MediaRecorder(stream)
       chunksRef.current = []
       streamRef.current = stream
@@ -149,12 +176,14 @@ export function RecordingPanel({
       recorder.start()
       changeStatus("recording")
     } catch (error) {
+      if (canceledRef.current || attempt !== recordingAttemptRef.current) return
+      permissionPendingRef.current = false
       setErrorMessage(
         error instanceof Error
           ? `无法访问麦克风：${error.message}`
           : "无法访问麦克风，请检查浏览器权限。",
       )
-      setStatus("failed")
+      changeStatus("failed")
     }
   }
 
@@ -191,7 +220,7 @@ export function RecordingPanel({
       title="新课堂录音"
       description="浏览器会录下当前课堂音频，并发送到本机 FunASR 与 DeepSeek 处理。"
       onClose={() => {
-        cancelRecording()
+        cancelRecording({ restoreLessonStatus: true })
         onClose()
       }}
     >
@@ -293,7 +322,10 @@ export function RecordingPanel({
           {status === "failed" ? (
             <button
               className="inline-flex items-center gap-2 rounded-full bg-[#142219] px-5 py-3 font-bold text-white"
-              onClick={() => setStatus("idle")}
+              onClick={() => {
+                setStatus("idle")
+                onStatusChange?.("scheduled")
+              }}
               type="button"
             >
               重试录音

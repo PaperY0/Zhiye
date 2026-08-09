@@ -5,6 +5,7 @@ export type LessonStatus =
   | "recording"
   | "paused"
   | "processing"
+  | "failed"
   | "draft-ready"
   | "published"
 

@@ -43,3 +43,25 @@ npm.cmd run build
 ## Concern
 
 本轮没有阻塞。构建仅保留上述非阻塞 chunk-size 警告。
+
+## Final review remediation
+
+- 为每次真实录音授权分配递增会话令牌。关闭或取消会使令牌失效；如果 `getUserMedia` 在取消后才返回，前端立即停止该 stream 的所有 tracks，不构造或启动 `MediaRecorder`，也不调用分析。
+- 取消正在等待授权、录音、暂停或分析的课堂会回写 Context `scheduled`，不会留下 `recording` 或 `processing` 状态。
+- `LessonStatus` 增加持久 `failed` 终态。所有浏览器录音和本地 AI 分析失败都通过 Context 写入该状态；关闭失败面板后课堂列表仍显示失败。点击“重试录音”会先恢复为 `scheduled`，然后可正常重新开始。
+- 新增测试覆盖延迟权限授权取消、失败关闭后的共享状态，以及失败后的重试状态恢复。
+
+最终验证：
+
+```powershell
+npm.cmd test -- --run src/services/lessonAnalysis.test.ts src/app/prototype/PrototypeContext.test.tsx src/features/teacher/classroom/ClassroomPage.test.tsx src/features/teacher/classroom/LessonDetailPage.test.tsx
+```
+
+结果：4 个测试文件、41 项测试通过。
+
+```powershell
+Push-Location services/local-ai; python -m pytest; Pop-Location
+npm.cmd run build
+```
+
+结果：pytest 48 passed；Vite build 通过，保留非阻塞 chunk-size 警告。

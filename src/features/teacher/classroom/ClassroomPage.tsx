@@ -16,6 +16,7 @@ type LessonFilter =
   | "scheduled"
   | "in-progress"
   | "processing"
+  | "failed"
   | "draft-ready"
   | "published"
 
@@ -36,6 +37,7 @@ const filters: FilterOption[] = [
   { value: "scheduled", label: "待开始" },
   { value: "in-progress", label: "进行中" },
   { value: "processing", label: "处理中" },
+  { value: "failed", label: "处理失败" },
   { value: "draft-ready", label: "AI 初稿" },
   { value: "published", label: "已发布" },
 ]
@@ -45,6 +47,7 @@ const statusMeta: Record<LessonStatus, LessonStatusMeta> = {
   recording: { label: "录音中", tone: "critical" },
   paused: { label: "已暂停", tone: "warning" },
   processing: { label: "处理中", tone: "info" },
+  failed: { label: "处理失败", tone: "critical" },
   "draft-ready": { label: "AI 初稿", tone: "warning" },
   published: { label: "已发布", tone: "success" },
 }

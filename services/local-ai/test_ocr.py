@@ -1,6 +1,8 @@
+import asyncio
 import importlib
 import sys
 import types
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -74,3 +76,49 @@ def test_uploaded_image_is_removed_after_recognition(monkeypatch):
     assert response.status_code == 200
     assert len(recognized_paths) == 1
     assert not __import__("pathlib").Path(recognized_paths[0]).exists()
+
+
+def test_recognize_image_unwraps_paddleocr_v3_result(monkeypatch):
+    server = load_server(monkeypatch)
+    result = types.SimpleNamespace(
+        json={"res": {"rec_texts": ["2/3"], "rec_scores": [0.92]}}
+    )
+    monkeypatch.setattr(
+        server,
+        "get_ocr_engine",
+        lambda: types.SimpleNamespace(predict=lambda _: [result]),
+    )
+
+    recognized_text, confidence = server.recognize_image("question.png")
+
+    assert recognized_text == "2/3"
+    assert confidence == 0.92
+
+
+def test_solve_image_removes_temp_file_when_read_raises(monkeypatch):
+    server = load_server(monkeypatch)
+    created_paths = []
+    original_named_temporary_file = server.tempfile.NamedTemporaryFile
+
+    def capture_named_temporary_file(*args, **kwargs):
+        temporary = original_named_temporary_file(*args, **kwargs)
+        created_paths.append(temporary.name)
+        return temporary
+
+    class FailingImage:
+        filename = "broken.png"
+
+        async def read(self):
+            raise RuntimeError("read failed")
+
+    monkeypatch.setattr(server.tempfile, "NamedTemporaryFile", capture_named_temporary_file)
+
+    try:
+        asyncio.run(server.solve_image(FailingImage()))
+    except RuntimeError as error:
+        assert str(error) == "read failed"
+    else:
+        raise AssertionError("solve_image should propagate a read failure")
+
+    assert len(created_paths) == 1
+    assert not Path(created_paths[0]).exists()

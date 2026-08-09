@@ -74,6 +74,9 @@ def recognize_image(path: str) -> tuple[str, float]:
             raw_payload = getattr(result, "json", {})
             payload = json.loads(raw_payload) if isinstance(raw_payload, str) else raw_payload
 
+        if isinstance(payload, dict):
+            payload = payload.get("res", payload)
+
         texts = payload.get("rec_texts", []) if isinstance(payload, dict) else []
         scores = payload.get("rec_scores", []) if isinstance(payload, dict) else []
         for index, text in enumerate(texts):
@@ -196,10 +199,11 @@ async def analyze(audio: UploadFile = File(...)):
 @app.post("/solve-image")
 async def solve_image(image: UploadFile = File(...)):
     suffix = Path(image.filename or "question.png").suffix or ".png"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temporary:
-        temporary.write(await image.read())
-        path = temporary.name
+    path = None
     try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temporary:
+            path = temporary.name
+            temporary.write(await image.read())
         recognized_text, ocr_confidence = recognize_image(path)
         result = {
             "recognizedText": recognized_text,
@@ -210,7 +214,8 @@ async def solve_image(image: UploadFile = File(...)):
             result["retryMessage"] = "题目文字不清晰，请重新拍摄。"
         return result
     finally:
-        try:
-            Path(path).unlink(missing_ok=True)
-        except OSError:
-            pass
+        if path:
+            try:
+                Path(path).unlink(missing_ok=True)
+            except OSError:
+                pass

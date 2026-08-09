@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
+import { PrototypeProvider, usePrototype } from "../../../app/prototype/PrototypeContext"
 import type { AppRoute } from "../../../app/routes"
 import { ClassroomPage } from "./ClassroomPage"
 
@@ -9,33 +9,63 @@ const lessonAnalysis = vi.hoisted(() => ({
   analyzeLessonAudio: vi.fn(),
 }))
 
-vi.mock("../../../services/lessonAnalysis", () => lessonAnalysis)
+vi.mock("../../../services/lessonAnalysis", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../services/lessonAnalysis")>()
+
+  return {
+    ...actual,
+    analyzeLessonAudio: lessonAnalysis.analyzeLessonAudio,
+  }
+})
 
 function renderClassroom(onNavigate = vi.fn<(route: AppRoute) => void>()) {
   render(
     <PrototypeProvider>
       <ClassroomPage onNavigate={onNavigate} />
+      <DraftReadyLessonIds />
     </PrototypeProvider>,
   )
   return { onNavigate }
 }
 
+function DraftReadyLessonIds() {
+  const { lessons } = usePrototype()
+  return (
+    <output data-testid="draft-ready-lesson-ids">
+      {lessons
+        .filter((lesson) => lesson.status === "draft-ready")
+        .map((lesson) => lesson.id)
+        .join(",")}
+    </output>
+  )
+}
+
 class TestMediaRecorder {
+  static instances: TestMediaRecorder[] = []
   mimeType = "audio/webm"
+  state: "inactive" | "recording" | "paused" = "inactive"
   ondataavailable: ((event: BlobEvent) => void) | null = null
   onstop: (() => void) | null = null
 
-  constructor(_stream: MediaStream) {}
+  constructor(_stream: MediaStream) {
+    TestMediaRecorder.instances.push(this)
+  }
 
-  start() {}
+  start() { this.state = "recording" }
+
+  pause() { this.state = "paused" }
+
+  resume() { this.state = "recording" }
 
   stop() {
+    this.state = "inactive"
     this.ondataavailable?.({ data: new Blob(["recording"], { type: this.mimeType }) } as BlobEvent)
     this.onstop?.()
   }
 }
 
 beforeEach(() => {
+  TestMediaRecorder.instances = []
   Object.defineProperty(navigator, "mediaDevices", {
     configurable: true,
     value: {
@@ -136,6 +166,36 @@ describe("ClassroomPage", () => {
       expect(within(dialog).getByText("本地 AI 服务未启动")).toBeInTheDocument()
     })
     expect(within(dialog).queryByRole("button", { name: "查看 AI 初稿" })).not.toBeInTheDocument()
+  })
+
+  it("cancels recording without analyzing audio or creating a draft", async () => {
+    renderClassroom()
+    fireEvent.click(screen.getByRole("button", { name: "开始新课堂录音" }))
+    const dialog = screen.getByRole("dialog", { name: "新课堂录音" })
+    fireEvent.click(within(dialog).getByRole("button", { name: "开始录音" }))
+    await waitFor(() => expect(within(dialog).getByText("录音中")).toBeInTheDocument())
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "关闭新课堂录音" }))
+
+    expect(lessonAnalysis.analyzeLessonAudio).not.toHaveBeenCalled()
+    expect(screen.getByTestId("draft-ready-lesson-ids")).not.toHaveTextContent(
+      "lesson-recording-",
+    )
+    fireEvent.click(screen.getByRole("button", { name: "AI 初稿" }))
+    expect(screen.queryByText("新课堂录音")).not.toBeInTheDocument()
+  })
+
+  it("uses the native recorder pause and resume operations", async () => {
+    renderClassroom()
+    fireEvent.click(screen.getByRole("button", { name: "开始新课堂录音" }))
+    const dialog = screen.getByRole("dialog", { name: "新课堂录音" })
+    fireEvent.click(within(dialog).getByRole("button", { name: "开始录音" }))
+    await waitFor(() => expect(within(dialog).getByText("录音中")).toBeInTheDocument())
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "暂停录音" }))
+    expect(TestMediaRecorder.instances[0]?.state).toBe("paused")
+    fireEvent.click(within(dialog).getByRole("button", { name: "继续录音" }))
+    expect(TestMediaRecorder.instances[0]?.state).toBe("recording")
   })
 
   it("opens an existing lesson from its card", async () => {

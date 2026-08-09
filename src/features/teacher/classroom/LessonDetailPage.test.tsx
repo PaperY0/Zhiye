@@ -44,7 +44,7 @@ describe("LessonDetailPage", () => {
 
     await user.click(screen.getByRole("tab", { name: "学生复习卡" }))
     expect(screen.getByLabelText("复习卡内容")).toHaveValue(
-      "分子和分母同时乘或除以相同的数，分数的大小不变。",
+      "先判断单位变化方向。",
     )
 
     await user.click(screen.getByRole("tab", { name: "教师课堂报告" }))
@@ -56,9 +56,9 @@ describe("LessonDetailPage", () => {
     expect(screen.getByLabelText("课程完成进度")).toHaveValue(72)
   })
 
-  it("edits and saves the student recap through PrototypeContext", async () => {
+  it("edits and saves the current AI recap through PrototypeContext", async () => {
     const user = userEvent.setup()
-    renderDetail()
+    renderDetail("lesson-fractions", true)
 
     await user.click(screen.getByRole("tab", { name: "学生复习卡" }))
     const editor = screen.getByLabelText("复习卡内容")
@@ -75,13 +75,22 @@ describe("LessonDetailPage", () => {
     )
   })
 
-  it("shows an empty AI report instead of fixture suggestions when no analysis ran", async () => {
+  it("shows empty states in every tab instead of fixture content when no analysis ran", async () => {
     const user = userEvent.setup()
     renderDetail()
+
+    expect(screen.getByText("暂无课堂转写初稿")).toBeInTheDocument()
+    expect(screen.queryByText(/分子和分母要同时乘同一个不为零的数/)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("tab", { name: "学生复习卡" }))
+    expect(screen.getByText("暂无学生复习卡初稿")).toBeInTheDocument()
 
     await user.click(screen.getByRole("tab", { name: "教师课堂报告" }))
     expect(screen.getByText("暂无教师报告初稿")).toBeInTheDocument()
     expect(screen.queryByText("补充不为零的条件")).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("tab", { name: "课程进度" }))
+    expect(screen.getByText("暂无课程进度初稿")).toBeInTheDocument()
   })
 
   it("does not offer publishing before a complete AI analysis exists", () => {

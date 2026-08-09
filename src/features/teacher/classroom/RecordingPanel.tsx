@@ -49,15 +49,36 @@ export function RecordingPanel({
   const streamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const recordingStartedAtRef = useRef<number | null>(null)
+  const analysisAbortRef = useRef<AbortController | null>(null)
+  const canceledRef = useRef(false)
+
+  function stopTracks() {
+    streamRef.current?.getTracks().forEach((track) => track.stop())
+    streamRef.current = null
+  }
+
+  function cancelRecording() {
+    canceledRef.current = true
+    analysisAbortRef.current?.abort()
+    analysisAbortRef.current = null
+    if (recorderRef.current) {
+      recorderRef.current.onstop = null
+      recorderRef.current.ondataavailable = null
+      recorderRef.current = null
+    }
+    stopTracks()
+    chunksRef.current = []
+    recordingStartedAtRef.current = null
+  }
 
   useEffect(() => {
     if (open) {
+      canceledRef.current = false
       setStatus("idle")
       setErrorMessage("")
     }
     return () => {
-      recorderRef.current?.stop()
-      streamRef.current?.getTracks().forEach((track) => track.stop())
+      cancelRecording()
     }
   }, [open])
 
@@ -68,15 +89,21 @@ export function RecordingPanel({
 
   async function submitAudio(audio: Blob, durationSeconds: number) {
     changeStatus("processing")
+    const controller = new AbortController()
+    analysisAbortRef.current = controller
     try {
-      const result = await analyzeLessonAudio(audio)
+      const result = await analyzeLessonAudio(audio, controller.signal)
+      if (controller.signal.aborted || canceledRef.current) return
       onAnalysisComplete?.(result, durationSeconds)
       changeStatus("draft-ready")
     } catch (error) {
+      if (controller.signal.aborted || canceledRef.current) return
       setErrorMessage(
         error instanceof Error ? error.message : "本地 AI 处理失败，请检查服务日志。",
       )
       setStatus("failed")
+    } finally {
+      if (analysisAbortRef.current === controller) analysisAbortRef.current = null
     }
   }
 
@@ -92,6 +119,7 @@ export function RecordingPanel({
   }
 
   async function startRecording() {
+    canceledRef.current = false
     setErrorMessage("")
     if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices) {
       setErrorMessage("当前浏览器不支持真实录音，请使用 Chrome 或 Edge 并允许麦克风权限。")
@@ -110,11 +138,11 @@ export function RecordingPanel({
         if (event.data.size > 0) chunksRef.current.push(event.data)
       }
       recorder.onstop = () => {
+        if (canceledRef.current) return
         const blob = new Blob(chunksRef.current, {
           type: recorder.mimeType || "audio/webm",
         })
-        stream.getTracks().forEach((track) => track.stop())
-        streamRef.current = null
+        stopTracks()
         const startedAt = recordingStartedAtRef.current ?? Date.now()
         void submitAudio(blob, Math.max(0, (Date.now() - startedAt) / 1000))
       }
@@ -127,6 +155,20 @@ export function RecordingPanel({
           : "无法访问麦克风，请检查浏览器权限。",
       )
       setStatus("failed")
+    }
+  }
+
+  function pauseRecording() {
+    if (recorderRef.current?.state === "recording") {
+      recorderRef.current.pause()
+      changeStatus("paused")
+    }
+  }
+
+  function resumeRecording() {
+    if (recorderRef.current?.state === "paused") {
+      recorderRef.current.resume()
+      changeStatus("recording")
     }
   }
 
@@ -148,7 +190,10 @@ export function RecordingPanel({
       open={open}
       title="新课堂录音"
       description="浏览器会录下当前课堂音频，并发送到本机 FunASR 与 DeepSeek 处理。"
-      onClose={onClose}
+      onClose={() => {
+        cancelRecording()
+        onClose()
+      }}
     >
       <div className="grid gap-6 py-2">
         <div className="rounded-[24px] border border-white/80 bg-white/55 p-6 text-center shadow-[inset_0_1px_0_rgba(255,255,255,.9)]">
@@ -199,7 +244,7 @@ export function RecordingPanel({
             <>
               <button
                 className="inline-flex items-center gap-2 rounded-full border border-[#cbd8c8] bg-white/75 px-5 py-3 font-bold text-[#294833]"
-                onClick={() => changeStatus("paused")}
+                onClick={pauseRecording}
                 type="button"
               >
                 <Pause aria-hidden="true" size={18} />
@@ -219,7 +264,7 @@ export function RecordingPanel({
             <>
               <button
                 className="inline-flex items-center gap-2 rounded-full border border-[#cbd8c8] bg-white/75 px-5 py-3 font-bold text-[#294833]"
-                onClick={() => changeStatus("recording")}
+                onClick={resumeRecording}
                 type="button"
               >
                 <Play aria-hidden="true" size={18} />

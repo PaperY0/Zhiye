@@ -8,6 +8,7 @@ import {
   Save,
 } from "lucide-react"
 import {
+  hasCompleteLessonAnalysis,
   hasCompleteAiDraft,
   usePrototype,
 } from "../../../app/prototype/PrototypeContext"
@@ -94,6 +95,9 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
     setRecapDraft(lesson?.recap ?? "")
     setProgress(lesson?.progress.completedPercent ?? 0)
     setNextStep(lesson?.progress.nextStep ?? "")
+  }, [lesson?.recap, lesson?.progress.completedPercent, lesson?.progress.nextStep, lessonId])
+
+  useEffect(() => {
     setTab("transcript")
     setNotice("")
   }, [lessonId])
@@ -111,6 +115,7 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
     )
   }
 
+  const hasAnalysis = hasCompleteLessonAnalysis(lesson)
   const canPublish = hasCompleteAiDraft(lesson)
 
   return (
@@ -212,11 +217,14 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
           role="tabpanel"
         >
           {tab === "transcript" ? (
-            <TranscriptView transcript={lesson.transcript} />
+            hasAnalysis ? <TranscriptView transcript={lesson.transcript} /> : <EmptyState
+              description="本次课堂成功生成完整分析后，转写会显示在这里。"
+              title="暂无课堂转写初稿"
+            />
           ) : null}
 
           {tab === "recap" ? (
-            <div className="mx-auto grid max-w-4xl gap-5">
+            hasAnalysis ? <div className="mx-auto grid max-w-4xl gap-5">
               <div className="text-center">
                 <StatusChip tone="info">AI 草稿 · 教师可编辑</StatusChip>
                 <h2 className="mt-4 text-2xl font-black text-[#17231b]">
@@ -257,11 +265,14 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
                   保存复习卡
                 </button>
               </div>
-            </div>
+            </div> : <EmptyState
+              description="本次课堂成功生成完整分析后，学生复习卡会显示在这里。"
+              title="暂无学生复习卡初稿"
+            />
           ) : null}
 
           {tab === "report" ? (
-            canPublish ? (
+            hasAnalysis ? (
               <div className="grid gap-4">
                 <StatusChip tone="info">AI 初稿 · 教师需核对</StatusChip>
                 <article className="rounded-[24px] border border-white/85 bg-white/60 p-5">
@@ -284,7 +295,7 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
           ) : null}
 
           {tab === "progress" ? (
-            canPublish ? <div className="mx-auto grid max-w-3xl gap-6">
+            hasAnalysis ? <div className="mx-auto grid max-w-3xl gap-6">
               <div className="rounded-[24px] border border-[#d4dfd2] bg-[#f5f8f2]/80 p-5">
                 <StatusChip tone="info">AI 初稿 · 进度建议</StatusChip>
                 <p className="mt-3 leading-7 text-[#526157]">{lesson.progressSuggestion}</p>

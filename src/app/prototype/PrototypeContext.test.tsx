@@ -183,6 +183,27 @@ describe("PrototypeProvider", () => {
       })
   })
 
+  it("does not turn malformed analysis input into a draft-ready lesson", () => {
+    const { result } = renderHook(() => usePrototype(), { wrapper })
+
+    act(() =>
+      result.current.updateLessonAnalysis(
+        "lesson-decimals",
+        [{ id: "live-01", speaker: "李老师", startSeconds: 0, endSeconds: 10, body: " " }],
+        "复习卡",
+        ["单位换算"],
+        "补讲",
+        30,
+        "教师报告",
+        "进度建议",
+        ["课堂依据"],
+      ),
+    )
+
+    expect(result.current.lessons.find((lesson) => lesson.id === "lesson-decimals"))
+      .toMatchObject({ status: "scheduled", recap: "" })
+  })
+
   it("updates the title of a newly created lesson", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
     let lessonId = ""

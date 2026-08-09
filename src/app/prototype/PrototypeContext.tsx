@@ -20,6 +20,7 @@ import {
 } from "./fixtures"
 import { acceptanceFixtureSet } from "./acceptanceFixtures"
 import { emptyFixtureSet } from "./emptyFixtures"
+import { isCompleteLessonAnalysis } from "../../services/lessonAnalysis"
 import type {
   AuditEvent,
   Conversation,
@@ -112,15 +113,22 @@ type PrototypeSnapshot = Pick<
   | "auditEvents"
 >
 
+export function hasCompleteLessonAnalysis(lesson: Lesson) {
+  return isCompleteLessonAnalysis({
+    transcript: lesson.transcript,
+    recap: lesson.recap,
+    recapTags: lesson.recapTags,
+    nextStep: lesson.progress.nextStep,
+    teacherReport: lesson.teacherReport,
+    progressSuggestion: lesson.progressSuggestion,
+    evidence: lesson.evidence,
+  })
+}
+
 export function hasCompleteAiDraft(lesson: Lesson) {
   return (
     lesson.status === "draft-ready" &&
-    lesson.transcript.length > 0 &&
-    lesson.recap.trim().length > 0 &&
-    lesson.recapTags.length > 0 &&
-    Boolean(lesson.teacherReport?.trim()) &&
-    Boolean(lesson.progressSuggestion?.trim()) &&
-    Boolean(lesson.evidence?.length)
+    hasCompleteLessonAnalysis(lesson)
   )
 }
 
@@ -339,6 +347,16 @@ export function PrototypeProvider({
         progressSuggestion,
         evidence,
       ) {
+        const analysis = {
+          transcript,
+          recap,
+          recapTags,
+          nextStep,
+          teacherReport,
+          progressSuggestion,
+          evidence,
+        }
+        if (!isCompleteLessonAnalysis(analysis)) return
         setLessons((current) =>
           current.map((lesson) =>
             lesson.id === id

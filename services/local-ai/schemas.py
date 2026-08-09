@@ -61,10 +61,9 @@ def is_encoded_payload_candidate(value: str) -> bool:
 
 
 def compact_ascii_whitespace_encoded_candidate(value: str) -> str:
-    segments = ASCII_WHITESPACE_PATTERN.split(value)
-    if len(segments) < 2 or any(len(segment) < 4 for segment in segments):
+    compacted = ASCII_WHITESPACE_PATTERN.sub("", value)
+    if compacted == value:
         return value
-    compacted = "".join(segments)
     return compacted if is_encoded_payload_candidate(compacted) else value
 
 

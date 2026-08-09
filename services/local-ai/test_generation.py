@@ -184,6 +184,18 @@ def test_allowlisted_text_field_rejects_raw_and_base64_svg_markup(question_text)
                 base64.b64encode(b"\x00\x00\x00\x18ftypavif").decode()[5:],
             ]
         ),
+        "\n".join(
+            [
+                base64.b64encode(b"\x89PNG\r\n\x1a\n").decode()[:1],
+                base64.b64encode(b"\x89PNG\r\n\x1a\n").decode()[1:],
+            ]
+        ),
+        " ".join(
+            [
+                base64.b64encode(b"\x00\x00\x00\x18ftypavif").decode()[:1],
+                base64.b64encode(b"\x00\x00\x00\x18ftypavif").decode()[1:],
+            ]
+        ),
     ],
 )
 def test_allowlisted_text_field_rejects_ascii_whitespace_wrapped_image_base64(question_text):

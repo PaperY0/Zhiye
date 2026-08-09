@@ -1,29 +1,21 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import {
   BookOpenCheck,
-  Check,
   Eye,
   EyeOff,
   FileText,
   Flag,
-  Quote,
   Save,
-  Sparkles,
-  X,
 } from "lucide-react"
-import { usePrototype } from "../../../app/prototype/PrototypeContext"
-import type {
-  LessonSuggestion,
-  TranscriptSegment,
-} from "../../../app/prototype/types"
+import {
+  hasCompleteAiDraft,
+  usePrototype,
+} from "../../../app/prototype/PrototypeContext"
+import type { TranscriptSegment } from "../../../app/prototype/types"
 import { Dialog } from "../../../components/shared/Dialog"
-import { Drawer } from "../../../components/shared/Drawer"
 import { EmptyState } from "../../../components/shared/EmptyState"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
-import {
-  StatusChip,
-  type StatusTone,
-} from "../../../components/shared/StatusChip"
+import { StatusChip } from "../../../components/shared/StatusChip"
 
 type LessonTab = "transcript" | "recap" | "report" | "progress"
 
@@ -39,24 +31,6 @@ const tabs: LessonTabOption[] = [
   { value: "report", label: "教师课堂报告" },
   { value: "progress", label: "课程进度" },
 ]
-
-const confidenceMeta: Record<LessonSuggestion["confidence"], {
-  label: string
-  tone: StatusTone
-}> = {
-  low: { label: "低置信度 · AI 推断", tone: "warning" },
-  medium: { label: "中置信度 · AI 推断", tone: "info" },
-  high: { label: "高置信度 · AI 推断", tone: "success" },
-}
-
-const suggestionStatus: Record<LessonSuggestion["status"], {
-  label: string
-  tone: StatusTone
-}> = {
-  pending: { label: "待处理", tone: "neutral" },
-  accepted: { label: "已采纳", tone: "success" },
-  ignored: { label: "已忽略", tone: "warning" },
-}
 
 function formatTime(seconds: number) {
   const minutes = Math.floor(seconds / 60)
@@ -105,16 +79,10 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
     publishLesson,
     updateLessonRecap,
     updateLessonProgress,
-    updateLessonSuggestionStatus,
   } = usePrototype()
   const lesson = lessons.find((item) => item.id === lessonId)
   const [tab, setTab] = useState<LessonTab>("transcript")
   const [recapDraft, setRecapDraft] = useState(lesson?.recap ?? "")
-  const [suggestions, setSuggestions] = useState<LessonSuggestion[]>(() =>
-    structuredClone(lesson?.suggestions ?? []),
-  )
-  const [evidenceSuggestionId, setEvidenceSuggestionId] =
-    useState<string | null>(null)
   const [publishOpen, setPublishOpen] = useState(false)
   const [notice, setNotice] = useState("")
   const [progress, setProgress] = useState(
@@ -124,23 +92,11 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
 
   useEffect(() => {
     setRecapDraft(lesson?.recap ?? "")
-    setSuggestions(structuredClone(lesson?.suggestions ?? []))
     setProgress(lesson?.progress.completedPercent ?? 0)
     setNextStep(lesson?.progress.nextStep ?? "")
     setTab("transcript")
     setNotice("")
   }, [lessonId])
-
-  const selectedSuggestion = suggestions.find(
-    (item) => item.id === evidenceSuggestionId,
-  )
-  const evidence = useMemo(
-    () =>
-      lesson?.transcript.filter((segment) =>
-        selectedSuggestion?.evidenceIds.includes(segment.id),
-      ) ?? [],
-    [lesson?.transcript, selectedSuggestion],
-  )
 
   if (!lesson) {
     return (
@@ -155,17 +111,7 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
     )
   }
 
-  const updateSuggestionStatus = (
-    id: string,
-    status: LessonSuggestion["status"],
-  ) => {
-    updateLessonSuggestionStatus(lessonId, id, status)
-    setSuggestions((current) =>
-      current.map((suggestion) =>
-        suggestion.id === id ? { ...suggestion, status } : suggestion,
-      ),
-    )
-  }
+  const canPublish = hasCompleteAiDraft(lesson)
 
   return (
     <div className="mx-auto grid w-full max-w-[1500px] gap-5 p-4 sm:p-6 xl:p-8">
@@ -206,7 +152,7 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
               {lesson.durationMinutes} 分钟课堂 · {lesson.progress.chapter}
             </p>
           </div>
-          {lesson.status !== "published" ? (
+          {lesson.status !== "published" && canPublish ? (
             <button
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[#142219] px-5 py-3 font-black text-white shadow-[0_12px_25px_rgba(20,34,25,.18)]"
               onClick={() => setPublishOpen(true)}
@@ -215,6 +161,10 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
               <BookOpenCheck aria-hidden="true" size={18} />
               确认并发布
             </button>
+          ) : lesson.status !== "published" ? (
+            <p className="text-sm font-bold text-[#69776d]">
+              请先完成本次 AI 课堂分析，再确认发布。
+            </p>
           ) : null}
         </div>
       </GlassSurface>
@@ -311,109 +261,34 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
           ) : null}
 
           {tab === "report" ? (
-            <div className="grid gap-4">
-              <div className="rounded-[22px] border border-[#d4dfd2] bg-[#f5f8f2]/80 p-4 text-sm leading-6 text-[#526157]">
-                <strong className="text-[#294530]">事实与推断分开展示：</strong>
-                转写内容是课堂记录；以下建议属于 AI
-                推断，置信度仅用于辅助教师判断。
+            canPublish ? (
+              <div className="grid gap-4">
+                <StatusChip tone="info">AI 初稿 · 教师需核对</StatusChip>
+                <article className="rounded-[24px] border border-white/85 bg-white/60 p-5">
+                  <h2 className="text-xl font-black text-[#1e3024]">教师课堂报告</h2>
+                  <p className="mt-3 leading-7 text-[#536258]">{lesson.teacherReport}</p>
+                </article>
+                <section aria-label="AI 报告依据" className="rounded-[24px] border border-[#d4dfd2] bg-[#f5f8f2]/80 p-5">
+                  <h2 className="font-black text-[#294530]">课堂依据 · AI 初稿</h2>
+                  <ul className="mt-3 grid gap-2 text-sm leading-6 text-[#526157]">
+                    {lesson.evidence?.map((item) => <li key={item}>{item}</li>)}
+                  </ul>
+                </section>
               </div>
-              {suggestions.length === 0 ? (
-                <EmptyState
-                  description="课堂资料整理完成后，AI 建议会显示在这里。"
-                  title="暂无课堂建议"
-                />
-              ) : (
-                suggestions.map((suggestion) => {
-                  const confidence = confidenceMeta[suggestion.confidence]
-                  const state = suggestionStatus[suggestion.status]
-                  return (
-                    <article
-                      className="rounded-[24px] border border-white/85 bg-white/60 p-5"
-                      key={suggestion.id}
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <StatusChip tone={confidence.tone}>
-                              {confidence.label}
-                            </StatusChip>
-                            <StatusChip tone={state.tone}>
-                              {state.label}
-                            </StatusChip>
-                          </div>
-                          <h2 className="mt-4 text-xl font-black text-[#1e3024]">
-                            {suggestion.title}
-                          </h2>
-                          <p className="mt-2 max-w-3xl leading-7 text-[#536258]">
-                            {suggestion.body}
-                          </p>
-                        </div>
-                        <Sparkles
-                          aria-hidden="true"
-                          className="text-[#729176]"
-                          size={22}
-                        />
-                      </div>
-                      <div className="mt-5 flex flex-wrap gap-2">
-                        <button
-                          aria-label={`查看${suggestion.title}的课堂证据`}
-                          className="inline-flex items-center gap-2 rounded-full border border-[#cad8c8] bg-white/75 px-4 py-2 text-sm font-black text-[#31533a]"
-                          onClick={() => setEvidenceSuggestionId(suggestion.id)}
-                          type="button"
-                        >
-                          <Quote aria-hidden="true" size={16} />
-                          查看课堂证据
-                        </button>
-                        {suggestion.status === "pending" ? (
-                          <>
-                            <button
-                              aria-label={`采纳${suggestion.title}`}
-                              className="inline-flex items-center gap-2 rounded-full bg-[#24462f] px-4 py-2 text-sm font-black text-white"
-                              onClick={() =>
-                                updateSuggestionStatus(
-                                  suggestion.id,
-                                  "accepted",
-                                )
-                              }
-                              type="button"
-                            >
-                              <Check aria-hidden="true" size={16} />
-                              采纳
-                            </button>
-                            <button
-                              aria-label={`忽略${suggestion.title}`}
-                              className="inline-flex items-center gap-2 rounded-full bg-[#eceee9] px-4 py-2 text-sm font-black text-[#5f695f]"
-                              onClick={() =>
-                                updateSuggestionStatus(suggestion.id, "ignored")
-                              }
-                              type="button"
-                            >
-                              <X aria-hidden="true" size={16} />
-                              忽略
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            aria-label={`撤回${suggestion.title}`}
-                            className="rounded-full bg-[#eceee9] px-4 py-2 text-sm font-black text-[#5f695f]"
-                            onClick={() =>
-                              updateSuggestionStatus(suggestion.id, "pending")
-                            }
-                            type="button"
-                          >
-                            撤回处理
-                          </button>
-                        )}
-                      </div>
-                    </article>
-                  )
-                })
-              )}
-            </div>
+            ) : (
+              <EmptyState
+                description="本次课堂成功生成完整分析后，教师报告与依据会显示在这里。"
+                title="暂无教师报告初稿"
+              />
+            )
           ) : null}
 
           {tab === "progress" ? (
-            <div className="mx-auto grid max-w-3xl gap-6">
+            canPublish ? <div className="mx-auto grid max-w-3xl gap-6">
+              <div className="rounded-[24px] border border-[#d4dfd2] bg-[#f5f8f2]/80 p-5">
+                <StatusChip tone="info">AI 初稿 · 进度建议</StatusChip>
+                <p className="mt-3 leading-7 text-[#526157]">{lesson.progressSuggestion}</p>
+              </div>
               <div className="text-center">
                 <Flag
                   aria-hidden="true"
@@ -472,37 +347,13 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
                   保存课程进度
                 </button>
               </div>
-            </div>
+            </div> : <EmptyState
+              description="本次课堂成功生成完整分析后，课程进度建议会显示在这里。"
+              title="暂无课程进度初稿"
+            />
           ) : null}
         </section>
       </GlassSurface>
-
-      <Drawer
-        onClose={() => setEvidenceSuggestionId(null)}
-        open={Boolean(selectedSuggestion)}
-        title="课堂证据"
-      >
-        <div className="grid gap-4">
-          <p className="text-sm leading-6 text-[#647268]">
-            以下为支持“{selectedSuggestion?.title}
-            ”的课堂转写片段。引用只用于教师复核。
-          </p>
-          {evidence.map((segment) => (
-            <article
-              className="rounded-[22px] border border-white/80 bg-white/60 p-4"
-              key={segment.id}
-            >
-              <p className="text-xs font-black text-[#6a7a6e]">
-                {segment.speaker} · {formatTime(segment.startSeconds)}–
-                {formatTime(segment.endSeconds)}
-              </p>
-              <blockquote className="mt-3 border-l-2 border-[#7e9a80] pl-4 leading-7 text-[#34483a]">
-                “{segment.body}”
-              </blockquote>
-            </article>
-          ))}
-        </div>
-      </Drawer>
 
       <Dialog
         description="发布后学生将可以看到复习卡。课堂转写和教师报告仍只对教师可见。"

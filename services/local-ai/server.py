@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from funasr import AutoModel
+from pydantic import ValidationError
 
 from generation import (
     DeepSeekNotConfiguredError,
@@ -15,7 +16,7 @@ from generation import (
     GenerationValidationError,
     generate_draft,
 )
-from schemas import GenerateRequest
+from schemas import GenerateRequest, LessonAnalysisDraft
 
 app = FastAPI(title="Zhiye local lesson AI")
 app.add_middleware(
@@ -112,7 +113,9 @@ def generate_with_deepseek(transcript: str) -> dict:
                 "content": (
                     "请把下面的课堂转写整理为 JSON，字段必须是："
                     "recap（给学生看的简短复习卡）、recapTags（最多3个知识点字符串）、"
-                    "nextStep（给教师的下一步建议）。课堂转写：\n" + transcript
+                    "nextStep（给教师的下一步建议）、teacherReport（给教师的课堂报告）、"
+                    "progressSuggestion（给教师的课程进度建议）、evidence（支持报告的课堂依据字符串数组）。"
+                    "所有字段必须来自转写，不要编造未出现的事实。课堂转写：\n" + transcript
                 ),
             },
         ],
@@ -139,12 +142,7 @@ def generate_with_deepseek(transcript: str) -> dict:
 
     try:
         content = payload["choices"][0]["message"]["content"]
-        result = json.loads(content)
-        return {
-            "recap": str(result["recap"]).strip(),
-            "recapTags": [str(tag) for tag in result.get("recapTags", [])][:3],
-            "nextStep": str(result.get("nextStep", "结合后续练习继续观察")).strip(),
-        }
+        return LessonAnalysisDraft.model_validate(json.loads(content)).model_dump()
     except (KeyError, IndexError, TypeError, ValueError) as error:
         raise HTTPException(status_code=502, detail="DeepSeek 返回内容不是有效课堂复盘 JSON") from error
 
@@ -177,6 +175,13 @@ async def analyze(audio: UploadFile = File(...)):
     try:
         transcript_text = transcribe(path)
         generated = generate_with_deepseek(transcript_text)
+        try:
+            generated = LessonAnalysisDraft.model_validate(generated).model_dump()
+        except ValidationError as error:
+            raise HTTPException(
+                status_code=502,
+                detail="DeepSeek 返回内容不是有效课堂复盘 JSON",
+            ) from error
         return {
             "transcript": [
                 {

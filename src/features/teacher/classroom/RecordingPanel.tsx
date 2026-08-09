@@ -1,9 +1,19 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Mic, Pause, Play, Sparkles, Square } from "lucide-react"
 import { Dialog } from "../../../components/shared/Dialog"
 import { StatusChip } from "../../../components/shared/StatusChip"
+import {
+  analyzeLessonAudio,
+  type LessonAnalysisResult,
+} from "../../../services/lessonAnalysis"
 
-export type RecordingState = "idle" | "recording" | "paused" | "processing" | "draft-ready"
+export type RecordingState =
+  | "idle"
+  | "recording"
+  | "paused"
+  | "processing"
+  | "draft-ready"
+  | "failed"
 
 const stateLabels: Record<RecordingState, string> = {
   idle: "等待开始",
@@ -11,6 +21,7 @@ const stateLabels: Record<RecordingState, string> = {
   paused: "已暂停",
   processing: "正在整理课堂内容",
   "draft-ready": "AI 初稿已就绪",
+  failed: "处理失败",
 }
 
 export interface RecordingPanelProps {
@@ -19,6 +30,7 @@ export interface RecordingPanelProps {
   onClose: () => void
   onTitleChange: (title: string) => void
   onOpenDraft: () => void
+  onAnalysisComplete?: (result: LessonAnalysisResult, durationSeconds: number) => void
   onStatusChange?: (status: Exclude<RecordingState, "idle">) => void
 }
 
@@ -28,21 +40,25 @@ export function RecordingPanel({
   onClose,
   onTitleChange,
   onOpenDraft,
+  onAnalysisComplete,
   onStatusChange,
 }: RecordingPanelProps) {
   const [status, setStatus] = useState<RecordingState>("idle")
+  const [errorMessage, setErrorMessage] = useState("")
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const recordingStartedAtRef = useRef<number | null>(null)
 
   useEffect(() => {
-    if (!open || status !== "processing") return
-    const timer = window.setTimeout(() => {
-      setStatus("draft-ready")
-      onStatusChange?.("draft-ready")
-    }, 800)
-    return () => window.clearTimeout(timer)
-  }, [onStatusChange, open, status])
-
-  useEffect(() => {
-    if (open) setStatus("idle")
+    if (open) {
+      setStatus("idle")
+      setErrorMessage("")
+    }
+    return () => {
+      recorderRef.current?.stop()
+      streamRef.current?.getTracks().forEach((track) => track.stop())
+    }
   }, [open])
 
   const changeStatus = (nextStatus: Exclude<RecordingState, "idle">) => {
@@ -50,22 +66,88 @@ export function RecordingPanel({
     onStatusChange?.(nextStatus)
   }
 
+  async function submitAudio(audio: Blob, durationSeconds: number) {
+    changeStatus("processing")
+    try {
+      const result = await analyzeLessonAudio(audio)
+      onAnalysisComplete?.(result, durationSeconds)
+      changeStatus("draft-ready")
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "本地 AI 处理失败，请检查服务日志。",
+      )
+      setStatus("failed")
+    }
+  }
+
+  function stopRecording() {
+    if (recorderRef.current) {
+      recorderRef.current.stop()
+      recorderRef.current = null
+      return
+    }
+
+    setErrorMessage("当前浏览器没有可用的 MediaRecorder，无法录制真实课堂音频。请使用 Chrome 或 Edge。")
+    setStatus("failed")
+  }
+
+  async function startRecording() {
+    setErrorMessage("")
+    if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices) {
+      setErrorMessage("当前浏览器不支持真实录音，请使用 Chrome 或 Edge 并允许麦克风权限。")
+      setStatus("failed")
+      return
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      chunksRef.current = []
+      streamRef.current = stream
+      recorderRef.current = recorder
+      recordingStartedAtRef.current = Date.now()
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data)
+      }
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
+        })
+        stream.getTracks().forEach((track) => track.stop())
+        streamRef.current = null
+        const startedAt = recordingStartedAtRef.current ?? Date.now()
+        void submitAudio(blob, Math.max(0, (Date.now() - startedAt) / 1000))
+      }
+      recorder.start()
+      changeStatus("recording")
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? `无法访问麦克风：${error.message}`
+          : "无法访问麦克风，请检查浏览器权限。",
+      )
+      setStatus("failed")
+    }
+  }
+
   const tone =
     status === "draft-ready"
       ? "success"
-      : status === "processing"
-        ? "info"
-        : status === "recording"
-          ? "critical"
-          : status === "paused"
-            ? "warning"
-            : "neutral"
+      : status === "failed"
+        ? "critical"
+        : status === "processing"
+          ? "info"
+          : status === "recording"
+            ? "critical"
+            : status === "paused"
+              ? "warning"
+              : "neutral"
 
   return (
     <Dialog
       open={open}
       title="新课堂录音"
-      description="本原型仅在本地模拟录音和 AI 整理，不会采集真实音频。"
+      description="浏览器会录下当前课堂音频，并发送到本机 FunASR 与 DeepSeek 处理。"
       onClose={onClose}
     >
       <div className="grid gap-6 py-2">
@@ -84,10 +166,12 @@ export function RecordingPanel({
               : status === "paused"
                 ? "录音已暂停，继续后将接着记录。"
                 : status === "processing"
-                  ? "正在生成课堂转写、复习卡和教师报告。"
+                  ? "正在调用本地 FunASR 转写，再交给 DeepSeek 生成复盘。"
                   : status === "draft-ready"
                     ? "课堂资料已经整理完成，请教师审核后再发布。"
-                    : "开始后可以演示完整的课堂录音工作流。"}
+                    : status === "failed"
+                      ? errorMessage
+                      : "开始后会请求浏览器麦克风权限。"}
           </p>
         </div>
 
@@ -104,7 +188,7 @@ export function RecordingPanel({
           {status === "idle" ? (
             <button
               className="inline-flex items-center gap-2 rounded-full bg-[#142219] px-5 py-3 font-bold text-white"
-              onClick={() => changeStatus("recording")}
+              onClick={() => void startRecording()}
               type="button"
             >
               <Mic aria-hidden="true" size={18} />
@@ -123,7 +207,7 @@ export function RecordingPanel({
               </button>
               <button
                 className="inline-flex items-center gap-2 rounded-full bg-[#142219] px-5 py-3 font-bold text-white"
-                onClick={() => changeStatus("processing")}
+                onClick={stopRecording}
                 type="button"
               >
                 <Square aria-hidden="true" size={16} />
@@ -143,7 +227,7 @@ export function RecordingPanel({
               </button>
               <button
                 className="inline-flex items-center gap-2 rounded-full bg-[#142219] px-5 py-3 font-bold text-white"
-                onClick={() => changeStatus("processing")}
+                onClick={stopRecording}
                 type="button"
               >
                 <Square aria-hidden="true" size={16} />
@@ -159,6 +243,15 @@ export function RecordingPanel({
             >
               <Sparkles aria-hidden="true" size={18} />
               查看 AI 初稿
+            </button>
+          ) : null}
+          {status === "failed" ? (
+            <button
+              className="inline-flex items-center gap-2 rounded-full bg-[#142219] px-5 py-3 font-bold text-white"
+              onClick={() => setStatus("idle")}
+              type="button"
+            >
+              重试录音
             </button>
           ) : null}
         </div>

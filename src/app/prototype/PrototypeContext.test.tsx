@@ -136,6 +136,9 @@ describe("PrototypeProvider", () => {
         ["分数基本性质"],
         "结合后续练习继续观察",
         12,
+        "教师报告",
+        "进度建议",
+        ["课堂依据"],
       )
     })
 
@@ -153,7 +156,15 @@ describe("PrototypeProvider", () => {
     act(() => {
       result.current.updateLessonAnalysis(
         "lesson-fractions",
-        [],
+        [
+          {
+            id: "publish-transcript-01",
+            speaker: "李老师",
+            startSeconds: 0,
+            endSeconds: 10,
+            body: "单位换算",
+          },
+        ],
         "复习卡",
         ["单位换算"],
         "补讲",
@@ -346,18 +357,44 @@ describe("PrototypeProvider", () => {
     )
   })
 
-  it("publishes a lesson, edits its recap, and sends a local message", () => {
+  it("only publishes a complete draft-ready AI lesson", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
 
+    act(() => result.current.publishLesson("lesson-decimals"))
+    expect(result.current.lessons.find((item) => item.id === "lesson-decimals")?.status).toBe(
+      "scheduled",
+    )
+
+    act(() => result.current.publishLesson("lesson-fractions"))
+    expect(result.current.lessons.find((item) => item.id === "lesson-fractions")?.status).toBe(
+      "draft-ready",
+    )
+
+    act(() =>
+      result.current.updateLessonAnalysis(
+        "lesson-fractions",
+        [
+          {
+            id: "publish-transcript-01",
+            speaker: "李老师",
+            startSeconds: 0,
+            endSeconds: 10,
+            body: "单位换算",
+          },
+        ],
+        "新的复习卡内容",
+        ["单位换算"],
+        "补讲",
+        30,
+        "教师报告",
+        "进度建议",
+        ["课堂依据"],
+      ),
+    )
     act(() => result.current.publishLesson("lesson-fractions"))
     expect(
       result.current.lessons.find((item) => item.id === "lesson-fractions")?.status,
     ).toBe("published")
-
-    act(() => result.current.updateLessonRecap("lesson-fractions", "新的复习卡内容"))
-    expect(
-      result.current.lessons.find((item) => item.id === "lesson-fractions")?.recap,
-    ).toBe("新的复习卡内容")
 
     act(() => result.current.sendMessage("conversation-parent-li", "今晚会陪孩子复习。"))
     expect(

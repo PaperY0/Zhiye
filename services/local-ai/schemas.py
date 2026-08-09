@@ -202,6 +202,15 @@ class GenerateRequest(BaseModel):
         return self
 
 
+class LessonAnalysisDraft(BaseModel):
+    recap: TextOnly
+    recapTags: list[TextOnly] = Field(min_length=1, max_length=3)
+    nextStep: TextOnly
+    teacherReport: TextOnly
+    progressSuggestion: TextOnly
+    evidence: list[TextOnly] = Field(min_length=1, max_length=30)
+
+
 class LessonPlanDraft(BaseModel):
     title: str
     outline: list[str] = Field(min_length=1)

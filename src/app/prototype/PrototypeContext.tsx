@@ -112,6 +112,18 @@ type PrototypeSnapshot = Pick<
   | "auditEvents"
 >
 
+export function hasCompleteAiDraft(lesson: Lesson) {
+  return (
+    lesson.status === "draft-ready" &&
+    lesson.transcript.length > 0 &&
+    lesson.recap.trim().length > 0 &&
+    lesson.recapTags.length > 0 &&
+    Boolean(lesson.teacherReport?.trim()) &&
+    Boolean(lesson.progressSuggestion?.trim()) &&
+    Boolean(lesson.evidence?.length)
+  )
+}
+
 function readPrototypeSnapshot(storageKey: string): Partial<PrototypeSnapshot> | null {
   try {
     const raw = window.localStorage.getItem(storageKey)
@@ -299,7 +311,7 @@ export function PrototypeProvider({
       publishLesson(id) {
         setLessons((current) =>
           current.map((lesson) =>
-            lesson.id === id
+            lesson.id === id && hasCompleteAiDraft(lesson)
               ? {
                   ...lesson,
                   status: "published",

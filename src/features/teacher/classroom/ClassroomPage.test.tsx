@@ -1,9 +1,15 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
 import type { AppRoute } from "../../../app/routes"
 import { ClassroomPage } from "./ClassroomPage"
+
+const lessonAnalysis = vi.hoisted(() => ({
+  analyzeLessonAudio: vi.fn(),
+}))
+
+vi.mock("../../../services/lessonAnalysis", () => lessonAnalysis)
 
 function renderClassroom(onNavigate = vi.fn<(route: AppRoute) => void>()) {
   render(
@@ -14,8 +20,36 @@ function renderClassroom(onNavigate = vi.fn<(route: AppRoute) => void>()) {
   return { onNavigate }
 }
 
+class TestMediaRecorder {
+  mimeType = "audio/webm"
+  ondataavailable: ((event: BlobEvent) => void) | null = null
+  onstop: (() => void) | null = null
+
+  constructor(_stream: MediaStream) {}
+
+  start() {}
+
+  stop() {
+    this.ondataavailable?.({ data: new Blob(["recording"], { type: this.mimeType }) } as BlobEvent)
+    this.onstop?.()
+  }
+}
+
+beforeEach(() => {
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: {
+      getUserMedia: vi.fn().mockResolvedValue({
+        getTracks: () => [{ stop: vi.fn() }],
+      }),
+    },
+  })
+  vi.stubGlobal("MediaRecorder", TestMediaRecorder)
+})
+
 afterEach(() => {
-  vi.useRealTimers()
+  vi.unstubAllGlobals()
+  vi.clearAllMocks()
 })
 
 describe("ClassroomPage", () => {
@@ -46,8 +80,16 @@ describe("ClassroomPage", () => {
     expect(screen.queryByText("小数乘法估算")).not.toBeInTheDocument()
   })
 
-  it("runs start, pause, resume, end, processing, and draft-ready recording states", async () => {
-    vi.useFakeTimers()
+  it("writes a completed local AI analysis into the newly recorded lesson", async () => {
+    lessonAnalysis.analyzeLessonAudio.mockResolvedValue({
+      transcript: [{ id: "live-01", speaker: "李老师", startSeconds: 0, endSeconds: 10, body: "单位换算" }],
+      recap: "先判断单位变化方向。",
+      recapTags: ["单位换算"],
+      nextStep: "完成随堂自检",
+      teacherReport: "学生在乘除方向上需要更多示范。",
+      progressSuggestion: "下节课先复盘单位阶梯。",
+      evidence: ["课堂中有两次关于乘除方向的提问。"],
+    })
     const { onNavigate } = renderClassroom()
 
     fireEvent.click(screen.getByRole("button", { name: "开始新课堂录音" }))
@@ -55,42 +97,20 @@ describe("ClassroomPage", () => {
     expect(within(dialog).getByText("等待开始")).toBeInTheDocument()
 
     fireEvent.click(within(dialog).getByRole("button", { name: "开始录音" }))
-    expect(within(dialog).getByText("录音中")).toBeInTheDocument()
-
-    fireEvent.click(within(dialog).getByRole("button", { name: "暂停录音" }))
-    expect(within(dialog).getByText("已暂停")).toBeInTheDocument()
-
-    fireEvent.click(within(dialog).getByRole("button", { name: "继续录音" }))
-    expect(within(dialog).getByText("录音中")).toBeInTheDocument()
+    await waitFor(() => expect(within(dialog).getByText("录音中")).toBeInTheDocument())
 
     fireEvent.click(
       within(dialog).getByRole("button", { name: "结束并生成 AI 初稿" }),
     )
     expect(within(dialog).getByText("正在整理课堂内容")).toBeInTheDocument()
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "关闭新课堂录音" }))
-    expect(screen.getAllByText("处理中").length).toBeGreaterThanOrEqual(2)
-
-    fireEvent.click(screen.getByRole("button", { name: "开始新课堂录音" }))
-    const reopenedDialog = screen.getByRole("dialog", { name: "新课堂录音" })
-
-    act(() => vi.advanceTimersByTime(799))
-    expect(
-      within(reopenedDialog).queryByRole("button", { name: "查看 AI 初稿" }),
-    ).not.toBeInTheDocument()
-
-    act(() => vi.advanceTimersByTime(1))
-    expect(within(reopenedDialog).getByText("等待开始")).toBeInTheDocument()
-
-    fireEvent.click(within(reopenedDialog).getByRole("button", { name: "开始录音" }))
-    fireEvent.click(
-      within(reopenedDialog).getByRole("button", { name: "结束并生成 AI 初稿" }),
-    )
-    act(() => vi.advanceTimersByTime(800))
-    expect(within(reopenedDialog).getByText("AI 初稿已就绪")).toBeInTheDocument()
+    await waitFor(() => {
+      expect(lessonAnalysis.analyzeLessonAudio).toHaveBeenCalledOnce()
+      expect(within(dialog).getByText("AI 初稿已就绪")).toBeInTheDocument()
+    })
 
     fireEvent.click(
-      within(reopenedDialog).getByRole("button", { name: "查看 AI 初稿" }),
+      within(dialog).getByRole("button", { name: "查看 AI 初稿" }),
     )
     expect(onNavigate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -99,6 +119,23 @@ describe("ClassroomPage", () => {
         lessonId: expect.stringMatching(/^lesson-recording-/),
       }),
     )
+  })
+
+  it("keeps a recording out of draft-ready when local AI analysis fails", async () => {
+    lessonAnalysis.analyzeLessonAudio.mockRejectedValue(new Error("本地 AI 服务未启动"))
+    renderClassroom()
+
+    fireEvent.click(screen.getByRole("button", { name: "开始新课堂录音" }))
+    const dialog = screen.getByRole("dialog", { name: "新课堂录音" })
+    fireEvent.click(within(dialog).getByRole("button", { name: "开始录音" }))
+    await waitFor(() => expect(within(dialog).getByText("录音中")).toBeInTheDocument())
+    fireEvent.click(within(dialog).getByRole("button", { name: "结束并生成 AI 初稿" }))
+
+    await waitFor(() => {
+      expect(within(dialog).getByText("处理失败")).toBeInTheDocument()
+      expect(within(dialog).getByText("本地 AI 服务未启动")).toBeInTheDocument()
+    })
+    expect(within(dialog).queryByRole("button", { name: "查看 AI 初稿" })).not.toBeInTheDocument()
   })
 
   it("opens an existing lesson from its card", async () => {

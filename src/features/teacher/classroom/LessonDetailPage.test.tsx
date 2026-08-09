@@ -1,12 +1,32 @@
 import { render, screen, within } from "@testing-library/react"
+import { useEffect } from "react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
-import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
+import { PrototypeProvider, usePrototype } from "../../../app/prototype/PrototypeContext"
 import { LessonDetailPage } from "./LessonDetailPage"
 
-function renderDetail(lessonId = "lesson-fractions") {
+function AnalysisSeed() {
+  const { updateLessonAnalysis } = usePrototype()
+  useEffect(() => {
+    updateLessonAnalysis(
+      "lesson-fractions",
+      [{ id: "analysis-01", speaker: "李老师", startSeconds: 0, endSeconds: 10, body: "单位换算" }],
+      "先判断单位变化方向。",
+      ["单位换算"],
+      "完成随堂自检",
+      40,
+      "学生在乘除方向上需要更多示范。",
+      "下节课先复盘单位阶梯。",
+      ["课堂中有两次关于乘除方向的提问。"],
+    )
+  }, [])
+  return null
+}
+
+function renderDetail(lessonId = "lesson-fractions", withAnalysis = false) {
   render(
     <PrototypeProvider>
+      {withAnalysis ? <AnalysisSeed /> : null}
       <LessonDetailPage lessonId={lessonId} />
     </PrototypeProvider>,
   )
@@ -15,14 +35,12 @@ function renderDetail(lessonId = "lesson-fractions") {
 describe("LessonDetailPage", () => {
   it("switches among transcript, recap, teacher report, and course progress tabs", async () => {
     const user = userEvent.setup()
-    renderDetail()
+    renderDetail("lesson-fractions", true)
 
     expect(
       screen.getByRole("heading", { name: "分数的基本性质" }),
     ).toBeInTheDocument()
-    expect(
-      screen.getByText(/分子和分母要同时乘同一个不为零的数/),
-    ).toBeInTheDocument()
+    expect(screen.getByText("单位换算")).toBeInTheDocument()
 
     await user.click(screen.getByRole("tab", { name: "学生复习卡" }))
     expect(screen.getByLabelText("复习卡内容")).toHaveValue(
@@ -30,11 +48,11 @@ describe("LessonDetailPage", () => {
     )
 
     await user.click(screen.getByRole("tab", { name: "教师课堂报告" }))
-    expect(screen.getByText("补充不为零的条件")).toBeInTheDocument()
-    expect(screen.getByText("高置信度 · AI 推断")).toBeInTheDocument()
+    expect(screen.getByText("学生在乘除方向上需要更多示范。")).toBeInTheDocument()
+    expect(screen.getByText("课堂中有两次关于乘除方向的提问。")).toBeInTheDocument()
 
     await user.click(screen.getByRole("tab", { name: "课程进度" }))
-    expect(screen.getByText("第四单元 · 分数的意义和性质")).toBeInTheDocument()
+    expect(screen.getByText("下节课先复盘单位阶梯。")).toBeInTheDocument()
     expect(screen.getByLabelText("课程完成进度")).toHaveValue(72)
   })
 
@@ -57,47 +75,24 @@ describe("LessonDetailPage", () => {
     )
   })
 
-  it("opens quoted transcript evidence in a drawer", async () => {
+  it("shows an empty AI report instead of fixture suggestions when no analysis ran", async () => {
     const user = userEvent.setup()
     renderDetail()
 
     await user.click(screen.getByRole("tab", { name: "教师课堂报告" }))
-    await user.click(
-      screen.getByRole("button", { name: "查看补充不为零的条件的课堂证据" }),
-    )
-
-    const drawer = screen.getByRole("dialog", { name: "课堂证据" })
-    expect(within(drawer).getByText(/李老师 · 01:25–01:52/)).toBeInTheDocument()
-    expect(within(drawer).getByText(/学生 · 15:52–16:18/)).toBeInTheDocument()
-    expect(within(drawer).getAllByRole("blockquote")).toHaveLength(2)
+    expect(screen.getByText("暂无教师报告初稿")).toBeInTheDocument()
+    expect(screen.queryByText("补充不为零的条件")).not.toBeInTheDocument()
   })
 
-  it("accepts and ignores uncertain report suggestions locally", async () => {
-    const user = userEvent.setup()
+  it("does not offer publishing before a complete AI analysis exists", () => {
     renderDetail()
-
-    await user.click(screen.getByRole("tab", { name: "教师课堂报告" }))
-    expect(screen.getByText("高置信度 · AI 推断")).toBeInTheDocument()
-
-    await user.click(
-      screen.getByRole("button", { name: "采纳补充不为零的条件" }),
-    )
-    expect(screen.getByText("已采纳")).toBeInTheDocument()
-
-    await user.click(
-      screen.getByRole("button", { name: "撤回补充不为零的条件" }),
-    )
-    expect(screen.getByText("待处理")).toBeInTheDocument()
-
-    await user.click(
-      screen.getByRole("button", { name: "忽略补充不为零的条件" }),
-    )
-    expect(screen.getByText("已忽略")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "确认并发布" })).not.toBeInTheDocument()
+    expect(screen.getByText("请先完成本次 AI 课堂分析，再确认发布。")).toBeInTheDocument()
   })
 
   it("updates the displayed course progress controls", async () => {
     const user = userEvent.setup()
-    renderDetail()
+    renderDetail("lesson-fractions", true)
 
     await user.click(screen.getByRole("tab", { name: "课程进度" }))
     const progress = screen.getByLabelText("课程完成进度")
@@ -116,7 +111,7 @@ describe("LessonDetailPage", () => {
 
   it("requires confirmation before publishing the lesson to students", async () => {
     const user = userEvent.setup()
-    renderDetail()
+    renderDetail("lesson-fractions", true)
 
     expect(screen.getByText("学生不可见")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "确认并发布" }))

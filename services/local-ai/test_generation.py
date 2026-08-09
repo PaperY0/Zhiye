@@ -1,4 +1,6 @@
 import base64
+import json
+import urllib.error
 
 import pytest
 import importlib
@@ -306,3 +308,97 @@ def test_generate_rejects_unknown_key_with_unpadded_urlsafe_image_payload(monkey
     )
 
     assert response.status_code == 422
+
+
+def test_analyze_keeps_teacher_fields_returned_by_the_model(monkeypatch):
+    server = load_server(monkeypatch)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    model_result = {
+        "recap": "先判断单位变化方向。",
+        "recapTags": ["单位换算"],
+        "nextStep": "完成随堂自检",
+        "teacherReport": "学生在乘除方向上需要更多示范。",
+        "progressSuggestion": "下节课先复盘单位阶梯。",
+        "evidence": ["课堂中有两次关于乘除方向的提问。"],
+    }
+    upstream = {"choices": [{"message": {"content": json.dumps(model_result)}}]}
+    monkeypatch.setattr(
+        server.urllib.request,
+        "urlopen",
+        lambda *args, **kwargs: FakeDeepSeekResponse(json.dumps(upstream).encode()),
+    )
+
+    assert server.generate_with_deepseek("单位换算课堂") == model_result
+
+
+def test_analyze_rejects_model_result_missing_teacher_fields(monkeypatch):
+    server = load_server(monkeypatch)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    incomplete = {
+        "recap": "先判断单位变化方向。",
+        "recapTags": ["单位换算"],
+        "nextStep": "完成随堂自检",
+    }
+    upstream = {"choices": [{"message": {"content": json.dumps(incomplete)}}]}
+    monkeypatch.setattr(
+        server.urllib.request,
+        "urlopen",
+        lambda *args, **kwargs: FakeDeepSeekResponse(json.dumps(upstream).encode()),
+    )
+
+    with pytest.raises(HTTPException) as error:
+        server.generate_with_deepseek("单位换算课堂")
+
+    assert error.value.status_code == 502
+
+
+def test_analyze_maps_upstream_failure_to_502(monkeypatch):
+    server = load_server(monkeypatch)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(
+        server.urllib.request,
+        "urlopen",
+        lambda *args, **kwargs: (_ for _ in ()).throw(urllib.error.URLError("offline")),
+    )
+
+    with pytest.raises(HTTPException) as error:
+        server.generate_with_deepseek("单位换算课堂")
+
+    assert error.value.status_code == 502
+
+
+def test_analyze_response_contains_the_model_teacher_fields(monkeypatch):
+    server = load_server(monkeypatch)
+    client = TestClient(server.app)
+    generated = {
+        "recap": "先判断单位变化方向。",
+        "recapTags": ["单位换算"],
+        "nextStep": "完成随堂自检",
+        "teacherReport": "学生在乘除方向上需要更多示范。",
+        "progressSuggestion": "下节课先复盘单位阶梯。",
+        "evidence": ["课堂中有两次关于乘除方向的提问。"],
+    }
+    monkeypatch.setattr(server, "transcribe", lambda _: "单位换算课堂")
+    monkeypatch.setattr(server, "generate_with_deepseek", lambda _: generated)
+
+    response = client.post("/analyze", files={"audio": ("lesson.webm", b"audio")})
+
+    assert response.status_code == 200
+    assert response.json()["teacherReport"] == generated["teacherReport"]
+    assert response.json()["progressSuggestion"] == generated["progressSuggestion"]
+    assert response.json()["evidence"] == generated["evidence"]
+
+
+def test_analyze_route_rejects_incomplete_generated_result(monkeypatch):
+    server = load_server(monkeypatch)
+    client = TestClient(server.app)
+    monkeypatch.setattr(server, "transcribe", lambda _: "单位换算课堂")
+    monkeypatch.setattr(
+        server,
+        "generate_with_deepseek",
+        lambda _: {"recap": "复习卡", "recapTags": ["单位换算"], "nextStep": "补讲"},
+    )
+
+    response = client.post("/analyze", files={"audio": ("lesson.webm", b"audio")})
+
+    assert response.status_code == 502

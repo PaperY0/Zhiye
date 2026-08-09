@@ -9,6 +9,7 @@ import {
   type StatusTone,
 } from "../../../components/shared/StatusChip"
 import { RecordingPanel } from "./RecordingPanel"
+import type { LessonAnalysisResult } from "../../../services/lessonAnalysis"
 
 type LessonFilter =
   | "all"
@@ -114,7 +115,13 @@ export interface ClassroomPageProps {
 }
 
 export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
-  const { createLesson, lessons, updateLessonStatus, updateLessonTitle } = usePrototype()
+  const {
+    createLesson,
+    lessons,
+    updateLessonAnalysis,
+    updateLessonStatus,
+    updateLessonTitle,
+  } = usePrototype()
   const [filter, setFilter] = useState<LessonFilter>("all")
   const [recordingOpen, setRecordingOpen] = useState(false)
   const [recordingLessonId, setRecordingLessonId] = useState<string | null>(null)
@@ -194,7 +201,26 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
             className="rounded-[28px] p-10 text-center"
             weight="card"
           >
-            <p className="font-bold text-[#607067]">当前筛选下暂无课堂。</p>
+            <p className="text-xl font-black text-[#243a2a]">
+              {lessons.length === 0 ? "还没有课堂" : "当前筛选下暂无课堂"}
+            </p>
+            <p className="mt-2 text-sm text-[#75847b]">
+              {lessons.length === 0
+                ? "先去录音，课堂结束后这里会出现课堂记录和复习卡。"
+                : "试试切换筛选条件，或开始一节新的课堂录音。"}
+            </p>
+            {lessons.length === 0 ? (
+              <button
+                className="mt-5 rounded-full bg-[#173022] px-5 py-3 text-sm font-black text-white"
+                onClick={() => {
+                  setRecordingLessonId(createLesson())
+                  setRecordingOpen(true)
+                }}
+                type="button"
+              >
+                开始新课堂录音
+              </button>
+            ) : null}
           </GlassSurface>
         ) : null}
       </section>
@@ -214,6 +240,20 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
         onOpenDraft={() => {
           setRecordingOpen(false)
           if (recordingLessonId) openLesson(recordingLessonId)
+        }}
+        onAnalysisComplete={(result: LessonAnalysisResult, durationSeconds: number) => {
+          if (!recordingLessonId) return
+          updateLessonAnalysis(
+            recordingLessonId,
+            result.transcript,
+            result.recap,
+            result.recapTags,
+            result.nextStep,
+            durationSeconds / 60,
+            result.teacherReport,
+            result.progressSuggestion,
+            result.evidence,
+          )
         }}
         open={recordingOpen}
       />

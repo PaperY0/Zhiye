@@ -41,6 +41,9 @@ export type Lesson = {
   studentVisibility: "hidden" | "visible"
   recap: string
   recapTags: string[]
+  teacherReport?: string
+  progressSuggestion?: string
+  evidence?: string[]
   transcript: TranscriptSegment[]
   suggestions: LessonSuggestion[]
   progress: {

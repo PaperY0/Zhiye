@@ -53,6 +53,18 @@ describe("prototype fixtures", () => {
 })
 
 describe("PrototypeProvider", () => {
+  it("supports a fully empty dataset for first-run guidance", () => {
+    const emptyWrapper = ({ children }: { children: ReactNode }) => (
+      <PrototypeProvider dataset="empty">{children}</PrototypeProvider>
+    )
+    const { result } = renderHook(() => usePrototype(), { wrapper: emptyWrapper })
+
+    expect(result.current.lessons).toEqual([])
+    expect(result.current.students).toEqual([])
+    expect(result.current.signals).toEqual([])
+    expect(result.current.parentSummary).toBeNull()
+  })
+
   it("restores shared prototype state when persistence is enabled", () => {
     localStorage.clear()
     const persistedWrapper = ({ children }: { children: ReactNode }) => (
@@ -103,6 +115,61 @@ describe("PrototypeProvider", () => {
       status: "scheduled",
       syncStatus: "local",
     })
+  })
+
+  it("writes live analysis results and recording duration to a lesson", () => {
+    const { result } = renderHook(() => usePrototype(), { wrapper })
+
+    act(() => {
+      result.current.updateLessonAnalysis(
+        "lesson-fractions",
+        [
+          {
+            id: "live-transcript-01",
+            speaker: "教师与课堂发言",
+            startSeconds: 0,
+            endSeconds: 12,
+            body: "今天学习分数的基本性质。",
+          },
+        ],
+        "分子和分母同时乘或除以相同的数，分数大小不变。",
+        ["分数基本性质"],
+        "结合后续练习继续观察",
+        12,
+      )
+    })
+
+    expect(result.current.lessons.find((lesson) => lesson.id === "lesson-fractions"))
+      .toMatchObject({
+        durationMinutes: 12,
+        recap: "分子和分母同时乘或除以相同的数，分数大小不变。",
+        status: "draft-ready",
+      })
+  })
+
+  it("stores the returned teacher report", () => {
+    const { result } = renderHook(() => usePrototype(), { wrapper })
+
+    act(() => {
+      result.current.updateLessonAnalysis(
+        "lesson-fractions",
+        [],
+        "复习卡",
+        ["单位换算"],
+        "补讲",
+        30,
+        "教师报告",
+        "进度建议",
+        ["课堂依据"],
+      )
+    })
+
+    expect(result.current.lessons.find((lesson) => lesson.id === "lesson-fractions"))
+      .toMatchObject({
+        teacherReport: "教师报告",
+        progressSuggestion: "进度建议",
+        evidence: ["课堂依据"],
+      })
   })
 
   it("updates the title of a newly created lesson", () => {

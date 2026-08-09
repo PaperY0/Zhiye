@@ -18,6 +18,8 @@ import {
   studentFixtures,
   taskFixtures,
 } from "./fixtures"
+import { acceptanceFixtureSet } from "./acceptanceFixtures"
+import { emptyFixtureSet } from "./emptyFixtures"
 import type {
   AuditEvent,
   Conversation,
@@ -41,7 +43,7 @@ export type PrototypeContextValue = {
   quizzes: Quiz[]
   tasks: Task[]
   conversations: Conversation[]
-  parentSummary: ParentSummary
+  parentSummary: ParentSummary | null
   safetyCases: SafetyCase[]
   auditEvents: AuditEvent[]
   createLesson(): string
@@ -55,9 +57,27 @@ export type PrototypeContextValue = {
   updateLessonProgress(id: string, completedPercent: number, nextStep: string): void
   publishLesson(id: string): void
   updateLessonRecap(id: string, recap: string): void
+  updateLessonAnalysis(
+    id: string,
+    transcript: Lesson["transcript"],
+    recap: string,
+    recapTags: string[],
+    nextStep: string,
+    durationMinutes: number,
+    teacherReport: string,
+    progressSuggestion: string,
+    evidence: string[],
+  ): void
+  deleteLesson(id: string): void
   addPlan(plan: PlanDraft): void
+  updatePlanTitle(id: string, title: string): void
+  deletePlan(id: string): void
   addQuiz(quiz: Quiz): void
+  updateQuizTitle(id: string, title: string): void
+  deleteQuiz(id: string): void
   addTask(task: Task): void
+  updateTaskTitle(id: string, title: string): void
+  deleteTask(id: string): void
   updateTaskStatus(id: string, status: Task["status"]): void
   updateTaskCompletion(
     taskId: string,
@@ -65,6 +85,8 @@ export type PrototypeContextValue = {
     status: Task["completions"][number]["status"],
   ): void
   sendMessage(id: string, body: string): void
+  updateConversationTitle(id: string, title: string): void
+  deleteConversation(id: string): void
   addMistake(studentId: string, mistake: Student["mistakes"][number]): void
   updateMistake(studentId: string, mistakeId: string, patch: Partial<Mistake>): void
   addStudentTimelineEvent(studentId: string, event: StudentTimelineEvent): void
@@ -75,7 +97,8 @@ export type PrototypeContextValue = {
 }
 
 const PrototypeContext = createContext<PrototypeContextValue | null>(null)
-const prototypeStorageKey = "zhiye-prototype-state-v1"
+const fullPrototypeStorageKey = "zhiye-prototype-state-v1"
+const acceptancePrototypeStorageKey = "zhiye-prototype-state-acceptance-v1"
 
 type PrototypeSnapshot = Pick<
   PrototypeContextValue,
@@ -89,9 +112,9 @@ type PrototypeSnapshot = Pick<
   | "auditEvents"
 >
 
-function readPrototypeSnapshot(): Partial<PrototypeSnapshot> | null {
+function readPrototypeSnapshot(storageKey: string): Partial<PrototypeSnapshot> | null {
   try {
-    const raw = window.localStorage.getItem(prototypeStorageKey)
+    const raw = window.localStorage.getItem(storageKey)
     return raw ? (JSON.parse(raw) as Partial<PrototypeSnapshot>) : null
   } catch {
     return null
@@ -105,36 +128,65 @@ function cloneFixture<T>(fixture: T): T {
 export function PrototypeProvider({
   children,
   persist = false,
+  dataset = "full",
 }: {
   children: ReactNode
   persist?: boolean
+  dataset?: "acceptance" | "full" | "empty"
 }) {
-  const persisted = persist ? readPrototypeSnapshot() : null
+  const fixtureSet =
+    dataset === "acceptance"
+      ? acceptanceFixtureSet
+      : dataset === "empty"
+        ? emptyFixtureSet
+        : null
+  const storageKey =
+    dataset === "acceptance"
+      ? acceptancePrototypeStorageKey
+      : fullPrototypeStorageKey
+  if (persist && dataset === "empty") {
+    window.localStorage.removeItem(fullPrototypeStorageKey)
+    window.localStorage.removeItem(acceptancePrototypeStorageKey)
+  }
+  const persisted = persist && dataset !== "empty" ? readPrototypeSnapshot(storageKey) : null
+  if (persist && dataset === "acceptance") {
+    window.localStorage.removeItem(fullPrototypeStorageKey)
+  }
   const [lessons, setLessons] = useState(() =>
-    cloneFixture(persisted?.lessons ?? lessonFixtures),
+    cloneFixture(persisted?.lessons ?? fixtureSet?.lessons ?? lessonFixtures),
   )
   const [students, setStudents] = useState(() =>
-    cloneFixture(persisted?.students ?? studentFixtures),
+    cloneFixture(persisted?.students ?? fixtureSet?.students ?? studentFixtures),
   )
-  const [signals] = useState(() => cloneFixture(knowledgeSignalFixtures))
+  const [signals] = useState(() =>
+    cloneFixture(fixtureSet?.signals ?? knowledgeSignalFixtures),
+  )
   const [plans, setPlans] = useState(() =>
-    cloneFixture(persisted?.plans ?? planFixtures),
+    cloneFixture(persisted?.plans ?? fixtureSet?.plans ?? planFixtures),
   )
   const [quizzes, setQuizzes] = useState(() =>
-    cloneFixture(persisted?.quizzes ?? quizFixtures),
+    cloneFixture(persisted?.quizzes ?? fixtureSet?.quizzes ?? quizFixtures),
   )
   const [tasks, setTasks] = useState(() =>
-    cloneFixture(persisted?.tasks ?? taskFixtures),
+    cloneFixture(persisted?.tasks ?? fixtureSet?.tasks ?? taskFixtures),
   )
   const [conversations, setConversations] = useState(() =>
-    cloneFixture(persisted?.conversations ?? conversationFixtures),
+    cloneFixture(
+      persisted?.conversations ?? fixtureSet?.conversations ?? conversationFixtures,
+    ),
   )
-  const [parentSummary] = useState(() => cloneFixture(parentSummaryFixture))
+  const [parentSummary] = useState(() =>
+    cloneFixture(
+      dataset === "empty"
+        ? null
+        : fixtureSet?.parentSummary ?? parentSummaryFixture,
+    ),
+  )
   const [safetyCases, setSafetyCases] = useState(() =>
-    cloneFixture(persisted?.safetyCases ?? safetyCaseFixtures),
+    cloneFixture(persisted?.safetyCases ?? fixtureSet?.safetyCases ?? safetyCaseFixtures),
   )
   const [auditEvents, setAuditEvents] = useState(() =>
-    cloneFixture(persisted?.auditEvents ?? auditEventFixtures),
+    cloneFixture(persisted?.auditEvents ?? fixtureSet?.auditEvents ?? auditEventFixtures),
   )
 
   useEffect(() => {
@@ -150,7 +202,7 @@ export function PrototypeProvider({
         safetyCases,
         auditEvents,
       }
-      window.localStorage.setItem(prototypeStorageKey, JSON.stringify(snapshot))
+      window.localStorage.setItem(storageKey, JSON.stringify(snapshot))
     } catch {
       // Storage is best-effort in the prototype; in-memory state remains usable.
     }
@@ -264,14 +316,81 @@ export function PrototypeProvider({
           ),
         )
       },
+      updateLessonAnalysis(
+        id,
+        transcript,
+        recap,
+        recapTags,
+        nextStep,
+        durationMinutes,
+        teacherReport,
+        progressSuggestion,
+        evidence,
+      ) {
+        setLessons((current) =>
+          current.map((lesson) =>
+            lesson.id === id
+              ? {
+                  ...lesson,
+                  transcript,
+                  recap,
+                  recapTags,
+                  teacherReport,
+                  progressSuggestion,
+                  evidence,
+                  status: "draft-ready",
+                  syncStatus: "local",
+                  durationMinutes: Math.max(1, Math.ceil(durationMinutes)),
+                  progress: {
+                    ...lesson.progress,
+                    nextStep,
+                  },
+                }
+              : lesson,
+          ),
+        )
+      },
+      deleteLesson(id) {
+        setLessons((current) => current.filter((lesson) => lesson.id !== id))
+      },
       addPlan(plan) {
         setPlans((current) => [...current, cloneFixture(plan)])
+      },
+      updatePlanTitle(id, title) {
+        const normalized = title.trim()
+        if (!normalized) return
+        setPlans((current) =>
+          current.map((plan) => (plan.id === id ? { ...plan, title: normalized } : plan)),
+        )
+      },
+      deletePlan(id) {
+        setPlans((current) => current.filter((plan) => plan.id !== id))
       },
       addQuiz(quiz) {
         setQuizzes((current) => [...current, cloneFixture(quiz)])
       },
+      updateQuizTitle(id, title) {
+        const normalized = title.trim()
+        if (!normalized) return
+        setQuizzes((current) =>
+          current.map((quiz) => (quiz.id === id ? { ...quiz, title: normalized } : quiz)),
+        )
+      },
+      deleteQuiz(id) {
+        setQuizzes((current) => current.filter((quiz) => quiz.id !== id))
+      },
       addTask(task) {
         setTasks((current) => [...current, cloneFixture(task)])
+      },
+      updateTaskTitle(id, title) {
+        const normalized = title.trim()
+        if (!normalized) return
+        setTasks((current) =>
+          current.map((task) => (task.id === id ? { ...task, title: normalized } : task)),
+        )
+      },
+      deleteTask(id) {
+        setTasks((current) => current.filter((task) => task.id !== id))
       },
       updateTaskStatus(id, status) {
         setTasks((current) =>
@@ -347,6 +466,18 @@ export function PrototypeProvider({
           ),
         )
       },
+      updateConversationTitle(id, title) {
+        const normalized = title.trim()
+        if (!normalized) return
+        setConversations((current) =>
+          current.map((conversation) =>
+            conversation.id === id ? { ...conversation, title: normalized } : conversation,
+          ),
+        )
+      },
+      deleteConversation(id) {
+        setConversations((current) => current.filter((conversation) => conversation.id !== id))
+      },
       updateMistake(studentId, mistakeId, patch) {
         setStudents((current) =>
           current.map((student) =>
@@ -386,14 +517,15 @@ export function PrototypeProvider({
       resetPrototype() {
         window.localStorage.removeItem("zhiye-teacher-settings-v1")
         window.localStorage.removeItem("zhiye-admin-settings-v1")
-        setLessons(cloneFixture(lessonFixtures))
-        setStudents(cloneFixture(studentFixtures))
-        setPlans(cloneFixture(planFixtures))
-        setQuizzes(cloneFixture(quizFixtures))
-        setTasks(cloneFixture(taskFixtures))
-        setConversations(cloneFixture(conversationFixtures))
-        setSafetyCases(cloneFixture(safetyCaseFixtures))
-        setAuditEvents(cloneFixture(auditEventFixtures))
+        window.localStorage.removeItem(storageKey)
+        setLessons(cloneFixture(fixtureSet?.lessons ?? lessonFixtures))
+        setStudents(cloneFixture(fixtureSet?.students ?? studentFixtures))
+        setPlans(cloneFixture(fixtureSet?.plans ?? planFixtures))
+        setQuizzes(cloneFixture(fixtureSet?.quizzes ?? quizFixtures))
+        setTasks(cloneFixture(fixtureSet?.tasks ?? taskFixtures))
+        setConversations(cloneFixture(fixtureSet?.conversations ?? conversationFixtures))
+        setSafetyCases(cloneFixture(fixtureSet?.safetyCases ?? safetyCaseFixtures))
+        setAuditEvents(cloneFixture(fixtureSet?.auditEvents ?? auditEventFixtures))
       },
       updateSafetyCase(id, patch) {
         setSafetyCases((current) =>
@@ -439,4 +571,8 @@ export function usePrototype(): PrototypeContextValue {
     throw new Error("usePrototype must be used within PrototypeProvider")
   }
   return value
+}
+
+export function usePrototypeOptional(): PrototypeContextValue | null {
+  return useContext(PrototypeContext)
 }

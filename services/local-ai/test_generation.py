@@ -1,8 +1,17 @@
 import pytest
+import importlib
+import sys
+import types
+from fastapi import HTTPException
 from pydantic import ValidationError
 
 import generation
-from generation import GenerationValidationError, generate_draft
+from generation import (
+    GenerationValidationError,
+    build_request_body,
+    call_deepseek,
+    generate_draft,
+)
 from schemas import GenerateRequest, QuizDraft
 
 
@@ -20,3 +29,81 @@ def test_unexpected_model_json_is_rejected(monkeypatch):
         generate_draft(
             GenerateRequest(kind="learning-reply", context={"question": "为什么"})
         )
+
+
+@pytest.mark.parametrize(
+    "context",
+    [
+        {"imageUrl": "https://example.com/lesson.png"},
+        {"nested": {"image": "data:image/png;base64,aW1hZ2U="}},
+        {"note": "QUJD" * 40},
+    ],
+)
+def test_generate_request_rejects_image_like_context(context):
+    with pytest.raises(ValidationError):
+        GenerateRequest(kind="tutoring", context=context)
+
+
+def test_system_policy_forbids_personality_inference_and_diagnosis():
+    request_body = build_request_body(
+        GenerateRequest(kind="student-inference", context={"facts": ["完成练习"]})
+    )
+    policy = request_body["messages"][0]["content"]
+
+    assert "人格推断" in policy
+    assert "诊断" in policy
+    assert "student-inference" in policy
+
+
+class FakeDeepSeekResponse:
+    def __init__(self, body: bytes):
+        self.body = body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def read(self):
+        return self.body
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        b"not-json",
+        b'{"choices": []}',
+        b'{"choices": [{"message": {}}]}',
+    ],
+)
+def test_malformed_upstream_envelope_is_rejected(monkeypatch, body):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(
+        generation.urllib.request,
+        "urlopen",
+        lambda *args, **kwargs: FakeDeepSeekResponse(body),
+    )
+
+    with pytest.raises(GenerationValidationError):
+        call_deepseek({"model": "test"})
+
+
+def test_generate_maps_generation_validation_to_502(monkeypatch):
+    fake_funasr = types.ModuleType("funasr")
+    fake_funasr.AutoModel = object
+    monkeypatch.setitem(sys.modules, "funasr", fake_funasr)
+    sys.modules.pop("server", None)
+    server = importlib.import_module("server")
+
+    monkeypatch.setattr(
+        server,
+        "generate_draft",
+        lambda request: (_ for _ in ()).throw(GenerationValidationError()),
+    )
+
+    with pytest.raises(HTTPException) as error:
+        server.generate(GenerateRequest(kind="learning-reply", context={"question": "为什么"}))
+
+    assert error.value.status_code == 502
+    assert error.value.detail == "模型返回格式无效，请重试"

@@ -54,6 +54,7 @@ def build_request_body(request: GenerateRequest) -> dict[str, Any]:
                 "content": (
                     "你是知野的教学草稿助手。仅返回一个有效 JSON 对象，不要使用 Markdown。"
                     "只可依据用户提供的 context；不得编造课堂事实、学生表现、学习结论或学生标签。"
+                    "不得进行人格推断或诊断，包括 student-inference 任务；只能整理已提供的可审核事实。"
                     "结果仅供教师或学生审核，不得替代人工判断。"
                 ),
             },
@@ -92,13 +93,18 @@ def call_deepseek(request_body: dict[str, Any]) -> str:
     try:
         with urllib.request.urlopen(request, timeout=120) as response:
             payload = json.loads(response.read().decode("utf-8"))
-            return payload["choices"][0]["message"]["content"]
+            content = payload["choices"][0]["message"]["content"]
+            if not isinstance(content, str):
+                raise TypeError("DeepSeek message content must be a string")
+            return content
     except (TimeoutError, socket.timeout) as error:
         raise DeepSeekTimeoutError() from error
     except urllib.error.URLError as error:
         if isinstance(error.reason, (TimeoutError, socket.timeout)):
             raise DeepSeekTimeoutError() from error
         raise
+    except (json.JSONDecodeError, UnicodeDecodeError, KeyError, IndexError, TypeError) as error:
+        raise GenerationValidationError() from error
 
 
 def generate_draft(request: GenerateRequest) -> dict[str, Any]:

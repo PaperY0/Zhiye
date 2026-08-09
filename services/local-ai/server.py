@@ -26,6 +26,7 @@ app.add_middleware(
 )
 
 asr_model = None
+ocr_engine = None
 
 
 def get_asr_model():
@@ -52,6 +53,39 @@ def transcribe(path: str) -> str:
     if not transcript:
         raise HTTPException(status_code=422, detail="没有识别到清晰的人声")
     return transcript
+
+
+def get_ocr_engine():
+    global ocr_engine
+    if ocr_engine is None:
+        from paddleocr import PaddleOCR
+
+        ocr_engine = PaddleOCR(lang=os.getenv("PADDLEOCR_LANG", "ch"))
+    return ocr_engine
+
+
+def recognize_image(path: str) -> tuple[str, float]:
+    recognized_lines = []
+    confidences = []
+    for result in get_ocr_engine().predict(path):
+        if isinstance(result, dict):
+            payload = result
+        else:
+            raw_payload = getattr(result, "json", {})
+            payload = json.loads(raw_payload) if isinstance(raw_payload, str) else raw_payload
+
+        texts = payload.get("rec_texts", []) if isinstance(payload, dict) else []
+        scores = payload.get("rec_scores", []) if isinstance(payload, dict) else []
+        for index, text in enumerate(texts):
+            cleaned_text = str(text).strip()
+            if not cleaned_text:
+                continue
+            recognized_lines.append(cleaned_text)
+            if index < len(scores):
+                confidences.append(float(scores[index]))
+
+    confidence = sum(confidences) / len(confidences) if confidences else 0.0
+    return "\n".join(recognized_lines), confidence
 
 
 def generate_with_deepseek(transcript: str) -> dict:
@@ -152,6 +186,29 @@ async def analyze(audio: UploadFile = File(...)):
             ],
             **generated,
         }
+    finally:
+        try:
+            Path(path).unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+@app.post("/solve-image")
+async def solve_image(image: UploadFile = File(...)):
+    suffix = Path(image.filename or "question.png").suffix or ".png"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temporary:
+        temporary.write(await image.read())
+        path = temporary.name
+    try:
+        recognized_text, ocr_confidence = recognize_image(path)
+        result = {
+            "recognizedText": recognized_text,
+            "ocrConfidence": ocr_confidence,
+            "needsConfirmation": True,
+        }
+        if not recognized_text or ocr_confidence < 0.65:
+            result["retryMessage"] = "题目文字不清晰，请重新拍摄。"
+        return result
     finally:
         try:
             Path(path).unlink(missing_ok=True)

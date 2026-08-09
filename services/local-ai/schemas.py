@@ -1,6 +1,18 @@
-from typing import Any, Literal
+import math
+import re
+from collections import Counter
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictInt,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 
 GenerationKind = Literal[
@@ -14,67 +26,87 @@ GenerationKind = Literal[
     "tutoring",
 ]
 
+BASE64_PATTERN = re.compile(r"^[A-Za-z0-9+/_-]+={0,2}$")
+
+
+def is_high_entropy_base64(value: str) -> bool:
+    if len(value) < 32 or not BASE64_PATTERN.fullmatch(value):
+        return False
+    counts = Counter(value.rstrip("="))
+    entropy = -sum(
+        (count / len(value)) * math.log2(count / len(value)) for count in counts.values()
+    )
+    return entropy >= 3.5
+
+
+def reject_non_text_payload(value: str) -> str:
+    lowered = value.lower()
+    if lowered.startswith(("data:", "http://", "https://")):
+        raise ValueError("上下文字段不允许 data URL 或 HTTP(S) URL")
+    if is_high_entropy_base64(value):
+        raise ValueError("上下文字段不允许不透明 base64 内容")
+    return value
+
+
+TextOnly = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=2000),
+    AfterValidator(reject_non_text_payload),
+]
+
+
 class ContextModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    @field_validator("*")
-    @classmethod
-    def list_values_must_be_bounded_strings(cls, value):
-        if isinstance(value, list):
-            for item in value:
-                if not isinstance(item, str) or not item.strip() or len(item) > 2000:
-                    raise ValueError("上下文列表项必须是 1 到 2000 个字符的字符串")
-        return value
-
 
 class LessonPlanContext(ContextModel):
-    textbook: str = Field(min_length=1, max_length=200)
-    chapter: str = Field(min_length=1, max_length=300)
-    objective: str = Field(min_length=1, max_length=1000)
-    context: str = Field(min_length=1, max_length=4000)
-    evidence: list[str] = Field(min_length=1, max_length=30)
+    textbook: TextOnly = Field(max_length=200)
+    chapter: TextOnly = Field(max_length=300)
+    objective: TextOnly = Field(max_length=1000)
+    context: TextOnly = Field(max_length=2000)
+    evidence: list[TextOnly] = Field(min_length=1, max_length=30)
 
 
 class QuizContext(ContextModel):
-    title: str = Field(min_length=1, max_length=300)
-    topic: str = Field(min_length=1, max_length=500)
-    difficulty: str = Field(min_length=1, max_length=100)
-    focus: str = Field(min_length=1, max_length=1000)
+    title: TextOnly = Field(max_length=300)
+    topic: TextOnly = Field(max_length=500)
+    difficulty: TextOnly = Field(max_length=100)
+    focus: TextOnly = Field(max_length=1000)
 
 
 class RemedialPlanContext(ContextModel):
-    knowledgePoint: str = Field(min_length=1, max_length=500)
-    step: str = Field(min_length=1, max_length=1000)
+    knowledgePoint: TextOnly = Field(max_length=500)
+    step: TextOnly = Field(max_length=1000)
     affectedCount: StrictInt = Field(ge=0, le=10000)
-    trend: str = Field(min_length=1, max_length=300)
-    evidence: list[str] = Field(min_length=1, max_length=30)
+    trend: TextOnly = Field(max_length=300)
+    evidence: list[TextOnly] = Field(min_length=1, max_length=30)
 
 
 class LearningReplyContext(ContextModel):
-    topic: str = Field(min_length=1, max_length=500)
-    recap: str = Field(min_length=1, max_length=2000)
-    question: str = Field(min_length=1, max_length=2000)
+    topic: TextOnly = Field(max_length=500)
+    recap: TextOnly
+    question: TextOnly
 
 
 class RetellFollowUpContext(ContextModel):
-    topic: str = Field(min_length=1, max_length=500)
-    retell: str = Field(min_length=1, max_length=3000)
+    topic: TextOnly = Field(max_length=500)
+    retell: TextOnly
 
 
 class ParentSummaryContext(ContextModel):
-    facts: list[str] = Field(min_length=1, max_length=30)
-    teacherMessage: str = Field(min_length=1, max_length=2000)
+    facts: list[TextOnly] = Field(min_length=1, max_length=30)
+    teacherMessage: TextOnly
 
 
 class StudentInferenceContext(ContextModel):
-    facts: list[str] = Field(min_length=1, max_length=30)
-    mistakes: list[str] = Field(min_length=1, max_length=30)
+    facts: list[TextOnly] = Field(min_length=1, max_length=30)
+    mistakes: list[TextOnly] = Field(min_length=1, max_length=30)
 
 
 class TutoringContext(ContextModel):
-    questionText: str = Field(min_length=1, max_length=4000)
-    stickingPoint: str = Field(min_length=1, max_length=1000)
-    attempt: str = Field(min_length=1, max_length=2000)
+    questionText: TextOnly
+    stickingPoint: TextOnly = Field(max_length=1000)
+    attempt: TextOnly
 
 
 CONTEXT_MODELS: dict[GenerationKind, type[ContextModel]] = {

@@ -56,6 +56,26 @@ def test_generate_request_bounds_allowlisted_list_values():
         )
 
 
+@pytest.mark.parametrize(
+    "question_text",
+    [
+        "data:text/plain,small-payload",
+        "https://example.com/image.png",
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ",
+    ],
+)
+def test_allowlisted_text_field_rejects_opaque_payload_before_request_body(question_text):
+    with pytest.raises(ValidationError):
+        GenerateRequest(
+            kind="tutoring",
+            context={
+                "questionText": question_text,
+                "stickingPoint": "通分",
+                "attempt": "先找公分母",
+            },
+        )
+
+
 def test_system_policy_forbids_personality_inference_and_diagnosis():
     request_body = build_request_body(
         GenerateRequest(

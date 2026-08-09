@@ -28,6 +28,7 @@ GenerationKind = Literal[
 ]
 
 BASE64_PATTERN = re.compile(r"^[A-Za-z0-9+/_-]+={0,2}$")
+ASCII_WHITESPACE_PATTERN = re.compile(r"[ \t\r\n\f\v]+")
 IMAGE_SIGNATURES = (
     b"\x89PNG\r\n\x1a\n",
     b"\xff\xd8\xff",
@@ -57,6 +58,14 @@ def is_encoded_payload_candidate(value: str) -> bool:
         or len(value) >= 16
         or value.startswith(PNM_BASE64_PREFIXES)
     )
+
+
+def compact_ascii_whitespace_encoded_candidate(value: str) -> str:
+    segments = ASCII_WHITESPACE_PATTERN.split(value)
+    if len(segments) < 2 or any(not segment or len(segment) % 4 for segment in segments):
+        return value
+    compacted = "".join(segments)
+    return compacted if is_encoded_payload_candidate(compacted) else value
 
 
 def decode_base64_candidate(value: str) -> bytes | None:
@@ -104,7 +113,8 @@ def reject_non_text_payload(value: str) -> str:
         raise ValueError("上下文字段不允许 data URL 或 HTTP(S) URL")
     if contains_svg_or_image_markup(value):
         raise ValueError("上下文字段不允许 SVG/XML 图片标记")
-    decoded_candidate = decode_base64_candidate(value)
+    inspection_value = compact_ascii_whitespace_encoded_candidate(value)
+    decoded_candidate = decode_base64_candidate(inspection_value)
     if decoded_candidate is not None and decoded_bytes_are_recognized_image(decoded_candidate):
         raise ValueError("上下文字段不允许图片或二进制 base64 内容")
     return value

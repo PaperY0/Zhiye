@@ -115,7 +115,14 @@ def test_allowlisted_text_field_rejects_marked_encoded_binary_payloads(question_
 
 @pytest.mark.parametrize(
     "question_text",
-    ["fractions", "math", "test", "2/3 > 1/2", "比较二分之三和五分之三"],
+    [
+        "fractions",
+        "math",
+        "test",
+        "2/3 > 1/2",
+        "比较二分之三和五分之三",
+        "Compare the fractions before choosing an answer",
+    ],
 )
 def test_allowlisted_text_field_preserves_normal_learning_text(question_text):
     request = GenerateRequest(
@@ -139,6 +146,35 @@ def test_allowlisted_text_field_preserves_normal_learning_text(question_text):
     ],
 )
 def test_allowlisted_text_field_rejects_raw_and_base64_svg_markup(question_text):
+    with pytest.raises(ValidationError):
+        GenerateRequest(
+            kind="tutoring",
+            context={
+                "questionText": question_text,
+                "stickingPoint": "通分",
+                "attempt": "先找公分母",
+            },
+        )
+
+
+@pytest.mark.parametrize(
+    "question_text",
+    [
+        "\n".join(
+            [
+                base64.b64encode(b"\x89PNG\r\n\x1a\n").decode()[:8],
+                base64.b64encode(b"\x89PNG\r\n\x1a\n").decode()[8:],
+            ]
+        ),
+        " ".join(
+            [
+                base64.b64encode(b"\x00\x00\x00\x18ftypavif").decode()[:8],
+                base64.b64encode(b"\x00\x00\x00\x18ftypavif").decode()[8:],
+            ]
+        ),
+    ],
+)
+def test_allowlisted_text_field_rejects_ascii_whitespace_wrapped_image_base64(question_text):
     with pytest.raises(ValidationError):
         GenerateRequest(
             kind="tutoring",

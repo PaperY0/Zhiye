@@ -76,6 +76,33 @@ def test_allowlisted_text_field_rejects_opaque_payload_before_request_body(quest
         )
 
 
+@pytest.mark.parametrize("question_text", ["UDEKMSAxCjAK", "题目\u0001包含控制字符"])
+def test_allowlisted_text_field_rejects_binary_payloads_and_control_characters(question_text):
+    with pytest.raises(ValidationError):
+        GenerateRequest(
+            kind="tutoring",
+            context={
+                "questionText": question_text,
+                "stickingPoint": "通分",
+                "attempt": "先找公分母",
+            },
+        )
+
+
+@pytest.mark.parametrize("question_text", ["fractions", "2/3 > 1/2", "比较二分之三和五分之三"])
+def test_allowlisted_text_field_preserves_normal_learning_text(question_text):
+    request = GenerateRequest(
+        kind="tutoring",
+        context={
+            "questionText": question_text,
+            "stickingPoint": "通分",
+            "attempt": "先找公分母",
+        },
+    )
+
+    assert request.context["questionText"] == question_text
+
+
 def test_system_policy_forbids_personality_inference_and_diagnosis():
     request_body = build_request_body(
         GenerateRequest(

@@ -1,7 +1,8 @@
-import math
+import base64
+import binascii
 import re
-from collections import Counter
 from typing import Annotated, Any, Literal
+import unicodedata
 
 from pydantic import (
     AfterValidator,
@@ -27,24 +28,62 @@ GenerationKind = Literal[
 ]
 
 BASE64_PATTERN = re.compile(r"^[A-Za-z0-9+/_-]+={0,2}$")
+IMAGE_SIGNATURES = (
+    b"\x89PNG\r\n\x1a\n",
+    b"\xff\xd8\xff",
+    b"GIF87a",
+    b"GIF89a",
+    b"BM",
+    b"II*\x00",
+    b"MM\x00*",
+    b"\x00\x00\x01\x00",
+    b"\x00\x00\x02\x00",
+    b"%PDF-",
+)
 
 
-def is_high_entropy_base64(value: str) -> bool:
-    if len(value) < 32 or not BASE64_PATTERN.fullmatch(value):
-        return False
-    counts = Counter(value.rstrip("="))
-    entropy = -sum(
-        (count / len(value)) * math.log2(count / len(value)) for count in counts.values()
+def has_disallowed_control_characters(value: str) -> bool:
+    return any(
+        unicodedata.category(character) == "Cc" and character not in "\t\n\r"
+        for character in value
     )
-    return entropy >= 3.5
+
+
+def decode_base64_candidate(value: str) -> bytes | None:
+    if not BASE64_PATTERN.fullmatch(value) or len(value) % 4 == 1:
+        return None
+    padded = value + ("=" * (-len(value) % 4))
+    try:
+        if "-" in value or "_" in value:
+            return base64.urlsafe_b64decode(padded)
+        return base64.b64decode(padded, validate=True)
+    except (binascii.Error, ValueError):
+        return None
+
+
+def decoded_bytes_are_binary_or_image(value: bytes) -> bool:
+    if value.startswith(IMAGE_SIGNATURES):
+        return True
+    if value.startswith(b"RIFF") and value[8:12] == b"WEBP":
+        return True
+    if len(value) >= 2 and value[:1] == b"P" and value[1:2] in b"123456":
+        return True
+    try:
+        decoded_text = value.decode("utf-8")
+    except UnicodeDecodeError:
+        return True
+    return has_disallowed_control_characters(decoded_text)
 
 
 def reject_non_text_payload(value: str) -> str:
+    if has_disallowed_control_characters(value):
+        raise ValueError("上下文字段不允许控制字符")
     lowered = value.lower()
     if lowered.startswith(("data:", "http://", "https://")):
         raise ValueError("上下文字段不允许 data URL 或 HTTP(S) URL")
-    if is_high_entropy_base64(value):
-        raise ValueError("上下文字段不允许不透明 base64 内容")
+    decoded_candidate = decode_base64_candidate(value)
+    if decoded_candidate is not None and decoded_bytes_are_binary_or_image(decoded_candidate):
+        raise ValueError("上下文字段不允许图片或二进制 base64 内容")
     return value
 
 

@@ -40,6 +40,8 @@ IMAGE_SIGNATURES = (
     b"\x00\x00\x02\x00",
     b"%PDF-",
 )
+ENCODED_PAYLOAD_MARKERS = "=+/-_"
+PNM_BASE64_PREFIXES = ("UDE", "UDI", "UDM", "UDQ", "UDU", "UDY")
 
 
 def has_disallowed_control_characters(value: str) -> bool:
@@ -49,8 +51,16 @@ def has_disallowed_control_characters(value: str) -> bool:
     )
 
 
+def is_encoded_payload_candidate(value: str) -> bool:
+    return bool(BASE64_PATTERN.fullmatch(value)) and (
+        any(marker in value for marker in ENCODED_PAYLOAD_MARKERS)
+        or len(value) >= 16
+        or value.startswith(PNM_BASE64_PREFIXES)
+    )
+
+
 def decode_base64_candidate(value: str) -> bytes | None:
-    if not BASE64_PATTERN.fullmatch(value) or len(value) % 4 == 1:
+    if not is_encoded_payload_candidate(value) or len(value) % 4 == 1:
         return None
     padded = value + ("=" * (-len(value) % 4))
     try:
@@ -75,12 +85,14 @@ def decoded_bytes_are_recognized_image(value: bytes) -> bool:
         return True
     if value.startswith(b"RIFF") and value[8:12] == b"WEBP":
         return True
+    if value[4:8] == b"ftyp" and value[8:12] in {b"avif", b"heic", b"heix"}:
+        return True
     if len(value) >= 2 and value[:1] == b"P" and value[1:2] in b"123456":
         return True
     try:
         decoded_text = value.decode("utf-8")
     except UnicodeDecodeError:
-        return False
+        return True
     return contains_svg_or_image_markup(decoded_text)
 
 

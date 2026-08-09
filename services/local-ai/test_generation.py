@@ -1,3 +1,5 @@
+import base64
+
 import pytest
 import importlib
 import sys
@@ -78,6 +80,28 @@ def test_allowlisted_text_field_rejects_opaque_payload_before_request_body(quest
 
 @pytest.mark.parametrize("question_text", ["UDEKMSAxCjAK", "题目\u0001包含控制字符"])
 def test_allowlisted_text_field_rejects_binary_payloads_and_control_characters(question_text):
+    with pytest.raises(ValidationError):
+        GenerateRequest(
+            kind="tutoring",
+            context={
+                "questionText": question_text,
+                "stickingPoint": "通分",
+                "attempt": "先找公分母",
+            },
+        )
+
+
+@pytest.mark.parametrize(
+    "question_text",
+    [
+        "////",
+        "/wAB",
+        base64.b64encode(b"\x00\x00\x00\x18ftypavif").decode(),
+        base64.b64encode(b"\x00\x00\x00\x18ftypheic").decode(),
+        base64.b64encode(b"\x00\x00\x00\x18ftypheix").decode(),
+    ],
+)
+def test_allowlisted_text_field_rejects_marked_encoded_binary_payloads(question_text):
     with pytest.raises(ValidationError):
         GenerateRequest(
             kind="tutoring",

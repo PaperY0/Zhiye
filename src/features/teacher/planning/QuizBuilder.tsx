@@ -1,10 +1,8 @@
 import { useState } from "react"
 import type { Quiz, QuizQuestion } from "../../../app/prototype/types"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
-import {
-  generateThreeQuestionQuiz,
-  type QuizGeneratorInput,
-} from "./generators"
+import { generateDraft } from "../../../services/localAi"
+import { toQuiz, type QuizGeneratorInput } from "./generators"
 
 const topics = ["分数基本性质", "单位换算", "小数乘法估算"]
 const difficulties: QuizGeneratorInput["difficulty"][] = [
@@ -144,6 +142,8 @@ export function QuizBuilder() {
   const [draft, setDraft] = useState<Quiz | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [notice, setNotice] = useState("")
+  const [generationError, setGenerationError] = useState("")
+  const [isGenerating, setIsGenerating] = useState(false)
 
   function updateQuestion(index: number, next: QuizQuestion) {
     setDraft((current) =>
@@ -156,6 +156,21 @@ export function QuizBuilder() {
           }
         : current,
     )
+  }
+
+  async function generateQuiz() {
+    setIsGenerating(true)
+    setGenerationError("")
+    try {
+      const response = await generateDraft("quiz", input)
+      const payload = response as { content?: unknown }
+      setDraft(toQuiz(payload.content))
+      setNotice("")
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : "生成失败，请重试")
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   return (
@@ -227,14 +242,20 @@ export function QuizBuilder() {
           </label>
           <button
             className="rounded-full bg-[#15241a] px-5 py-3 font-black text-white shadow-lg shadow-[#15241a]/15"
+            disabled={isGenerating}
             type="button"
-            onClick={() => {
-              setDraft(generateThreeQuestionQuiz(input))
-              setNotice("")
-            }}
+            onClick={() => void generateQuiz()}
           >
-            生成三题测验
+            {isGenerating ? "正在生成草稿" : "生成三题测验"}
           </button>
+          {generationError ? (
+            <div className="grid gap-3 rounded-2xl border border-[#e4b9b4] bg-[#fff5f3] p-4 text-sm text-[#8d332b]" role="alert">
+              <p>{generationError}</p>
+              <button className="w-fit rounded-full border border-current px-4 py-2 font-black" type="button" onClick={() => void generateQuiz()}>
+                重试生成
+              </button>
+            </div>
+          ) : null}
         </div>
       </section>
 

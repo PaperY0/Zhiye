@@ -1,7 +1,8 @@
 import { useState } from "react"
 import type { PlanDraft } from "../../../app/prototype/types"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
-import { generateLessonPlan, type LessonPlanGeneratorInput } from "./generators"
+import { generateDraft } from "../../../services/localAi"
+import { toPlanDraft, type LessonPlanGeneratorInput } from "./generators"
 
 const textbooks = ["人教版数学五年级上册", "北师大版数学五年级上册"]
 const chapters = ["分数的基本性质", "小数乘法 · 估算", "单位换算"]
@@ -41,6 +42,8 @@ export function LessonPlanBuilder() {
   })
   const [draft, setDraft] = useState<PlanDraft | null>(null)
   const [notice, setNotice] = useState("")
+  const [generationError, setGenerationError] = useState("")
+  const [isGenerating, setIsGenerating] = useState(false)
 
   function toggleEvidence(label: string) {
     setInput((current) => ({
@@ -53,6 +56,21 @@ export function LessonPlanBuilder() {
 
   function patchDraft(patch: Partial<PlanDraft>) {
     setDraft((current) => (current ? { ...current, ...patch } : current))
+  }
+
+  async function generatePlan() {
+    setIsGenerating(true)
+    setGenerationError("")
+    try {
+      const response = await generateDraft("lesson-plan", input)
+      const payload = response as { content?: unknown }
+      setDraft(toPlanDraft(payload.content, input))
+      setNotice("")
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : "生成失败，请重试")
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   return (
@@ -149,14 +167,20 @@ export function LessonPlanBuilder() {
 
           <button
             className="rounded-full bg-[#15241a] px-5 py-3 font-black text-white shadow-lg shadow-[#15241a]/15 transition hover:-translate-y-0.5"
+            disabled={isGenerating}
             type="button"
-            onClick={() => {
-              setDraft(generateLessonPlan(input))
-              setNotice("")
-            }}
+            onClick={() => void generatePlan()}
           >
-            生成教案
+            {isGenerating ? "正在生成草稿" : "生成教案"}
           </button>
+          {generationError ? (
+            <div className="grid gap-3 rounded-2xl border border-[#e4b9b4] bg-[#fff5f3] p-4 text-sm text-[#8d332b]" role="alert">
+              <p>{generationError}</p>
+              <button className="w-fit rounded-full border border-current px-4 py-2 font-black" type="button" onClick={() => void generatePlan()}>
+                重试生成
+              </button>
+            </div>
+          ) : null}
         </div>
       </section>
 

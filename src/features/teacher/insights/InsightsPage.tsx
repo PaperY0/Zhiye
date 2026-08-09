@@ -12,13 +12,9 @@ import {
 } from "lucide-react"
 
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
+import { generateDraft } from "../../../services/localAi"
 
-import type {
-  KnowledgeSignal,
-  PlanDraft,
-  Quiz,
-  Subject,
-} from "../../../app/prototype/types"
+import type { KnowledgeSignal, Subject } from "../../../app/prototype/types"
 
 import { Drawer } from "../../../components/shared/Drawer"
 
@@ -34,6 +30,7 @@ import {
 } from "../../../components/shared/StatusChip"
 
 import { KnowledgeHeatmap, getSignalAxis } from "./KnowledgeHeatmap"
+import { toQuiz, toRemedialPlanDraft } from "../planning/generators"
 
 type TimeRange = "today" | "week" | "month"
 
@@ -56,92 +53,6 @@ function matchesTime(signal: KnowledgeSignal, range: TimeRange) {
   if (range === "today") return signal.observedAt.startsWith(prototypeToday)
 
   return true
-}
-
-function createPlan(signal: KnowledgeSignal): PlanDraft {
-  const stamp = Date.now()
-
-  return {
-    id: `plan-insight-${signal.id}-${stamp}`,
-
-    title: `${signal.knowledgePoint}步骤补讲`,
-
-    subject: signal.subject,
-
-    grade: "五年级",
-
-    chapter: signal.knowledgePoint,
-
-    objective: `帮助学生识别“${signal.step}”的判断依据，并能解释每一步。`,
-
-    context: "用校园测量和生活物品换算建立步骤意识",
-
-    evidence: [...signal.evidence],
-
-    outline: ["回看课堂证据", "示范判断步骤", "同伴解释理由", "即时自检"],
-
-    examples: ["先判断单位变大还是变小，再决定数值变化方向。"],
-
-    misconceptions: ["只记进率，没有先判断乘除方向"],
-
-    suggestions: ["让学生先说理由，再写算式", "用单位阶梯图标记方向"],
-
-    extension: "请学生自己设计一道同类型问题，并解释判断过程。",
-
-    status: "draft",
-
-    createdAt: new Date().toISOString(),
-  }
-}
-
-function createQuiz(signal: KnowledgeSignal): Quiz {
-  const stamp = Date.now()
-
-  return {
-    id: `quiz-insight-${signal.id}-${stamp}`,
-
-    title: `${signal.knowledgePoint}${getSignalAxis(signal)}巩固练习`,
-
-    subject: signal.subject,
-
-    status: "draft",
-
-    createdAt: new Date().toISOString(),
-
-    questions: [
-      {
-        id: `question-insight-${stamp}-1`,
-
-        prompt: "3 米等于多少厘米？先判断方向，再选择答案。",
-
-        type: "single-choice",
-
-        options: ["0.03 厘米", "30 厘米", "300 厘米"],
-
-        answer: "300 厘米",
-
-        explanation: "从米换算到更小的厘米，数值需要乘 100。",
-
-        score: 5,
-      },
-
-      {
-        id: `question-insight-${stamp}-2`,
-
-        prompt: `请用一句话解释“${signal.step}”时先看什么。`,
-
-        type: "short-answer",
-
-        options: [],
-
-        answer: "先比较换算前后单位的大小，再决定乘或除。",
-
-        explanation: "判断方向比直接套用进率更重要。",
-
-        score: 5,
-      },
-    ],
-  }
 }
 
 function metricTrend(signals: KnowledgeSignal[]) {
@@ -273,6 +184,11 @@ export function InsightsPage() {
   )
 
   const [notice, setNotice] = useState("")
+  const [generationError, setGenerationError] = useState<{
+    action: "plan" | "quiz"
+    message: string
+  } | null>(null)
+  const [generatingAction, setGeneratingAction] = useState<"plan" | "quiz" | null>(null)
 
   const filteredSignals = useMemo(
     () =>
@@ -297,24 +213,59 @@ export function InsightsPage() {
 
   const trendDelta = metricTrend(filteredSignals)
 
-  function generatePlan(signal: KnowledgeSignal) {
-    const plan = createPlan(signal)
-
-    addPlan(plan)
-
-    setNotice(`已生成“${plan.title}”，可在备课与测验中继续编辑。`)
-
-    setSelectedSignal(null)
+  async function generatePlan(signal: KnowledgeSignal) {
+    setGeneratingAction("plan")
+    setGenerationError(null)
+    try {
+      const response = await generateDraft("remedial-plan", {
+        knowledgePoint: signal.knowledgePoint,
+        step: signal.step,
+        affectedCount: signal.affectedCount,
+        trend: signal.trend.join(" → "),
+        evidence: signal.evidence,
+      })
+      const payload = response as { content?: unknown }
+      const plan = toRemedialPlanDraft(payload.content, {
+        subject: signal.subject,
+        knowledgePoint: signal.knowledgePoint,
+        evidence: signal.evidence,
+      })
+      addPlan(plan)
+      setNotice(`已生成“${plan.title}”，可在备课与测验中继续编辑。`)
+      setSelectedSignal(null)
+    } catch (error) {
+      setGenerationError({
+        action: "plan",
+        message: error instanceof Error ? error.message : "生成失败，请重试",
+      })
+    } finally {
+      setGeneratingAction(null)
+    }
   }
 
-  function generateQuiz(signal: KnowledgeSignal) {
-    const quiz = createQuiz(signal)
-
-    addQuiz(quiz)
-
-    setNotice(`已生成“${quiz.title}”，可在备课与测验中继续编辑。`)
-
-    setSelectedSignal(null)
+  async function generateQuiz(signal: KnowledgeSignal) {
+    setGeneratingAction("quiz")
+    setGenerationError(null)
+    try {
+      const response = await generateDraft("quiz", {
+        title: `${signal.knowledgePoint}${getSignalAxis(signal)}巩固练习`,
+        topic: signal.knowledgePoint,
+        difficulty: signal.severity,
+        focus: signal.step,
+      })
+      const payload = response as { content?: unknown }
+      const quiz = toQuiz(payload.content)
+      addQuiz({ ...quiz, subject: signal.subject })
+      setNotice(`已生成“${quiz.title}”，可在备课与测验中继续编辑。`)
+      setSelectedSignal(null)
+    } catch (error) {
+      setGenerationError({
+        action: "quiz",
+        message: error instanceof Error ? error.message : "生成失败，请重试",
+      })
+    } finally {
+      setGeneratingAction(null)
+    }
   }
 
   return (
@@ -507,21 +458,39 @@ export function InsightsPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <button
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#17251c] px-4 py-3 text-sm font-black text-white shadow-[0_12px_24px_rgba(24,42,29,.18)] transition hover:bg-[#284632] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#416b4d]/25"
-                onClick={() => generatePlan(selectedSignal)}
+                disabled={generatingAction !== null}
+                onClick={() => void generatePlan(selectedSignal)}
                 type="button"
               >
                 <Sparkles aria-hidden="true" size={17} />
-                一键生成补讲方案
+                {generatingAction === "plan" ? "正在生成草稿" : "一键生成补讲方案"}
               </button>
               <button
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[#b9cdbb] bg-white/75 px-4 py-3 text-sm font-black text-[#2f5638] transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#416b4d]/25"
-                onClick={() => generateQuiz(selectedSignal)}
+                disabled={generatingAction !== null}
+                onClick={() => void generateQuiz(selectedSignal)}
                 type="button"
               >
                 <BookOpenCheck aria-hidden="true" size={17} />
-                一键生成巩固练习
+                {generatingAction === "quiz" ? "正在生成草稿" : "一键生成巩固练习"}
               </button>
             </div>
+            {generationError ? (
+              <div className="grid gap-3 rounded-2xl border border-[#e4b9b4] bg-[#fff5f3] p-4 text-sm text-[#8d332b]" role="alert">
+                <p>{generationError.message}</p>
+                <button
+                  className="w-fit rounded-full border border-current px-4 py-2 font-black"
+                  type="button"
+                  onClick={() =>
+                    void (generationError.action === "plan"
+                      ? generatePlan(selectedSignal)
+                      : generateQuiz(selectedSignal))
+                  }
+                >
+                  重试生成
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </Drawer>

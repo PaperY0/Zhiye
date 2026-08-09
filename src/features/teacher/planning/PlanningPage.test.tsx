@@ -1,16 +1,16 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { vi } from "vitest"
 import {
   PrototypeProvider,
   usePrototype,
 } from "../../../app/prototype/PrototypeContext"
 import PlanningPage from "./PlanningPage"
-import {
-  generateLessonPlan,
-  generateThreeQuestionQuiz,
-  type LessonPlanGeneratorInput,
-  type QuizGeneratorInput,
-} from "./generators"
+import { generateDraft } from "../../../services/localAi"
+
+vi.mock("../../../services/localAi", () => ({
+  generateDraft: vi.fn(),
+}))
 
 function StateProbe() {
   const { plans, quizzes } = usePrototype()
@@ -32,33 +32,23 @@ function renderPlanningPage() {
   )
 }
 
-describe("planning generators", () => {
-  it("generates deterministic lesson plans and exactly three quiz questions", () => {
-    const planInput: LessonPlanGeneratorInput = {
-      textbook: "人教版数学五年级上册",
-      chapter: "小数乘法 · 估算",
-      objective: "能解释估算步骤并检查结果是否合理",
-      context: "校园菜园采购",
-      evidence: ["课堂停顿", "自检错题"],
-    }
-    const quizInput: QuizGeneratorInput = {
-      title: "小数乘法估算三题测验",
-      topic: "小数乘法估算",
-      difficulty: "递进",
-      focus: "步骤与合理性判断",
-    }
-
-    expect(generateLessonPlan(planInput)).toEqual(generateLessonPlan(planInput))
-    expect(generateThreeQuestionQuiz(quizInput)).toEqual(
-      generateThreeQuestionQuiz(quizInput),
-    )
-    expect(generateThreeQuestionQuiz(quizInput).questions).toHaveLength(3)
-  })
-})
-
 describe("PlanningPage", () => {
-  it("configures, generates, edits, and saves an evidence-aware lesson plan", async () => {
+  beforeEach(() => {
+    vi.mocked(generateDraft).mockReset()
+  })
+
+  it("renders the lesson plan returned by local AI for review and saving", async () => {
     const user = userEvent.setup()
+    vi.mocked(generateDraft).mockResolvedValue({
+      content: {
+        title: "单位换算补讲",
+        outline: ["先复习方向判断"],
+        examples: ["1 米等于多少厘米"],
+        misconceptions: ["忽略单位方向"],
+        suggestions: ["先估算再计算"],
+        extension: "设计一道换算题",
+      },
+    })
     renderPlanningPage()
 
     expect(
@@ -69,57 +59,64 @@ describe("PlanningPage", () => {
       "true",
     )
 
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "教材" }),
-      "人教版数学五年级上册",
-    )
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "章节" }),
-      "小数乘法 · 估算",
-    )
-    await user.clear(screen.getByRole("textbox", { name: "教学目标" }))
-    await user.type(
-      screen.getByRole("textbox", { name: "教学目标" }),
-      "能解释估算步骤并检查结果是否合理",
-    )
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "生活情境" }),
-      "校园菜园采购",
-    )
     await user.click(screen.getByRole("checkbox", { name: "课堂停顿" }))
-    await user.click(screen.getByRole("checkbox", { name: "自检错题" }))
     await user.click(screen.getByRole("button", { name: "生成教案" }))
 
     const editor = screen.getByRole("region", { name: "教案编辑器" })
+    expect(await within(editor).findByDisplayValue("单位换算补讲")).toBeInTheDocument()
+    expect(vi.mocked(generateDraft)).toHaveBeenCalledWith("lesson-plan", {
+      textbook: "人教版数学五年级上册",
+      chapter: "分数的基本性质",
+      objective: "理解知识步骤，并能在生活情境中解释方法",
+      context: "校园菜园采购",
+      evidence: ["课堂停顿"],
+    })
     expect(within(editor).getByText("教学流程")).toBeInTheDocument()
     expect(within(editor).getByText("生活化示例")).toBeInTheDocument()
     expect(within(editor).getByText("常见误区")).toBeInTheDocument()
     expect(within(editor).getByText("教学建议")).toBeInTheDocument()
     expect(within(editor).getByText("课后延伸")).toBeInTheDocument()
     expect(within(editor).getByText("课堂停顿")).toBeInTheDocument()
-    expect(within(editor).getByText("自检错题")).toBeInTheDocument()
 
     const title = within(editor).getByRole("textbox", { name: "教案标题" })
     await user.clear(title)
-    await user.type(title, "校园菜园里的小数估算")
-    await user.type(
-      within(editor).getByRole("textbox", { name: "课后延伸" }),
-      "让学生设计一张采购估算清单。",
-    )
+    await user.type(title, "教师修订后的补讲")
     await user.click(
       within(editor).getByRole("button", { name: "保存到备课记录" }),
     )
 
     expect(screen.getByLabelText("原型状态")).toHaveTextContent(
-      "教案 2 · 最新教案 校园菜园里的小数估算",
+      "教案 2 · 最新教案 教师修订后的补讲",
     )
     expect(
       screen.getByText("教案已保存", { selector: 'p[role="status"]' }),
     ).toBeInTheDocument()
   })
 
+  it("keeps the editor empty and offers a retry when lesson-plan generation fails", async () => {
+    const user = userEvent.setup()
+    vi.mocked(generateDraft).mockRejectedValue(new Error("服务不可用"))
+    renderPlanningPage()
+
+    await user.click(screen.getByRole("button", { name: "生成教案" }))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("服务不可用")
+    expect(screen.getByRole("button", { name: "重试生成" })).toBeInTheDocument()
+    expect(screen.queryByRole("textbox", { name: "教案标题" })).not.toBeInTheDocument()
+  })
+
   it("generates, edits, previews, and publishes a three-question quiz", async () => {
     const user = userEvent.setup()
+    vi.mocked(generateDraft).mockResolvedValue({
+      content: {
+        title: "单位换算三题闯关",
+        questions: [
+          { prompt: "1 米等于多少厘米？", options: ["1", "100"], answer: "100" },
+          { prompt: "2 米等于多少厘米？", options: ["2", "200"], answer: "200" },
+          { prompt: "3 米等于多少厘米？", options: ["3", "300"], answer: "300" },
+        ],
+      },
+    })
     renderPlanningPage()
 
     await user.click(screen.getByRole("tab", { name: "三题测验" }))

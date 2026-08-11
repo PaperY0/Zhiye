@@ -56,16 +56,13 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8787/solve-image -Form @{ image 
 
 ## 浏览器验收
 
-### 已提交基线（可复现）
+### 当前工作区验收前提
 
-使用已提交 `src/app/prototype/fixtures.ts` 的默认数据启动 Vite 后，打开
-`http://127.0.0.1:8443/#/teacher/classroom`，再按下列步骤验证录音与草稿链路。该路径不依赖 `?data=empty` 或 `?data=acceptance`，因此可作为提交树的原型基线验收。
+`PrototypeContext.tsx` 静态导入当前未提交的 `src/app/prototype/acceptanceFixtures.ts` 与 `src/app/prototype/emptyFixtures.ts`。因此，即使使用默认地址 `http://127.0.0.1:8443/#/teacher/classroom`，当前原型构建也依赖这两个文件；干净提交树不能仅凭已提交的 `src/app/prototype/fixtures.ts` 单独启动原型。
 
-### 当前未提交工作区专用 fixture
+要进行浏览器验收，必须先补齐并提交这两个 fixture 文件，或明确在当前工作区验收。`?data=empty#/teacher/classroom` 还会选择未提交的 `emptyFixtures.ts` 空数据状态。运行前以 `git status --short`、实际文件存在状态和 Vite 启动结果确认；不要把脏工作区成功结果写成提交树可复现证据。
 
-`http://127.0.0.1:8443/?data=empty#/teacher/classroom` 依赖当前工作区未提交的 `src/app/prototype/emptyFixtures.ts`。它可帮助本机检查空数据状态，但不能作为已提交代码或本次提交可复现的验收证据；运行前须以 `git status --short` 和实际文件存在状态确认。
-
-在上述两种前提之一成立后：
+在当前工作区满足上述依赖后：
 
 1. 打开相应的课堂地址。
 2. 点击“开始新课堂录音”。

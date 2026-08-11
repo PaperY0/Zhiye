@@ -1,10 +1,24 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import {
-  PrototypeProvider,
-  usePrototype,
-} from "../../../app/prototype/PrototypeContext"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
+import { generateDraft, recognizeQuestionImage } from "../../../services/localAi"
 import { TutoringPage } from "./TutoringPage"
+
+vi.mock("../../../services/localAi", () => ({
+  generateDraft: vi.fn(),
+  recognizeQuestionImage: vi.fn(),
+}))
+
+const validDraft = {
+  hint: "先找出题目中已知的数量关系。",
+  keyStep: "把等式两边同时除以 3。",
+  explanation: "这样能先得到每一份的数量。",
+  retellPrompt: "请用自己的话说说为什么要先除以 3。",
+  transferQuestion: "另一组有 12 个苹果，平均分给 3 人，每人几个？",
+  transferOptions: ["3 个", "4 个", "5 个"],
+  transferAnswer: "4 个",
+}
 
 function renderPage() {
   return render(
@@ -14,193 +28,99 @@ function renderPage() {
   )
 }
 
-describe("TutoringPage entry flow", () => {
-  it("selects and replaces a simulated problem image", async () => {
+async function uploadQuestion(user: ReturnType<typeof userEvent.setup>) {
+  await user.upload(
+    screen.getByLabelText("选择题目图片"),
+    new File(["image"], "question.png", { type: "image/png" }),
+  )
+}
+
+async function confirmAndRequestHelp(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "确认题目，继续" }))
+  await user.click(screen.getByRole("button", { name: "完全没思路" }))
+}
+
+describe("TutoringPage OCR and local AI flow", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(recognizeQuestionImage).mockResolvedValue({
+      recognizedText: "一组有 12 个苹果，平均分给 3 人，每人几个？",
+      ocrConfidence: 0.92,
+      needsConfirmation: true,
+    })
+  })
+
+  it("requires confirmation of editable OCR text before invoking AI", async () => {
     const user = userEvent.setup()
     renderPage()
 
+    await uploadQuestion(user)
+
     expect(
-      screen.getByRole("heading", { name: "拍照答疑" }),
+      await screen.findByDisplayValue("一组有 12 个苹果，平均分给 3 人，每人几个？"),
     ).toBeInTheDocument()
-    expect(screen.getByText("原型演示，不会上传真实图片")).toBeInTheDocument()
-
-    await user.upload(
-      screen.getByLabelText("选择一道清晰的题目图片"),
-      new File(["first"], "first-question.png", { type: "image/png" }),
-    )
-
-    expect(screen.getByText("first-question.png")).toBeInTheDocument()
-    expect(
-      screen.getByText("代表题目：比较 2/3 和 3/5 的大小"),
-    ).toBeInTheDocument()
-
-    await user.upload(
-      screen.getByLabelText("替换题目图片"),
-      new File(["second"], "replacement.jpg", { type: "image/jpeg" }),
-    )
-
-    expect(screen.getByText("replacement.jpg")).toBeInTheDocument()
-    expect(screen.queryByText("first-question.png")).not.toBeInTheDocument()
+    expect(generateDraft).not.toHaveBeenCalled()
+    expect(screen.queryByRole("button", { name: "完全没思路" })).not.toBeInTheDocument()
   })
 
-  it("offers all four sticking-point choices with large controls", async () => {
+  it("guides students to retake when OCR is empty or low confidence without invoking AI", async () => {
+    vi.mocked(recognizeQuestionImage).mockResolvedValue({
+      recognizedText: "",
+      ocrConfidence: 0.31,
+      needsConfirmation: true,
+      retryMessage: "题目没有识别清楚，请补拍。",
+    })
     const user = userEvent.setup()
     renderPage()
 
-    await user.upload(
-      screen.getByLabelText("选择一道清晰的题目图片"),
-      new File(["question"], "fraction.png", { type: "image/png" }),
-    )
+    await uploadQuestion(user)
 
-    for (const choice of [
-      "完全没思路",
-      "卡在某一步",
-      "想核对思路",
-      "已做完想检查",
-    ]) {
-      expect(screen.getByRole("button", { name: choice })).toHaveClass(
-        "min-h-16",
-      )
-    }
+    expect(await screen.findByText("题目没有识别清楚，请补拍。")).toBeInTheDocument()
+    expect(generateDraft).not.toHaveBeenCalled()
   })
 
-  it("shows the unclear-photo and describe-your-attempt branches", async () => {
+  it("renders a successful layered tutoring response from local AI", async () => {
+    vi.mocked(generateDraft).mockResolvedValue(validDraft)
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(
-      screen.getByRole("button", { name: "模拟一张不清晰的照片" }),
-    )
-    expect(
-      screen.getByRole("heading", { name: "这张照片有点看不清" }),
-    ).toBeInTheDocument()
+    await uploadQuestion(user)
+    await confirmAndRequestHelp(user)
 
-    await user.upload(
-      screen.getByLabelText("重新选择清晰图片"),
-      new File(["clear"], "clear-fraction.png", { type: "image/png" }),
-    )
-    await user.click(screen.getByRole("button", { name: "卡在某一步" }))
-
-    expect(screen.getByLabelText("描述你已经尝试到哪一步")).toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "继续确认题目" }))
-    expect(screen.getByText("先写下你已经尝试到哪一步。")).toBeInTheDocument()
-
-    await user.type(
-      screen.getByLabelText("描述你已经尝试到哪一步"),
-      "我尝试通分，但不确定公分母。",
-    )
-    await user.click(screen.getByRole("button", { name: "继续确认题目" }))
-
-    expect(
-      screen.getByRole("heading", { name: "先确认我们读到的题目" }),
-    ).toBeInTheDocument()
+    expect(await screen.findByText(validDraft.hint)).toBeInTheDocument()
+    expect(generateDraft).toHaveBeenCalledWith("tutoring", {
+      questionText: "一组有 12 个苹果，平均分给 3 人，每人几个？",
+      stickingPoint: "no-idea",
+      attempt: "",
+    })
   })
 
-  it("completes layered help, requires a retell, solves a transfer, and saves an editable mistake", async () => {
+  it("keeps the tutoring flow out of layered help when the AI response is invalid", async () => {
+    vi.mocked(generateDraft).mockResolvedValue({
+      hint: "缺少其余字段的无效响应",
+    })
     const user = userEvent.setup()
     renderPage()
 
-    await user.upload(
-      screen.getByLabelText("选择一道清晰的题目图片"),
-      new File(["question"], "fraction-work.png", { type: "image/png" }),
-    )
-    await user.click(screen.getByRole("button", { name: "卡在某一步" }))
-    await user.type(
-      screen.getByLabelText("描述你已经尝试到哪一步"),
-      "我知道要通分，但不知道下一步。",
-    )
-    await user.click(screen.getByRole("button", { name: "继续确认题目" }))
-    await user.click(screen.getByRole("button", { name: "题目正确，开始提示" }))
+    await uploadQuestion(user)
+    await confirmAndRequestHelp(user)
 
-    expect(
-      screen.getByRole("heading", { name: "提示 1：先看条件" }),
-    ).toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "再给我一点提示" }))
-    expect(
-      screen.getByRole("heading", { name: "关键步骤" }),
-    ).toBeInTheDocument()
-
-    await user.click(screen.getByRole("button", { name: "我想看完整讲解" }))
-    expect(
-      screen.getByRole("heading", { name: "完整讲解" }),
-    ).toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "我来复述" }))
-
-    await user.click(screen.getByRole("button", { name: "提交复述并做迁移题" }))
-    expect(
-      screen.getByText("先用自己的话复述这道题的关键方法。"),
-    ).toBeInTheDocument()
-
-    await user.type(
-      screen.getByLabelText("用自己的话复述解题方法"),
-      "先找公分母，把两个分数通分，再比较分子。",
-    )
-    await user.click(screen.getByRole("button", { name: "提交复述并做迁移题" }))
-
-    expect(
-      screen.getByRole("heading", { name: "换一道题试试" }),
-    ).toBeInTheDocument()
-    await user.click(screen.getByRole("radio", { name: "3/4 更大" }))
-    await user.click(screen.getByRole("button", { name: "检查迁移题" }))
-
-    expect(
-      screen.getByRole("heading", { name: "整理进错题本" }),
-    ).toBeInTheDocument()
-    await user.clear(screen.getByLabelText("知识点"))
-    await user.type(screen.getByLabelText("知识点"), "异分母分数比较")
-    await user.clear(screen.getByLabelText("错因"))
-    await user.type(screen.getByLabelText("错因"), "没有先找到公分母")
-    await user.selectOptions(screen.getByLabelText("掌握状态"), "basic")
-    await user.click(screen.getByRole("button", { name: "保存到错题本" }))
-
-    expect(
-      screen.getByRole("heading", { name: "已经保存到错题本" }),
-    ).toBeInTheDocument()
-    expect(screen.getByText("异分母分数比较")).toBeInTheDocument()
-    expect(screen.getByText("没有先找到公分母")).toBeInTheDocument()
-    expect(
-      screen.getByRole("link", { name: "查看我的错题本" }),
-    ).toHaveAttribute("href", "#/student/mistakes")
+    expect(await screen.findByRole("button", { name: "重试生成提示" })).toBeInTheDocument()
+    expect(screen.queryByText("比较 2/3 和 3/5 的大小")).not.toBeInTheDocument()
   })
 
-  it("writes the saved tutoring mistake into the shared student state", async () => {
-    function MistakeCount() {
-      const { students } = usePrototype()
-      const student = students.find((item) => item.id === "student-lin-xiaoyu")
-      return (
-        <output aria-label="林晓雨错题数量">
-          {student?.mistakes.length ?? 0}
-        </output>
-      )
-    }
-
+  it("offers retry after a generation failure and recovers with the retried response", async () => {
+    vi.mocked(generateDraft)
+      .mockRejectedValueOnce(new Error("本地 AI 暂时不可用"))
+      .mockResolvedValueOnce(validDraft)
     const user = userEvent.setup()
-    render(
-      <PrototypeProvider>
-        <TutoringPage />
-        <MistakeCount />
-      </PrototypeProvider>,
-    )
-    const before = Number(screen.getByLabelText("林晓雨错题数量").textContent)
+    renderPage()
 
-    await user.upload(
-      screen.getByLabelText("选择一道清晰的题目图片"),
-      new File(["question"], "fraction.png", { type: "image/png" }),
-    )
-    await user.click(screen.getByRole("button", { name: "完全没思路" }))
-    await user.click(screen.getByRole("button", { name: "题目正确，开始提示" }))
-    await user.click(screen.getByRole("button", { name: "我来复述" }))
-    await user.type(
-      screen.getByLabelText("用自己的话复述解题方法"),
-      "统一分母以后比较分子。",
-    )
-    await user.click(screen.getByRole("button", { name: "提交复述并做迁移题" }))
-    await user.click(screen.getByRole("radio", { name: "3/4 更大" }))
-    await user.click(screen.getByRole("button", { name: "检查迁移题" }))
-    await user.click(screen.getByRole("button", { name: "保存到错题本" }))
+    await uploadQuestion(user)
+    await confirmAndRequestHelp(user)
+    await user.click(await screen.findByRole("button", { name: "重试生成提示" }))
 
-    expect(screen.getByLabelText("林晓雨错题数量")).toHaveTextContent(
-      String(before + 1),
-    )
+    expect(await screen.findByText(validDraft.hint)).toBeInTheDocument()
+    expect(generateDraft).toHaveBeenCalledTimes(2)
   })
 })

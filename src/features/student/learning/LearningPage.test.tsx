@@ -37,6 +37,8 @@ describe("LearningPage", () => {
   it("sends the student question to local AI and renders its validated reply", async () => {
     const user = userEvent.setup()
     vi.mocked(generateDraft).mockResolvedValue({
+      draft: true,
+      source: "deepseek",
       content: {
         explanation: "先判断方向",
         example: "1 米等于 100 厘米",
@@ -67,6 +69,8 @@ describe("LearningPage", () => {
     vi.mocked(generateDraft)
       .mockRejectedValueOnce(new Error("学习回复服务不可用"))
       .mockResolvedValueOnce({
+        draft: true,
+        source: "deepseek",
         content: {
           explanation: "重试后生成的解释",
           example: "重试后的例子",
@@ -93,6 +97,8 @@ describe("LearningPage", () => {
   it("uses local AI for retell follow-up without changing mastery", async () => {
     const user = userEvent.setup()
     vi.mocked(generateDraft).mockResolvedValue({
+      draft: true,
+      source: "deepseek",
       content: { followUp: "如果分母也乘 2，分数为什么不变？" },
     })
     renderLearning()
@@ -110,6 +116,55 @@ describe("LearningPage", () => {
       retell: "分子和分母要同时变化。",
     })
     expect(await screen.findByText("如果分母也乘 2，分数为什么不变？")).toBeInTheDocument()
+    expect(screen.getByLabelText("小雨当前掌握度")).toHaveTextContent(mastery ?? "")
+  })
+
+  it("rejects a malformed learning reply without rendering it or changing mastery", async () => {
+    const user = userEvent.setup()
+    vi.mocked(generateDraft).mockResolvedValue({
+      draft: false,
+      source: "deepseek",
+      content: {
+        explanation: "不应显示的解释",
+        example: "不应显示的例子",
+        card: "不应显示的知识卡",
+        followUp: "不应显示的追问",
+      },
+    })
+    renderLearning()
+
+    const mastery = screen.getByLabelText("小雨当前掌握度").textContent
+    await user.type(screen.getByRole("textbox", { name: "输入学习问题" }), "请解释一下")
+    await user.click(screen.getByRole("button", { name: "发送问题" }))
+
+    const conversation = screen.getByRole("log", { name: "分数的基本性质学习对话" })
+    expect(await within(conversation).findByRole("alert")).toHaveTextContent("学习回复格式不正确")
+    expect(within(conversation).getByRole("button", { name: "重试回答" })).toBeInTheDocument()
+    expect(within(conversation).queryByText("不应显示的解释")).not.toBeInTheDocument()
+    expect(screen.getByLabelText("小雨当前掌握度")).toHaveTextContent(mastery ?? "")
+  })
+
+  it("rejects a malformed retell follow-up without rendering it or changing mastery", async () => {
+    const user = userEvent.setup()
+    vi.mocked(generateDraft).mockResolvedValue({
+      draft: true,
+      source: "not-deepseek",
+      content: { followUp: "不应显示的复述追问" },
+    })
+    renderLearning()
+
+    const mastery = screen.getByLabelText("小雨当前掌握度").textContent
+    await user.click(screen.getByRole("button", { name: "我来讲一遍" }))
+    await user.type(
+      screen.getByRole("textbox", { name: "用自己的话复述" }),
+      "分子和分母要同时变化。",
+    )
+    await user.click(screen.getByRole("button", { name: "提交我的复述" }))
+
+    const conversation = screen.getByRole("log", { name: "分数的基本性质学习对话" })
+    expect(await within(conversation).findByRole("alert")).toHaveTextContent("复述追问格式不正确")
+    expect(within(conversation).getByRole("button", { name: "重试追问" })).toBeInTheDocument()
+    expect(within(conversation).queryByText("不应显示的复述追问")).not.toBeInTheDocument()
     expect(screen.getByLabelText("小雨当前掌握度")).toHaveTextContent(mastery ?? "")
   })
 

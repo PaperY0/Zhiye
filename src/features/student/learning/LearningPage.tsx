@@ -45,6 +45,14 @@ type LearningReply = {
   followUp: string
 }
 
+type LocalAiDraft<TContent> = {
+  draft: true
+
+  source: "deepseek"
+
+  content: TContent
+}
+
 type StudentEntry = {
   id: string
 
@@ -206,6 +214,20 @@ function isRetellFollowUp(value: unknown): value is { followUp: string } {
   )
 }
 
+function isLocalAiDraft<TContent>(
+  value: unknown,
+  isContent: (content: unknown) => content is TContent,
+): value is LocalAiDraft<TContent> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+
+  const response = value as Record<string, unknown>
+  return (
+    response.draft === true &&
+    response.source === "deepseek" &&
+    isContent(response.content)
+  )
+}
+
 export function LearningPage() {
   const { addStudentTimelineEvent } = usePrototype()
   const [activeTopicId, setActiveTopicId] = useState<TopicId>("fractions")
@@ -267,13 +289,14 @@ export function LearningPage() {
   ) {
     try {
       const response = await generateDraft("learning-reply", request)
-      const content = (response as { content?: unknown }).content
-      if (!isLearningReply(content)) throw new Error("学习回复格式不正确")
+      if (!isLocalAiDraft(response, isLearningReply)) {
+        throw new Error("学习回复格式不正确")
+      }
 
       replaceEntry(topicId, entryId, {
         id: entryId,
         kind: "assistant",
-        reply: content,
+        reply: response.content,
       })
     } catch (error) {
       replaceEntry(topicId, entryId, {
@@ -293,13 +316,14 @@ export function LearningPage() {
   ) {
     try {
       const response = await generateDraft("retell-follow-up", request)
-      const content = (response as { content?: unknown }).content
-      if (!isRetellFollowUp(content)) throw new Error("复述追问格式不正确")
+      if (!isLocalAiDraft(response, isRetellFollowUp)) {
+        throw new Error("复述追问格式不正确")
+      }
 
       replaceEntry(topicId, entryId, {
         id: entryId,
         kind: "retell-follow-up",
-        followUp: content.followUp,
+        followUp: response.content.followUp,
       })
     } catch (error) {
       replaceEntry(topicId, entryId, {

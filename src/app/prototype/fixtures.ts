@@ -464,6 +464,9 @@ export const parentSummaryFixture: ParentSummary = {
     durationSeconds: 48,
     simulated: true,
   },
+  source: "deepseek",
+  confirmedAt: "2026-07-26T17:30:00+08:00",
+  evidence: ["课堂练习记录", "本周学习主题与完成情况汇总"],
 }
 
 export const safetyCaseFixtures: SafetyCase[] = [

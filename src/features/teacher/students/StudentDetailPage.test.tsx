@@ -38,6 +38,26 @@ describe("StudentDetailPage AI drafts", () => {
     expect(screen.getByRole("status")).toHaveTextContent("家长摘要已由教师确认发布")
   })
 
+  it("does not send private teacher notes when generating a parent summary", async () => {
+    const user = userEvent.setup()
+    vi.mocked(generateDraft).mockResolvedValue({
+      content: {
+        topics: ["单位换算"],
+        encouragement: "愿意解释自己的想法。",
+        teacher_message: "完成单位换算自检。",
+      },
+    })
+    renderDetail()
+
+    await user.type(screen.getByRole("textbox", { name: "教师笔记" }), "私密自由笔记，不得发送给 AI")
+    await user.click(screen.getByRole("button", { name: "保存笔记" }))
+    await user.click(screen.getByRole("button", { name: "生成本周摘要草稿" }))
+
+    const context = vi.mocked(generateDraft).mock.calls[0]?.[1]
+    expect(context).toEqual({ facts: expect.any(Array) })
+    expect(JSON.stringify(context)).not.toContain("私密自由笔记")
+  })
+
   it("shows retry and keeps approved content intact when generation fails", async () => {
     const user = userEvent.setup()
     vi.mocked(generateDraft).mockRejectedValue(new Error("本地 AI 服务未启动，请运行 start-local-ai.ps1"))
@@ -83,5 +103,9 @@ describe("StudentDetailPage AI drafts", () => {
         mistakes: expect.any(Array),
       }),
     )
+
+    await user.click(screen.getByRole("button", { name: "采纳观察" }))
+    expect(screen.getByText("证据：随堂练习第 3 题停顿时间增加")).toBeInTheDocument()
+    expect(screen.getByText(/来源：deepseek/)).toBeInTheDocument()
   })
 })

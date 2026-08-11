@@ -166,7 +166,6 @@ class RetellFollowUpContext(ContextModel):
 
 class ParentSummaryContext(ContextModel):
     facts: list[TextOnly] = Field(min_length=1, max_length=30)
-    teacherMessage: TextOnly
 
 
 class StudentInferenceContext(ContextModel):

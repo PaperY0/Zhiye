@@ -60,6 +60,15 @@ def test_generate_request_bounds_allowlisted_list_values():
         )
 
 
+def test_parent_summary_accepts_only_approved_facts_context():
+    request = GenerateRequest(
+        kind="parent-summary",
+        context={"facts": ["本周主动提问 4 次", "课堂证据：完成单位换算练习"]},
+    )
+
+    assert request.context["facts"] == ["本周主动提问 4 次", "课堂证据：完成单位换算练习"]
+
+
 @pytest.mark.parametrize(
     "question_text",
     [

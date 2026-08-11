@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
+import { parentSummaryFixture } from "../../../app/prototype/fixtures"
 import type { AppRoute } from "../../../app/routes"
 import { StudentDetailPage } from "../../teacher/students/StudentDetailPage"
 import { generateDraft } from "../../../services/localAi"
@@ -125,10 +126,61 @@ describe("ParentHomePage", () => {
     )
     expect(generateDraft).toHaveBeenCalledWith(
       "parent-summary",
-      expect.objectContaining({
-        facts: expect.arrayContaining(["本周主动提问 4 次"]),
-        teacherMessage: expect.any(String),
+      { facts: expect.arrayContaining(["本周主动提问 4 次"]) },
+    )
+  })
+
+  it("does not render an unconfirmed parent summary", () => {
+    localStorage.setItem(
+      "zhiye-prototype-state-v1",
+      JSON.stringify({
+        parentSummary: {
+          ...parentSummaryFixture,
+          source: "deepseek",
+          confirmedAt: "",
+          evidence: ["课堂练习记录"],
+        },
       }),
+    )
+    const onNavigate = vi.fn<(route: AppRoute) => void>()
+    render(
+      <PrototypeProvider persist>
+        <ParentHomePage onNavigate={onNavigate} />
+      </PrototypeProvider>,
+    )
+
+    expect(screen.getByRole("heading", { name: "本周摘要尚未发布" })).toBeInTheDocument()
+    expect(screen.queryByText("林晓雨的本周学习摘要")).not.toBeInTheDocument()
+    localStorage.clear()
+  })
+
+  it("shows evidence and confirmation metadata for a published AI summary", () => {
+    renderHome()
+
+    expect(screen.getByRole("region", { name: "摘要发布依据" })).toHaveTextContent(
+      "来源：deepseek",
+    )
+    expect(screen.getByRole("region", { name: "摘要发布依据" })).toHaveTextContent(
+      "课堂练习记录",
+    )
+  })
+
+  it("keeps an approved parent summary visible when a new draft generation fails", async () => {
+    const user = userEvent.setup()
+    vi.mocked(generateDraft).mockRejectedValue(new Error("本地 AI 服务未启动，请运行 start-local-ai.ps1"))
+    const onNavigate = vi.fn<(route: AppRoute) => void>()
+    render(
+      <PrototypeProvider>
+        <StudentDetailPage studentId="student-lin-xiaoyu" />
+        <ParentHomePage onNavigate={onNavigate} />
+      </PrototypeProvider>,
+    )
+
+    await user.click(screen.getByRole("button", { name: "生成本周摘要草稿" }))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("本地 AI 服务未启动")
+    expect(screen.getByRole("region", { name: "李老师留言" })).toHaveTextContent(
+      "本周可以陪孩子用生活里的比例例子复述分数基本性质，不需要额外刷题。",
     )
   })
 })

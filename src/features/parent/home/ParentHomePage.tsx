@@ -10,18 +10,70 @@ import {
 } from "lucide-react"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
 import type { AppRoute } from "../../../app/routes"
+import type { ParentSummary } from "../../../app/prototype/types"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 
 export type ParentHomePageProps = {
   onNavigate(route: AppRoute): void
 }
 
+function isPublishedParentSummary(
+  summary: ParentSummary | null,
+): summary is ParentSummary & { source: "deepseek"; confirmedAt: string; evidence: string[] } {
+  return Boolean(
+    summary &&
+      summary.source === "deepseek" &&
+      summary.confirmedAt?.trim() &&
+      summary.evidence?.some((item) => item.trim()) &&
+      summary.id.trim() &&
+      summary.studentId.trim() &&
+      summary.studentName.trim() &&
+      summary.className.trim() &&
+      summary.weekLabel.trim() &&
+      summary.topics.length > 0 &&
+      summary.topics.every((topic) => topic.trim()) &&
+      Number.isFinite(summary.voluntaryQuestions) &&
+      Number.isFinite(summary.practiceCount) &&
+      summary.encouragement.trim() &&
+      summary.teacherMessage.trim() &&
+      summary.audioLetter?.title.trim() &&
+      Number.isFinite(summary.audioLetter?.durationSeconds),
+  )
+}
+
 export function ParentHomePage({ onNavigate }: ParentHomePageProps) {
   const { parentSummary, students } = usePrototype()
-  const student = students.find((item) => item.id === parentSummary.studentId)
-  const latestTimelineEvent = student?.timeline.at(-1)
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioNotice, setAudioNotice] = useState("")
+  if (students.length === 0) {
+    return (
+      <GlassSurface className="mx-auto mt-8 max-w-xl p-8 text-center" weight="sheet">
+        <h1 className="text-2xl font-black text-[#203427]">还没有绑定学生</h1>
+        <p className="mt-3 text-sm leading-6 text-[#718078]">
+          先联系老师完成孩子绑定，之后这里会显示学习摘要和课堂回响。
+        </p>
+        <button
+          className="mt-5 rounded-full bg-[#173022] px-5 py-3 text-sm font-black text-white"
+          onClick={() => onNavigate({ role: "parent", page: "messages" })}
+          type="button"
+        >
+          联系老师完成绑定
+        </button>
+      </GlassSurface>
+    )
+  }
+  if (!isPublishedParentSummary(parentSummary)) {
+    return (
+      <GlassSurface className="mx-auto mt-8 max-w-xl p-8 text-center" weight="sheet">
+        <h1 className="text-2xl font-black text-[#203427]">本周摘要尚未发布</h1>
+        <p className="mt-3 text-sm leading-6 text-[#718078]">
+          教师确认并发布后，这里才会显示可追溯的学习摘要。
+        </p>
+      </GlassSurface>
+    )
+  }
+  const student = students.find((item) => item.id === parentSummary.studentId)
+  const latestTimelineEvent = student?.timeline.at(-1)
 
   function toggleAudioLetter() {
     const nextPlaying = !isPlaying
@@ -51,6 +103,14 @@ export function ParentHomePage({ onNavigate }: ParentHomePageProps) {
           {parentSummary.weekLabel}
         </div>
       </header>
+
+      <GlassSurface aria-label="摘要发布依据" className="p-4" role="region" weight="light">
+        <p className="text-xs font-black tracking-[0.1em] text-[#718276]">已确认的可追溯信息</p>
+        <p className="mt-2 text-sm font-bold text-[#405448]">
+          来源：{parentSummary.source} · 教师确认于 {new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(parentSummary.confirmedAt))}
+        </p>
+        <p className="mt-1 text-xs leading-5 text-[#65766b]">依据：{parentSummary.evidence.join("；")}</p>
+      </GlassSurface>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
         <div className="space-y-5">

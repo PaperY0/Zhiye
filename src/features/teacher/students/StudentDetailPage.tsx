@@ -198,10 +198,6 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
     try {
       const response = await generateDraft("parent-summary", {
         facts: approvedFacts,
-        teacherMessage:
-          parentSummary?.studentId === student.id
-            ? parentSummary.teacherMessage
-            : savedNotes[0] ?? "请结合本周学习过程陪伴孩子复习。",
       })
       const draft = readParentSummaryDraft(response, approvedFacts)
       if (!draft) throw new Error("AI 草稿格式无效，请重试")
@@ -632,6 +628,7 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
                 >
                   <p>{observation.observation}</p>
                   <p className="mt-2 text-xs font-bold text-[#7d805d]">后续支持：{observation.suggestedSupport}</p>
+                  <p className="mt-2 text-xs font-semibold text-[#85896a]">证据：{observation.evidence.join("；")}</p>
                   <p className="mt-2 text-xs font-semibold text-[#85896a]">教师确认于 {formatDateTime(observation.confirmedAt)} · 来源：{observation.source}</p>
                 </li>
               ))}

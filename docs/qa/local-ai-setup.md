@@ -41,7 +41,7 @@ npm.cmd run build
 
 Python 测试只验证本地服务的 schema、错误映射和 OCR 低置信度分支；它们不会请求 DeepSeek。浏览器测试也不读取或打印密钥。
 
-未设置 `DEEPSEEK_API_KEY` 时，本地题图 OCR 仍可以使用；仅课堂 AI 初稿接口会返回 503。
+未设置 `DEEPSEEK_API_KEY` 时，所有依赖 DeepSeek 的草稿生成接口都不可用并返回 `503`，包括 `POST /generate` 的教案、测验、补讲、学生问答、复述追问、家长摘要、学生观察和拍题答疑草稿，以及 `POST /analyze` 的课堂复盘。`POST /solve-image` 的本地 PaddleOCR 不依赖该 Key，仍可以使用；识别文字仍须由用户确认后才可进入答疑。
 未安装 `ffmpeg` 时，题图 OCR 仍可使用；浏览器音频转写需要先安装 `ffmpeg` 并加入 `PATH`。
 
 ## 题图 OCR 验收

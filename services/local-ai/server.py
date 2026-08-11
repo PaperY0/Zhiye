@@ -1,5 +1,7 @@
 import json
 import os
+import subprocess
+import sys
 import tempfile
 import urllib.error
 import urllib.request
@@ -65,7 +67,7 @@ def get_ocr_engine():
     return ocr_engine
 
 
-def recognize_image(path: str) -> tuple[str, float]:
+def _recognize_image_in_process(path: str) -> tuple[str, float]:
     recognized_lines = []
     confidences = []
     for result in get_ocr_engine().predict(path):
@@ -90,6 +92,35 @@ def recognize_image(path: str) -> tuple[str, float]:
 
     confidence = sum(confidences) / len(confidences) if confidences else 0.0
     return "\n".join(recognized_lines), confidence
+
+
+def recognize_image(path: str) -> tuple[str, float]:
+    """Run PaddleOCR outside the API process so native crashes cannot kill FastAPI."""
+    worker = Path(__file__).with_name("ocr_worker.py")
+    try:
+        completed = subprocess.run(
+            [sys.executable, str(worker), path],
+            capture_output=True,
+            text=True,
+            timeout=int(os.getenv("OCR_TIMEOUT_SECONDS", "120")),
+            check=False,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise HTTPException(status_code=504, detail="本地 OCR 处理超时，请重试。") from error
+    except OSError as error:
+        raise HTTPException(status_code=503, detail="本地 OCR 进程无法启动，请检查 Python 环境。") from error
+
+    if completed.returncode != 0:
+        raise HTTPException(
+            status_code=503,
+            detail="本地 OCR 依赖启动失败，请使用 Python 3.11/3.12 重启服务。",
+        )
+
+    try:
+        payload = json.loads(completed.stdout)
+        return str(payload["recognizedText"]), float(payload["ocrConfidence"])
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as error:
+        raise HTTPException(status_code=503, detail="本地 OCR 返回格式无效，请重试。") from error
 
 
 def generate_with_deepseek(transcript: str) -> dict:

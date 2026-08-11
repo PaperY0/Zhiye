@@ -89,7 +89,7 @@ def test_recognize_image_unwraps_paddleocr_v3_result(monkeypatch):
         lambda: types.SimpleNamespace(predict=lambda _: [result]),
     )
 
-    recognized_text, confidence = server.recognize_image("question.png")
+    recognized_text, confidence = server._recognize_image_in_process("question.png")
 
     assert recognized_text == "2/3"
     assert confidence == 0.92
@@ -122,3 +122,17 @@ def test_solve_image_removes_temp_file_when_read_raises(monkeypatch):
 
     assert len(created_paths) == 1
     assert not Path(created_paths[0]).exists()
+
+
+def test_ocr_worker_crash_keeps_api_error_contained(monkeypatch):
+    server = load_server(monkeypatch)
+    failed = types.SimpleNamespace(returncode=-1073741819, stdout="", stderr="access violation")
+    monkeypatch.setattr(server.subprocess, "run", lambda *args, **kwargs: failed)
+
+    client = TestClient(server.app)
+    response = client.post(
+        "/solve-image", files={"image": ("question.png", b"x", "image/png")}
+    )
+
+    assert response.status_code == 503
+    assert "Python 3.11/3.12" in response.json()["detail"]

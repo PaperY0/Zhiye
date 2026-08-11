@@ -7,3 +7,4 @@ funasr>=1.2.7
 modelscope>=1.24.0
 paddleocr>=3,<4
 paddlepaddle>=3,<4
+rapidocr_onnxruntime>=1.2,<2

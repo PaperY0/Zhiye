@@ -3,7 +3,13 @@ import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
 import type { AppRoute } from "../../../app/routes"
+import { StudentDetailPage } from "../../teacher/students/StudentDetailPage"
+import { generateDraft } from "../../../services/localAi"
 import { ParentHomePage } from "./ParentHomePage"
+
+vi.mock("../../../services/localAi", () => ({
+  generateDraft: vi.fn(),
+}))
 
 function renderHome() {
   const onNavigate = vi.fn<(route: AppRoute) => void>()
@@ -90,5 +96,39 @@ describe("ParentHomePage", () => {
       role: "parent",
       page: "messages",
     })
+  })
+
+  it("keeps the published parent summary unchanged while a teacher draft is awaiting approval", async () => {
+    const user = userEvent.setup()
+    vi.mocked(generateDraft).mockResolvedValue({
+      content: {
+        topics: ["单位换算"],
+        encouragement: "愿意解释自己的想法。",
+        teacher_message: "完成单位换算自检。",
+      },
+    })
+    const onNavigate = vi.fn<(route: AppRoute) => void>()
+    render(
+      <PrototypeProvider>
+        <StudentDetailPage studentId="student-lin-xiaoyu" />
+        <ParentHomePage onNavigate={onNavigate} />
+      </PrototypeProvider>,
+    )
+
+    await user.click(screen.getByRole("button", { name: "生成本周摘要草稿" }))
+
+    expect(await screen.findByText("AI 草稿 · 待教师审核")).toBeInTheDocument()
+    expect(screen.getByText("愿意解释自己的想法。")).toBeInTheDocument()
+    expect(screen.getByText("孩子愿意把不明白的地方说出来，这份主动很珍贵。")).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "李老师留言" })).not.toHaveTextContent(
+      "完成单位换算自检。",
+    )
+    expect(generateDraft).toHaveBeenCalledWith(
+      "parent-summary",
+      expect.objectContaining({
+        facts: expect.arrayContaining(["本周主动提问 4 次"]),
+        teacherMessage: expect.any(String),
+      }),
+    )
   })
 })

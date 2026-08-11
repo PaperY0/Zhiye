@@ -17,8 +17,10 @@ import {
   UserRoundCheck,
 } from "lucide-react"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
+import { generateDraft } from "../../../services/localAi"
 import type {
   KnowledgeSignal,
+  ParentSummary,
   StudentTimelineEvent,
 } from "../../../app/prototype/types"
 import { Dialog } from "../../../components/shared/Dialog"
@@ -31,6 +33,16 @@ import {
 type Feedback = {
   id: number
   message: string
+}
+
+type ParentSummaryDraft = Pick<ParentSummary, "topics" | "encouragement" | "teacherMessage"> & {
+  evidence: string[]
+}
+
+type StudentObservationDraft = {
+  observation: string
+  suggestedSupport: string
+  evidence: string[]
 }
 
 export interface StudentDetailPageProps {
@@ -74,14 +86,58 @@ function signalLabel(severity: KnowledgeSignal["severity"]) {
   return "留意变化"
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null ? value as Record<string, unknown> : null
+}
+
+function stringList(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : []
+}
+
+function readParentSummaryDraft(response: unknown, evidence: string[]): ParentSummaryDraft | null {
+  const content = asRecord(asRecord(response)?.content)
+  if (!content) return null
+  const topics = stringList(content.topics)
+  const encouragement = typeof content.encouragement === "string" ? content.encouragement.trim() : ""
+  const teacherMessage = typeof content.teacher_message === "string" ? content.teacher_message.trim() : ""
+  return topics.length > 0 && encouragement && teacherMessage
+    ? { topics, encouragement, teacherMessage, evidence }
+    : null
+}
+
+function readObservationDraft(response: unknown): StudentObservationDraft | null {
+  const content = asRecord(asRecord(response)?.content)
+  if (!content) return null
+  const observation = typeof content.observation === "string" ? content.observation.trim() : ""
+  const suggestedSupport = typeof content.suggested_support === "string" ? content.suggested_support.trim() : ""
+  const evidence = stringList(content.evidence)
+  return observation && suggestedSupport && evidence.length > 0
+    ? { observation, suggestedSupport, evidence }
+    : null
+}
+
 export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
-  const { addStudentTeacherNote, signals, students } = usePrototype()
+  const {
+    addStudentTeacherNote,
+    approveStudentObservation,
+    parentSummary,
+    publishParentSummary,
+    signals,
+    students,
+  } = usePrototype()
   const student = students.find((item) => item.id === studentId)
   const [noteDraft, setNoteDraft] = useState("")
   const [savedNotes, setSavedNotes] = useState<string[]>(student?.teacherNotes ?? [])
   const [correctionOpen, setCorrectionOpen] = useState(false)
   const [correctionDraft, setCorrectionDraft] = useState("")
   const [feedback, setFeedback] = useState<Feedback | null>(null)
+  const [parentDraft, setParentDraft] = useState<ParentSummaryDraft | null>(null)
+  const [observationDraft, setObservationDraft] = useState<StudentObservationDraft | null>(null)
+  const [generating, setGenerating] = useState<"parent" | "observation" | null>(null)
+  const [generationError, setGenerationError] = useState<string | null>(null)
+  const [failedGeneration, setFailedGeneration] = useState<"parent" | "observation" | null>(null)
 
   const evidenceSignals = useMemo(
     () =>
@@ -128,6 +184,91 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
     setCorrectionOpen(false)
     setCorrectionDraft("")
     setFeedback({ id: Date.now(), message: "更正申请已提交，等待人工核实" })
+  }
+
+  const approvedFacts = [
+    ...student.facts,
+    ...evidenceSignals.flatMap((signal) => signal.evidence.map((item) => `课堂证据：${item}`)),
+  ].slice(0, 30)
+
+  const generateParentSummary = async () => {
+    setGenerating("parent")
+    setGenerationError(null)
+    setFailedGeneration(null)
+    try {
+      const response = await generateDraft("parent-summary", {
+        facts: approvedFacts,
+        teacherMessage:
+          parentSummary?.studentId === student.id
+            ? parentSummary.teacherMessage
+            : savedNotes[0] ?? "请结合本周学习过程陪伴孩子复习。",
+      })
+      const draft = readParentSummaryDraft(response, approvedFacts)
+      if (!draft) throw new Error("AI 草稿格式无效，请重试")
+      setParentDraft(draft)
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : "生成摘要失败，请重试")
+      setFailedGeneration("parent")
+    } finally {
+      setGenerating(null)
+    }
+  }
+
+  const generateObservation = async () => {
+    setGenerating("observation")
+    setGenerationError(null)
+    setFailedGeneration(null)
+    try {
+      const response = await generateDraft("student-inference", {
+        facts: student.facts.slice(0, 30),
+        mistakes: student.mistakes.map((mistake) => mistake.prompt).slice(0, 30),
+      })
+      const draft = readObservationDraft(response)
+      if (!draft) throw new Error("AI 草稿格式无效，请重试")
+      setObservationDraft(draft)
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : "生成观察失败，请重试")
+      setFailedGeneration("observation")
+    } finally {
+      setGenerating(null)
+    }
+  }
+
+  const publishParentDraft = () => {
+    if (!parentDraft) return
+    publishParentSummary({
+      id: `parent-summary-${Date.now()}`,
+      studentId: student.id,
+      studentName: student.name,
+      className: student.className,
+      weekLabel: parentSummary?.weekLabel ?? "本周学习摘要",
+      voluntaryQuestions: student.voluntaryQuestions,
+      practiceCount: student.practiceCount,
+      topics: parentDraft.topics,
+      encouragement: parentDraft.encouragement,
+      teacherMessage: parentDraft.teacherMessage,
+      audioLetter: parentSummary?.audioLetter ?? {
+        title: "李老师的本周语音信",
+        durationSeconds: 48,
+        simulated: true,
+      },
+      source: "deepseek",
+      confirmedAt: new Date().toISOString(),
+      evidence: parentDraft.evidence,
+    })
+    setParentDraft(null)
+    setFeedback({ id: Date.now(), message: "家长摘要已由教师确认发布" })
+  }
+
+  const approveObservation = () => {
+    if (!observationDraft) return
+    approveStudentObservation(student.id, {
+      observation: observationDraft.observation,
+      suggestedSupport: observationDraft.suggestedSupport,
+      evidence: observationDraft.evidence,
+    })
+    setObservationDraft(null)
+    setFeedback({ id: Date.now(), message: "学生观察已由教师确认保存" })
   }
 
   return (
@@ -362,6 +503,101 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
           </GlassSurface>
 
           <GlassSurface
+            aria-label="AI 审核草稿"
+            className="border-[#d8d9bd]/80 bg-[linear-gradient(145deg,rgba(255,255,255,.76),rgba(245,241,211,.62))] p-5 sm:p-6"
+            role="region"
+            weight="card"
+          >
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#eeecd3] text-[#777342]">
+                <Sparkles aria-hidden="true" size={19} />
+              </div>
+              <div>
+                <p className="text-xs font-black tracking-[.12em] text-[#88865f]">
+                  仅教师生成、编辑与确认
+                </p>
+                <h2 className="mt-0.5 font-black text-[#3b4029]">可审核 AI 草稿</h2>
+              </div>
+            </div>
+            <p className="mt-4 text-xs font-semibold leading-5 text-[#777657]">
+              仅将可核实事实、错题和课堂证据发送给本地 AI；家长不会看到待审核内容。
+            </p>
+            <div className="mt-4 grid gap-2">
+              <button
+                className="inline-flex h-11 items-center justify-center rounded-[16px] bg-[#3f4b30] px-4 text-sm font-black text-white disabled:opacity-45"
+                disabled={generating !== null}
+                onClick={generateParentSummary}
+                type="button"
+              >
+                {generating === "parent" ? "正在生成摘要草稿" : "生成本周摘要草稿"}
+              </button>
+              <button
+                className="inline-flex h-11 items-center justify-center rounded-[16px] border border-[#c9cfaf] bg-white/70 px-4 text-sm font-black text-[#505b39] disabled:opacity-45"
+                disabled={generating !== null}
+                onClick={generateObservation}
+                type="button"
+              >
+                {generating === "observation" ? "正在生成观察草稿" : "生成观察草稿"}
+              </button>
+            </div>
+            {generationError ? (
+              <div className="mt-4 rounded-[16px] border border-[#e9c8bb] bg-[#fff2ed] p-3 text-sm font-bold text-[#9c4a35]" role="alert">
+                <p>{generationError}</p>
+                <button
+                  className="mt-2 underline underline-offset-4"
+                  onClick={() => failedGeneration === "parent" ? generateParentSummary() : generateObservation()}
+                  type="button"
+                >
+                  {failedGeneration === "parent" ? "重试生成摘要" : "重试生成观察"}
+                </button>
+              </div>
+            ) : null}
+            {parentDraft ? (
+              <div className="mt-5 rounded-[18px] border border-[#d9d8b4] bg-white/72 p-4">
+                <p className="text-xs font-black tracking-[.1em] text-[#777342]">AI 草稿 · 待教师审核</p>
+                <p className="mt-3 text-xs font-black text-[#71765f]">学习主题（用顿号分隔）</p>
+                <input
+                  aria-label="家长摘要学习主题"
+                  className="mt-1 w-full rounded-xl border border-[#e5e7d4] bg-white p-2 text-sm"
+                  onChange={(event) => setParentDraft((current) => current ? { ...current, topics: event.target.value.split("、").map((item) => item.trim()).filter(Boolean) } : current)}
+                  value={parentDraft.topics.join("、")}
+                />
+                <label className="mt-3 block text-xs font-black text-[#71765f]">
+                  鼓励语
+                  <textarea aria-label="家长摘要鼓励语" className="mt-1 min-h-20 w-full rounded-xl border border-[#e5e7d4] bg-white p-2 text-sm" onChange={(event) => setParentDraft((current) => current ? { ...current, encouragement: event.target.value } : current)} value={parentDraft.encouragement} />
+                </label>
+                <label className="mt-3 block text-xs font-black text-[#71765f]">
+                  教师留言
+                  <textarea aria-label="家长摘要教师留言" className="mt-1 min-h-20 w-full rounded-xl border border-[#e5e7d4] bg-white p-2 text-sm" onChange={(event) => setParentDraft((current) => current ? { ...current, teacherMessage: event.target.value } : current)} value={parentDraft.teacherMessage} />
+                </label>
+                <p className="mt-3 text-xs font-semibold text-[#777657]">依据：{parentDraft.evidence.join("；")}</p>
+                <div className="mt-4 flex gap-2">
+                  <button className="rounded-xl bg-[#3f4b30] px-3 py-2 text-sm font-black text-white" onClick={publishParentDraft} type="button">采纳并发布</button>
+                  <button className="rounded-xl border border-[#d9d8b4] bg-white px-3 py-2 text-sm font-black text-[#66674d]" onClick={() => setParentDraft(null)} type="button">忽略草稿</button>
+                </div>
+              </div>
+            ) : null}
+            {observationDraft ? (
+              <div className="mt-5 rounded-[18px] border border-[#d9d8b4] bg-white/72 p-4">
+                <p className="text-xs font-black tracking-[.1em] text-[#777342]">AI 草稿 · 待教师审核</p>
+                <label className="mt-3 block text-xs font-black text-[#71765f]">
+                  观察描述
+                  <textarea aria-label="学生观察描述" className="mt-1 min-h-20 w-full rounded-xl border border-[#e5e7d4] bg-white p-2 text-sm" onChange={(event) => setObservationDraft((current) => current ? { ...current, observation: event.target.value } : current)} value={observationDraft.observation} />
+                </label>
+                <label className="mt-3 block text-xs font-black text-[#71765f]">
+                  后续支持
+                  <textarea aria-label="学生观察后续支持" className="mt-1 min-h-20 w-full rounded-xl border border-[#e5e7d4] bg-white p-2 text-sm" onChange={(event) => setObservationDraft((current) => current ? { ...current, suggestedSupport: event.target.value } : current)} value={observationDraft.suggestedSupport} />
+                </label>
+                <p className="mt-3 text-xs font-semibold text-[#777657]">依据：{observationDraft.evidence.join("；")}</p>
+                <div className="mt-4 flex gap-2">
+                  <button className="rounded-xl bg-[#3f4b30] px-3 py-2 text-sm font-black text-white" onClick={approveObservation} type="button">采纳观察</button>
+                  <button className="rounded-xl border border-[#d9d8b4] bg-white px-3 py-2 text-sm font-black text-[#66674d]" onClick={() => setObservationDraft(null)} type="button">忽略草稿</button>
+                </div>
+              </div>
+            ) : null}
+          </GlassSurface>
+
+          <GlassSurface
             aria-label="AI 推断 · 需教师判断"
             className="border-[#d8d9bd]/80 bg-[linear-gradient(145deg,rgba(255,255,255,.75),rgba(245,241,211,.68))] p-5 sm:p-6"
             role="region"
@@ -387,6 +623,16 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
                   key={inference}
                 >
                   {inference}
+                </li>
+              ))}
+              {(student.approvedObservations ?? []).map((observation) => (
+                <li
+                  className="rounded-[18px] border border-white/80 bg-white/50 p-4 text-sm leading-6 text-[#66674d]"
+                  key={observation.id}
+                >
+                  <p>{observation.observation}</p>
+                  <p className="mt-2 text-xs font-bold text-[#7d805d]">后续支持：{observation.suggestedSupport}</p>
+                  <p className="mt-2 text-xs font-semibold text-[#85896a]">教师确认于 {formatDateTime(observation.confirmedAt)} · 来源：{observation.source}</p>
                 </li>
               ))}
             </ul>

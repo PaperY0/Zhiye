@@ -80,6 +80,15 @@ export type StudentTimelineEvent = {
   fact: boolean
 }
 
+export type ApprovedStudentObservation = {
+  id: string
+  observation: string
+  suggestedSupport: string
+  evidence: string[]
+  source: "deepseek"
+  confirmedAt: string
+}
+
 export type Student = {
   id: string
   name: string
@@ -94,6 +103,7 @@ export type Student = {
   currentFocus: string[]
   facts: string[]
   aiInferences: string[]
+  approvedObservations?: ApprovedStudentObservation[]
   teacherNotes: string[]
   mistakes: Mistake[]
   timeline: StudentTimelineEvent[]
@@ -219,6 +229,9 @@ export type ParentSummary = {
     durationSeconds: number
     simulated: true
   }
+  source?: "deepseek"
+  confirmedAt?: string
+  evidence?: string[]
 }
 
 export type SafetyCaseStatus = "new" | "reviewing" | "transferred" | "resolved"

@@ -23,6 +23,7 @@ import { emptyFixtureSet } from "./emptyFixtures"
 import { isCompleteLessonAnalysis } from "../../services/lessonAnalysis"
 import type {
   AuditEvent,
+  ApprovedStudentObservation,
   Conversation,
   KnowledgeSignal,
   Lesson,
@@ -92,6 +93,11 @@ export type PrototypeContextValue = {
   updateMistake(studentId: string, mistakeId: string, patch: Partial<Mistake>): void
   addStudentTimelineEvent(studentId: string, event: StudentTimelineEvent): void
   addStudentTeacherNote(studentId: string, note: string): void
+  publishParentSummary(summary: ParentSummary): void
+  approveStudentObservation(
+    studentId: string,
+    observation: Omit<ApprovedStudentObservation, "id" | "source" | "confirmedAt">,
+  ): void
   resetPrototype(): void
   updateSafetyCase(id: string, patch: Partial<SafetyCase>): void
   addAuditEvent(event: AuditEvent): void
@@ -109,6 +115,7 @@ type PrototypeSnapshot = Pick<
   | "quizzes"
   | "tasks"
   | "conversations"
+  | "parentSummary"
   | "safetyCases"
   | "auditEvents"
 >
@@ -195,11 +202,11 @@ export function PrototypeProvider({
       persisted?.conversations ?? fixtureSet?.conversations ?? conversationFixtures,
     ),
   )
-  const [parentSummary] = useState(() =>
+  const [parentSummary, setParentSummary] = useState(() =>
     cloneFixture(
       dataset === "empty"
         ? null
-        : fixtureSet?.parentSummary ?? parentSummaryFixture,
+        : persisted?.parentSummary ?? fixtureSet?.parentSummary ?? parentSummaryFixture,
     ),
   )
   const [safetyCases, setSafetyCases] = useState(() =>
@@ -219,6 +226,7 @@ export function PrototypeProvider({
         quizzes,
         tasks,
         conversations,
+        parentSummary,
         safetyCases,
         auditEvents,
       }
@@ -226,7 +234,7 @@ export function PrototypeProvider({
     } catch {
       // Storage is best-effort in the prototype; in-memory state remains usable.
     }
-  }, [auditEvents, conversations, lessons, persist, plans, quizzes, safetyCases, students, tasks])
+  }, [auditEvents, conversations, lessons, parentSummary, persist, plans, quizzes, safetyCases, students, tasks])
 
   const value = useMemo<PrototypeContextValue>(
     () => ({
@@ -544,6 +552,46 @@ export function PrototypeProvider({
           ),
         )
       },
+      publishParentSummary(summary) {
+        if (
+          summary.source !== "deepseek" ||
+          !summary.confirmedAt ||
+          !summary.encouragement.trim() ||
+          !summary.teacherMessage.trim() ||
+          summary.topics.length === 0
+        ) {
+          return
+        }
+        setParentSummary(cloneFixture(summary))
+      },
+      approveStudentObservation(studentId, observation) {
+        if (
+          !observation.observation.trim() ||
+          !observation.suggestedSupport.trim() ||
+          observation.evidence.length === 0
+        ) {
+          return
+        }
+        const approvedObservation: ApprovedStudentObservation = {
+          ...cloneFixture(observation),
+          id: `observation-${Date.now()}`,
+          source: "deepseek",
+          confirmedAt: new Date().toISOString(),
+        }
+        setStudents((current) =>
+          current.map((student) =>
+            student.id === studentId
+              ? {
+                  ...student,
+                  approvedObservations: [
+                    ...(student.approvedObservations ?? []),
+                    approvedObservation,
+                  ],
+                }
+              : student,
+          ),
+        )
+      },
       resetPrototype() {
         window.localStorage.removeItem("zhiye-teacher-settings-v1")
         window.localStorage.removeItem("zhiye-admin-settings-v1")
@@ -554,6 +602,13 @@ export function PrototypeProvider({
         setQuizzes(cloneFixture(fixtureSet?.quizzes ?? quizFixtures))
         setTasks(cloneFixture(fixtureSet?.tasks ?? taskFixtures))
         setConversations(cloneFixture(fixtureSet?.conversations ?? conversationFixtures))
+        setParentSummary(
+          cloneFixture(
+            dataset === "empty"
+              ? null
+              : fixtureSet?.parentSummary ?? parentSummaryFixture,
+          ),
+        )
         setSafetyCases(cloneFixture(fixtureSet?.safetyCases ?? safetyCaseFixtures))
         setAuditEvents(cloneFixture(fixtureSet?.auditEvents ?? auditEventFixtures))
       },

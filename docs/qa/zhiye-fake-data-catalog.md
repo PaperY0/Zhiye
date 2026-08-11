@@ -1,18 +1,24 @@
 # 知野伪造数据测试目录
 
-状态：当前开发、联调和验收环境全部使用伪造数据；未接入真实学校、真实学生或真实家长信息。
+状态：已提交的 Vite 原型基线使用伪造数据；未接入真实学校、真实学生或真实家长信息。当前工作区还存在未提交的生产化草案，不能由本文件所在提交保证可用或可复现。
 
-## 数据来源与边界
+## 提交证据与工作区边界
 
-- 唯一入口：`packages/db/prisma/seed-data.ts`
-- 写入脚本：`packages/db/prisma/seed.ts`
-- 数据库：本地 Docker PostgreSQL，数据库名 `zhiye`
-- 数据模式：`DEMO_DATA_MODE=true`
-- 所有固定 ID 都带有 `demo` 或 `user-*-01` 语义，禁止替换为真实个人信息
-- `protectedBodyEncrypted` 只保留 `<encrypted-demo-payload>` 占位符，不含真实保护反馈正文
-- 不写入真实音频、题图、课堂原文、完整对话或真实联系方式
+| 状态 | 范围 | 本次提交能够证明的事实 |
+| --- | --- | --- |
+| 已提交且可复现 | `src/app/prototype/fixtures.ts` 及其 Vite 原型使用链路 | 原型初始展示使用伪造课堂、学生、任务、消息、保护与审计数据；不连接真实学校系统。 |
+| 当前工作区未提交 | `src/app/prototype/acceptanceFixtures.ts`、`src/app/prototype/emptyFixtures.ts` | 文件在当前工作区可见，但不属于本次提交或已提交基线；不能据此宣称 `?data=acceptance` 或 `?data=empty` 已交付、可复现。 |
+| 当前工作区未提交 | `packages/db/`、`docker-compose.yml`、`.env.example` 及相关 Next.js/Worker 草案 | 可能描述 PostgreSQL、seed、Compose 或演示凭据，但均不是本次提交保证的能力；不得称为唯一入口、已启动服务或已写入数据库。 |
 
-## 当前可用伪造账号
+验收时先以 `git status --short` 核对工作区，再以实际启动命令、服务健康检查与命令输出确认可用状态。未提交文件可以作为当前开发上下文阅读，但不能替代已提交证据。
+
+## 已提交原型数据边界
+
+- `src/app/prototype/fixtures.ts` 中的固定 ID 与内容仅用于原型验收，禁止替换为真实个人信息。
+- 保护性反馈正文维持演示占位，不记录真实保护反馈正文。
+- 已提交原型不写入真实音频、题图、课堂原文、完整对话或真实联系方式。
+
+## 伪造账号说明
 
 | 角色 | 邮箱 | 数据库 ID | 说明 |
 | --- | --- | --- | --- |
@@ -21,29 +27,28 @@
 | 监护人 | `guardian@example.test` | `user-guardian-01` | 已绑定演示学生 |
 | 管理员 | `admin@example.test` | `user-admin-01` | 演示学校管理员 |
 
-访问码不写入仓库，由 `DEMO_LOGIN_CODE` 提供。若没有真实数据，使用本地 `.env` 中的访问码即可验收；生产环境会拒绝演示凭据。
+表中账号仅描述伪造原型身份，不构成已提交的登录、访问码或数据库能力。若当前工作区另有 `.env`、`DEMO_LOGIN_CODE` 或生产化登录草案，是否可用必须以实际文件状态和启动结果为准，不能由本目录承诺。
 
-## 唯一验收链
+## 原型验收链
 
-当前数据库保留一条最小链：
+提交的 fixture 使用一条最小演示链：
 
 `school-demo-01` → `class-demo-01` → `lesson-demo-01` → `artifact-demo-01`
 
 同时包含 1 条学生学习事实、1 个草稿任务、1 条未发布家长摘要、1 条保护性反馈和 1 条审计记录。
 
-## 重置与核对
+## 未提交生产化草案的核对方式
 
 ```powershell
-$env:DATABASE_URL='postgresql://zhiye:change-me@localhost:5432/zhiye'
-pnpm --dir packages/db seed
+git status --short
 docker compose ps
 ```
 
-种子脚本使用 `upsert`，重复执行会恢复这份唯一伪造验收链，不会生成重复记录。测试完成后不要把 `.env`、访问码或任何真实资料提交到仓库。
+若 `packages/db`、`docker-compose.yml`、`.env.example` 或 seed 脚本显示为未提交，以上命令只能检查当前机器的工作区和运行态，不能证明它们被本次提交交付。不要把 `.env`、访问码或任何真实资料提交到仓库。
 
 ## 本地 AI 与 fixture 的交界
 
-下表只说明当前 Vite 原型的来源边界；它不把本地调用误表述为生产数据接入。
+下表只说明已提交 Vite 原型的来源边界；实时本地 AI 调用不等于真实生产数据接入。若依赖未提交的 acceptance/empty fixture 或生产化草案，应额外记录其工作区状态与实际启动证据。
 
 | 路径 | 初始展示数据 | 用户触发后的数据 | 不可跨越的边界 |
 | --- | --- | --- | --- |

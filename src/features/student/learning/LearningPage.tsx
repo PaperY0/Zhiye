@@ -17,6 +17,7 @@ import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
 
 import { StatusChip } from "../../../components/shared/StatusChip"
+import { generateDraft } from "../../../services/localAi"
 
 type TopicId = "fractions" | "units" | "decimals"
 
@@ -67,10 +68,59 @@ type RetellEntry = {
 
   body: string
 
+}
+
+type RetellFollowUpEntry = {
+  id: string
+
+  kind: "retell-follow-up"
+
   followUp: string
 }
 
-type ConversationEntry = StudentEntry | AssistantEntry | RetellEntry
+type LearningRequest = {
+  topic: string
+
+  recap: string
+
+  question: string
+}
+
+type RetellRequest = {
+  topic: string
+
+  retell: string
+}
+
+type LoadingEntry = {
+  id: string
+
+  kind: "loading"
+
+  request: LearningRequest | RetellRequest
+
+  responseKind: "learning-reply" | "retell-follow-up"
+}
+
+type ErrorEntry = {
+  id: string
+
+  kind: "error"
+
+  error: string
+
+  request: LearningRequest | RetellRequest
+
+  responseKind: "learning-reply" | "retell-follow-up"
+}
+
+type ConversationEntry =
+  | StudentEntry
+  | AssistantEntry
+  | RetellEntry
+  | RetellFollowUpEntry
+  | LoadingEntry
+  | ErrorEntry
 
 const topics: Topic[] = [
   {
@@ -134,46 +184,26 @@ const topics: Topic[] = [
   },
 ]
 
-const responses: Record<TopicId, LearningReply> = {
-  fractions: {
-    explanation:
-      "判断时记住三个词：同时、相同、非零。分子和分母必须同时乘或除以同一个不为零的数，分数的大小才不变。",
-
-    example:
-      "把半杯果汁平均倒进两个同样的小杯里：份数和每份的表示一起变化，但果汁总量没有改变。",
-
-    card: "分子和分母同时乘或除以相同的非零数，分数大小不变。",
-
-    followUp:
-      "为什么不能只改变分子？如果只把分子乘 2，分数表示的大小会发生什么变化？",
-  },
-
-  units: {
-    explanation:
-      "先看方向。大单位换成小单位，数值通常变大，要乘进率；小单位换成大单位，数值通常变小，要除以进率。",
-
-    example:
-      "1 米长的彩带可以看成 100 厘米：单位变小了，表示长度的数字就变大了。",
-
-    card: "大单位 → 小单位：乘进率；小单位 → 大单位：除以进率。",
-
-    followUp: "3 米换成厘米时，为什么答案应该比 3 大？",
-  },
-
-  decimals: {
-    explanation:
-      "先把小数看成接近、好算的整数或一位小数，再计算大约结果，最后检查数量级是否合理。",
-
-    example: "一支笔 4.9 元，买 6 支，可以先按每支 5 元估算，大约需要 30 元。",
-
-    card: "找接近的好算数 → 估算 → 检查结果大小是否合理。",
-
-    followUp: "4.9 × 6 为什么可以用 5 × 6 来估算？",
-  },
-}
-
 function createEntryId(prefix: string, index: number) {
   return `${prefix}-${index}`
+}
+
+function isLearningReply(value: unknown): value is LearningReply {
+  if (!value || typeof value !== "object") return false
+
+  const reply = value as Partial<LearningReply>
+  return [reply.explanation, reply.example, reply.card, reply.followUp].every(
+    (field) => typeof field === "string" && field.trim().length > 0,
+  )
+}
+
+function isRetellFollowUp(value: unknown): value is { followUp: string } {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    typeof (value as { followUp?: unknown }).followUp === "string" &&
+    (value as { followUp: string }).followUp.trim().length > 0
+  )
 }
 
 export function LearningPage() {
@@ -217,6 +247,71 @@ export function LearningPage() {
     setRetell("")
   }
 
+  function replaceEntry(
+    topicId: TopicId,
+    entryId: string,
+    nextEntry: ConversationEntry,
+  ) {
+    setConversations((current) => ({
+      ...current,
+      [topicId]: current[topicId].map((entry) =>
+        entry.id === entryId ? nextEntry : entry,
+      ),
+    }))
+  }
+
+  async function generateLearningReply(
+    topicId: TopicId,
+    entryId: string,
+    request: LearningRequest,
+  ) {
+    try {
+      const response = await generateDraft("learning-reply", request)
+      const content = (response as { content?: unknown }).content
+      if (!isLearningReply(content)) throw new Error("学习回复格式不正确")
+
+      replaceEntry(topicId, entryId, {
+        id: entryId,
+        kind: "assistant",
+        reply: content,
+      })
+    } catch (error) {
+      replaceEntry(topicId, entryId, {
+        id: entryId,
+        kind: "error",
+        error: error instanceof Error ? error.message : "学习回复生成失败",
+        request,
+        responseKind: "learning-reply",
+      })
+    }
+  }
+
+  async function generateRetellFollowUp(
+    topicId: TopicId,
+    entryId: string,
+    request: RetellRequest,
+  ) {
+    try {
+      const response = await generateDraft("retell-follow-up", request)
+      const content = (response as { content?: unknown }).content
+      if (!isRetellFollowUp(content)) throw new Error("复述追问格式不正确")
+
+      replaceEntry(topicId, entryId, {
+        id: entryId,
+        kind: "retell-follow-up",
+        followUp: content.followUp,
+      })
+    } catch (error) {
+      replaceEntry(topicId, entryId, {
+        id: entryId,
+        kind: "error",
+        error: error instanceof Error ? error.message : "复述追问生成失败",
+        request,
+        responseKind: "retell-follow-up",
+      })
+    }
+  }
+
   function sendQuestion(body: string) {
     const normalized = body.trim()
 
@@ -230,6 +325,13 @@ export function LearningPage() {
       occurredAt: "2026-08-02T10:00:00+08:00",
       fact: true,
     })
+
+    const request: LearningRequest = {
+      topic: activeTopic.title,
+      recap: activeTopic.summary,
+      question: normalized,
+    }
+    const entryId = createEntryId(`${activeTopicId}-assistant`, Date.now())
 
     setConversations((current) => {
       const nextIndex = current[activeTopicId].length
@@ -249,17 +351,21 @@ export function LearningPage() {
           },
 
           {
-            id: createEntryId(`${activeTopicId}-assistant`, nextIndex + 1),
+            id: entryId,
 
-            kind: "assistant",
+            kind: "loading",
 
-            reply: responses[activeTopicId],
+            request,
+
+            responseKind: "learning-reply",
           },
         ],
       }
     })
 
     setQuestion("")
+
+    void generateLearningReply(activeTopicId, entryId, request)
   }
 
   function toggleVoice() {
@@ -281,6 +387,9 @@ export function LearningPage() {
 
     if (!normalized) return
 
+    const request: RetellRequest = { topic: activeTopic.title, retell: normalized }
+    const entryId = createEntryId(`${activeTopicId}-retell-follow-up`, Date.now())
+
     setConversations((current) => ({
       ...current,
 
@@ -297,8 +406,16 @@ export function LearningPage() {
           kind: "retell",
 
           body: normalized,
+        },
 
-          followUp: responses[activeTopicId].followUp,
+        {
+          id: entryId,
+
+          kind: "loading",
+
+          request,
+
+          responseKind: "retell-follow-up",
         },
       ],
     }))
@@ -306,6 +423,25 @@ export function LearningPage() {
     setRetell("")
 
     setRetellOpen(false)
+
+    void generateRetellFollowUp(activeTopicId, entryId, request)
+  }
+
+  function retryEntry(topicId: TopicId, entry: ErrorEntry) {
+    const loadingEntry: LoadingEntry = {
+      id: entry.id,
+      kind: "loading",
+      request: entry.request,
+      responseKind: entry.responseKind,
+    }
+    replaceEntry(topicId, entry.id, loadingEntry)
+
+    if (entry.responseKind === "learning-reply") {
+      void generateLearningReply(topicId, entry.id, entry.request as LearningRequest)
+      return
+    }
+
+    void generateRetellFollowUp(topicId, entry.id, entry.request as RetellRequest)
   }
 
   return (
@@ -433,19 +569,53 @@ export function LearningPage() {
 
               if (entry.kind === "retell") {
                 return (
-                  <div className="space-y-3" key={entry.id}>
-                    <div className="ml-auto max-w-[85%] rounded-[24px_24px_8px_24px] bg-[#e7efe4] px-5 py-4 text-sm font-bold leading-6 text-[#294532]">
-                      {entry.body}
-                    </div>
-                    <article className="max-w-2xl rounded-[26px_26px_26px_8px] border border-[#d6e3d4] bg-white/74 p-5 shadow-[0_14px_34px_rgba(48,76,54,.08)]">
-                      <p className="text-xs font-black tracking-[0.12em] text-[#5b775f]">
-                        费曼追问
-                      </p>
-                      <p className="mt-2 text-sm font-bold leading-7">
-                        {entry.followUp}
-                      </p>
-                    </article>
+                  <div
+                    className="ml-auto max-w-[85%] rounded-[24px_24px_8px_24px] bg-[#e7efe4] px-5 py-4 text-sm font-bold leading-6 text-[#294532]"
+                    key={entry.id}
+                  >
+                    {entry.body}
                   </div>
+                )
+              }
+
+              if (entry.kind === "loading") {
+                return (
+                  <p className="text-sm font-bold text-[#5b775f]" key={entry.id} role="status">
+                    {entry.responseKind === "learning-reply"
+                      ? "正在生成学习回复…"
+                      : "正在生成复述追问…"}
+                  </p>
+                )
+              }
+
+              if (entry.kind === "error") {
+                return (
+                  <div className="max-w-2xl rounded-2xl border border-[#e7c8bc] bg-[#fff5f1] p-4" key={entry.id}>
+                    <p className="text-sm font-bold text-[#8e452c]" role="alert">
+                      {entry.error}
+                    </p>
+                    <button
+                      className="mt-3 min-h-10 rounded-xl border border-[#d8a995] bg-white px-4 text-sm font-black text-[#8e452c]"
+                      onClick={() => retryEntry(activeTopicId, entry)}
+                      type="button"
+                    >
+                      {entry.responseKind === "learning-reply" ? "重试回答" : "重试追问"}
+                    </button>
+                  </div>
+                )
+              }
+
+              if (entry.kind === "retell-follow-up") {
+                return (
+                  <article
+                    className="max-w-2xl rounded-[26px_26px_26px_8px] border border-[#d6e3d4] bg-white/74 p-5 shadow-[0_14px_34px_rgba(48,76,54,.08)]"
+                    key={entry.id}
+                  >
+                    <p className="text-xs font-black tracking-[0.12em] text-[#5b775f]">
+                      费曼追问
+                    </p>
+                    <p className="mt-2 text-sm font-bold leading-7">{entry.followUp}</p>
+                  </article>
                 )
               }
 
@@ -459,11 +629,6 @@ export function LearningPage() {
                       <Lightbulb aria-hidden="true" size={15} />
                       先看方向
                     </p>
-                    {activeTopicId === "fractions" ? (
-                      <p className="mt-2 inline-flex rounded-full bg-[#e8f0e6] px-3 py-1 text-xs font-black text-[#3d6145]">
-                        同时、相同、非零
-                      </p>
-                    ) : null}
                     <p className="mt-2 text-sm leading-7 text-[#33483a]">
                       {entry.reply.explanation}
                     </p>

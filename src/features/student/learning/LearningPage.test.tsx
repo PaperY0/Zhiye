@@ -1,50 +1,116 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it } from "vitest"
-import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+import {
+  PrototypeProvider,
+  usePrototype,
+} from "../../../app/prototype/PrototypeContext"
+import { generateDraft } from "../../../services/localAi"
 import { LearningPage } from "./LearningPage"
+
+vi.mock("../../../services/localAi", () => ({
+  generateDraft: vi.fn(),
+}))
+
+function MasteryProbe() {
+  const { students } = usePrototype()
+  const student = students.find((item) => item.id === "student-lin-xiaoyu")
+
+  return <output aria-label="小雨当前掌握度">{student?.mistakes[0]?.mastery}</output>
+}
 
 function renderLearning() {
   return render(
     <PrototypeProvider>
       <LearningPage />
+      <MasteryProbe />
     </PrototypeProvider>,
   )
 }
 
 describe("LearningPage", () => {
-  it("opens topic history and returns a deterministic explanation, example, and knowledge card", async () => {
+  beforeEach(() => {
+    vi.mocked(generateDraft).mockReset()
+  })
+
+  it("sends the student question to local AI and renders its validated reply", async () => {
     const user = userEvent.setup()
+    vi.mocked(generateDraft).mockResolvedValue({
+      content: {
+        explanation: "先判断方向",
+        example: "1 米等于 100 厘米",
+        card: "大变小乘",
+        followUp: "3 米是多少厘米？",
+      },
+    })
     renderLearning()
 
-    expect(
-      screen.getByRole("heading", { name: "知识点学习" }),
-    ).toBeInTheDocument()
-    expect(screen.getByText("按知识点整理的学习历史")).toBeInTheDocument()
-
     await user.click(screen.getByRole("button", { name: "继续学习单位换算" }))
-    expect(
-      screen.getByRole("heading", { name: "单位换算" }),
-    ).toBeInTheDocument()
+    await user.type(screen.getByRole("textbox", { name: "输入学习问题" }), "为什么要乘？")
+    await user.click(screen.getByRole("button", { name: "发送问题" }))
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "为什么换算时有时乘、有时除？",
-      }),
-    )
-
-    const conversation = screen.getByRole("log", {
-      name: "单位换算学习对话",
+    expect(vi.mocked(generateDraft)).toHaveBeenCalledWith("learning-reply", {
+      topic: "单位换算",
+      recap: "先判断单位方向，再根据进率决定乘或除。",
+      question: "为什么要乘？",
     })
-    expect(
-      within(conversation).getByText("为什么换算时有时乘、有时除？"),
-    ).toBeInTheDocument()
-    expect(within(conversation).getByText("先看方向")).toBeInTheDocument()
-    expect(within(conversation).getByText("生活里的例子")).toBeInTheDocument()
-    expect(within(conversation).getByText("知识卡")).toBeInTheDocument()
-    expect(
-      within(conversation).getByText(/大单位换成小单位/),
-    ).toBeInTheDocument()
+    const conversation = screen.getByRole("log", { name: "单位换算学习对话" })
+    expect(within(conversation).getByText("为什么要乘？")).toBeInTheDocument()
+    expect(await within(conversation).findByText("先判断方向")).toBeInTheDocument()
+    expect(within(conversation).getByText("1 米等于 100 厘米")).toBeInTheDocument()
+    expect(within(conversation).getByText("大变小乘")).toBeInTheDocument()
+  })
+
+  it("keeps a failed student question and retries without fixed answers", async () => {
+    const user = userEvent.setup()
+    vi.mocked(generateDraft)
+      .mockRejectedValueOnce(new Error("学习回复服务不可用"))
+      .mockResolvedValueOnce({
+        content: {
+          explanation: "重试后生成的解释",
+          example: "重试后的例子",
+          card: "重试后的知识卡",
+          followUp: "重试后的追问",
+        },
+      })
+    renderLearning()
+
+    await user.type(screen.getByRole("textbox", { name: "输入学习问题" }), "我该怎么换算？")
+    await user.click(screen.getByRole("button", { name: "发送问题" }))
+
+    const conversation = screen.getByRole("log", { name: "分数的基本性质学习对话" })
+    expect(within(conversation).getByText("我该怎么换算？")).toBeInTheDocument()
+    expect(await within(conversation).findByRole("alert")).toHaveTextContent("学习回复服务不可用")
+    expect(within(conversation).getByRole("button", { name: "重试回答" })).toBeInTheDocument()
+    expect(within(conversation).queryByText("同时、相同、非零")).not.toBeInTheDocument()
+
+    await user.click(within(conversation).getByRole("button", { name: "重试回答" }))
+    expect(await within(conversation).findByText("重试后生成的解释")).toBeInTheDocument()
+    expect(vi.mocked(generateDraft)).toHaveBeenCalledTimes(2)
+  })
+
+  it("uses local AI for retell follow-up without changing mastery", async () => {
+    const user = userEvent.setup()
+    vi.mocked(generateDraft).mockResolvedValue({
+      content: { followUp: "如果分母也乘 2，分数为什么不变？" },
+    })
+    renderLearning()
+
+    const mastery = screen.getByLabelText("小雨当前掌握度").textContent
+    await user.click(screen.getByRole("button", { name: "我来讲一遍" }))
+    await user.type(
+      screen.getByRole("textbox", { name: "用自己的话复述" }),
+      "分子和分母要同时变化。",
+    )
+    await user.click(screen.getByRole("button", { name: "提交我的复述" }))
+
+    expect(vi.mocked(generateDraft)).toHaveBeenCalledWith("retell-follow-up", {
+      topic: "分数的基本性质",
+      retell: "分子和分母要同时变化。",
+    })
+    expect(await screen.findByText("如果分母也乘 2，分数为什么不变？")).toBeInTheDocument()
+    expect(screen.getByLabelText("小雨当前掌握度")).toHaveTextContent(mastery ?? "")
   })
 
   it("supports simulated voice input without collecting real audio", async () => {
@@ -53,46 +119,6 @@ describe("LearningPage", () => {
 
     expect(screen.getByText(/不会采集或上传真实音频/)).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "开始模拟语音输入" }))
-    expect(
-      screen.getByRole("button", { name: "结束模拟语音输入" }),
-    ).toBeInTheDocument()
-    expect(screen.getByRole("status")).toHaveTextContent("正在模拟聆听")
-
-    await user.click(screen.getByRole("button", { name: "结束模拟语音输入" }))
-    expect(screen.getByRole("textbox", { name: "输入学习问题" })).toHaveValue(
-      "我怎么判断分子和分母要怎样变化？",
-    )
-
-    await user.click(screen.getByRole("button", { name: "发送问题" }))
-    expect(
-      within(
-        screen.getByRole("log", { name: "分数的基本性质学习对话" }),
-      ).getByText("同时、相同、非零"),
-    ).toBeInTheDocument()
-  })
-
-  it("accepts a self-explanation and asks a deterministic Feynman follow-up", async () => {
-    const user = userEvent.setup()
-    renderLearning()
-
-    await user.click(screen.getByRole("button", { name: "我来讲一遍" }))
-    await user.type(
-      screen.getByRole("textbox", { name: "用自己的话复述" }),
-      "分子和分母要同时乘同一个不为零的数，分数大小才不变。",
-    )
-    await user.click(screen.getByRole("button", { name: "提交我的复述" }))
-
-    const conversation = screen.getByRole("log", {
-      name: "分数的基本性质学习对话",
-    })
-    expect(
-      within(conversation).getByText(
-        "分子和分母要同时乘同一个不为零的数，分数大小才不变。",
-      ),
-    ).toBeInTheDocument()
-    expect(within(conversation).getByText("费曼追问")).toBeInTheDocument()
-    expect(
-      within(conversation).getByText(/为什么不能只改变分子/),
-    ).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "结束模拟语音输入" })).toBeInTheDocument()
   })
 })

@@ -175,6 +175,7 @@ describe("ClassroomPage", () => {
       expect(within(dialog).getByText("处理失败")).toBeInTheDocument()
       expect(within(dialog).getByText("本地 AI 服务未启动")).toBeInTheDocument()
     })
+    expect(within(dialog).getByRole("button", { name: "重试录音" })).toBeInTheDocument()
     expect(within(dialog).queryByRole("button", { name: "查看 AI 初稿" })).not.toBeInTheDocument()
   })
 

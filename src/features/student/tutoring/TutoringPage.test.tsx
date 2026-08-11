@@ -79,6 +79,23 @@ describe("TutoringPage OCR and local AI flow", () => {
     expect(generateDraft).not.toHaveBeenCalled()
   })
 
+  it("guides students to retake OCR text below the documented 0.65 threshold", async () => {
+    vi.mocked(recognizeQuestionImage).mockResolvedValue({
+      recognizedText: "比较 2/3 和 3/5 的大小",
+      ocrConfidence: 0.64,
+      needsConfirmation: true,
+      retryMessage: "题目文字不清晰，请重新拍摄。",
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await uploadQuestion(user)
+
+    expect(await screen.findByText("题目文字不清晰，请重新拍摄。")).toBeInTheDocument()
+    expect(screen.queryByLabelText("识别文本")).not.toBeInTheDocument()
+    expect(generateDraft).not.toHaveBeenCalled()
+  })
+
   it("renders a successful layered tutoring response from local AI", async () => {
     vi.mocked(generateDraft).mockResolvedValue(validDraft)
     const user = userEvent.setup()

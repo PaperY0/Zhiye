@@ -57,7 +57,7 @@ export function TutoringPage() {
     try {
       const recognition = await recognizeQuestionImage(file)
       const text = recognition.recognizedText.trim()
-      if (!text || recognition.ocrConfidence < 0.6) {
+      if (!text || recognition.ocrConfidence < 0.65) {
         dispatch({ type: "OCR_FAILED", message: recognition.retryMessage ?? "题目没有识别清楚，请补拍。" })
         return
       }

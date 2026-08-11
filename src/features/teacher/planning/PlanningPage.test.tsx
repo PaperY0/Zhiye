@@ -166,6 +166,17 @@ describe("PlanningPage", () => {
         ],
       },
     ],
+    [
+      "contains duplicate options that differ only by whitespace",
+      {
+        title: "空白重复选项",
+        questions: [
+          { prompt: "第 1 题", options: ["A", " A"], answer: "A" },
+          { prompt: "第 2 题", options: ["A", "B"], answer: "A" },
+          { prompt: "第 3 题", options: ["A", "B"], answer: "B" },
+        ],
+      },
+    ],
   ])(
     "keeps quizzes unchanged when local AI quiz content %s",
     async (_scenario, content) => {

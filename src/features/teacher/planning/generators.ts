@@ -81,21 +81,24 @@ function readQuizContent(value: unknown): QuizContent {
     title: requireString(content.title),
     questions: content.questions.map((question) => {
       const item = requireObject(question)
+      const options = isStringList(item.options)
+        ? item.options.map((option) => option.trim())
+        : null
       if (
-        !isStringList(item.options) ||
-        item.options.length < 2 ||
-        item.options.some((option) => !option.trim()) ||
-        new Set(item.options).size !== item.options.length
+        !options ||
+        options.length < 2 ||
+        options.some((option) => !option) ||
+        new Set(options).size !== options.length
       ) {
         throw new Error("本地 AI 返回的草稿格式不正确，请重试")
       }
-      const answer = requireString(item.answer)
-      if (!item.options.includes(answer)) {
+      const answer = requireString(item.answer).trim()
+      if (!options.includes(answer)) {
         throw new Error("本地 AI 返回的草稿格式不正确，请重试")
       }
       return {
         prompt: requireString(item.prompt),
-        options: item.options,
+        options,
         answer,
       }
     }),

@@ -17,6 +17,7 @@ import { usePrototype } from "../../../app/prototype/PrototypeContext"
 import type { AppRoute } from "../../../app/routes"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { StatusChip } from "../../../components/shared/StatusChip"
+import StudentCompanionCard from "../companion/StudentCompanionCard"
 
 type StudentHomePageProps = {
   onNavigate(route: AppRoute): void
@@ -116,8 +117,15 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
           还没有找到学生资料
         </h1>
         <p className="mt-3 text-sm text-[#718078]">
-          请稍后再试，或返回角色入口。
+          请先让老师完成学生绑定，绑定后这里会显示课堂复习和学习任务。
         </p>
+        <button
+          className="mt-5 rounded-full bg-[#173022] px-5 py-3 text-sm font-black text-white"
+          onClick={() => onNavigate({ role: "student", page: "messages" })}
+          type="button"
+        >
+          联系老师完成绑定
+        </button>
       </GlassSurface>
     )
   }
@@ -197,6 +205,10 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
           </div>
         </GlassSurface>
       </section>
+
+      <div className="mt-5">
+        <StudentCompanionCard onNavigate={onNavigate} />
+      </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2 2xl:grid-cols-4">
         <EntryCard

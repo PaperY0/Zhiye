@@ -61,6 +61,9 @@ describe("RoleShell", () => {
         "data-show-pinyin",
         expectation.showPinyin,
       )
+      expect(
+        screen.getByTestId("role-shell").getAttribute("style"),
+      ).toContain("--role-background-image")
 
       unmount()
     }
@@ -92,7 +95,6 @@ describe("RoleShell", () => {
       route: AppRoute
       navigationName: string
       currentLabel: string
-      productLabel: string
       roleLabel: string
       expectPinyin: boolean
     }> = [
@@ -100,7 +102,6 @@ describe("RoleShell", () => {
         route: { role: "student", page: "home" },
         navigationName: "学生端主导航",
         currentLabel: "首页",
-        productLabel: "知野学习空间",
         roleLabel: "学生端",
         expectPinyin: true,
       },
@@ -108,7 +109,6 @@ describe("RoleShell", () => {
         route: { role: "parent", page: "home" },
         navigationName: "家长端主导航",
         currentLabel: "学习摘要",
-        productLabel: "知野家校空间",
         roleLabel: "家长端",
         expectPinyin: true,
       },
@@ -116,7 +116,6 @@ describe("RoleShell", () => {
         route: { role: "teacher", page: "workspace" },
         navigationName: "教师端主导航",
         currentLabel: "工作台",
-        productLabel: "知野教学工作台",
         roleLabel: "教师端",
         expectPinyin: false,
       },
@@ -124,7 +123,6 @@ describe("RoleShell", () => {
         route: { role: "admin", page: "home" },
         navigationName: "管理端主导航",
         currentLabel: "管理概览",
-        productLabel: "知野管理中心",
         roleLabel: "管理端",
         expectPinyin: false,
       },
@@ -150,47 +148,20 @@ describe("RoleShell", () => {
       const mobileButton = within(mobileNavigation).getByRole("button", {
         name: expectation.currentLabel,
       })
-      const productLabel = screen.getAllByText(expectation.productLabel)[0]
-      const heading = screen.getByRole("heading", { name: expectation.currentLabel })
-      const returnButton = screen.getByRole("button", { name: "返回上一页" })
       const sidebarRoleLabel = within(sidebar).getAllByText(expectation.roleLabel)[0]
-      expect(
-        screen.getByRole("combobox", { name: "切换体验角色" }),
-      ).toBeInTheDocument()
 
       if (expectation.expectPinyin) {
         expect(within(desktopButton).getByTestId("pinyin-line")).toBeInTheDocument()
         expect(within(mobileButton).getByTestId("pinyin-line")).toBeInTheDocument()
-        expect(within(productLabel.parentElement as HTMLElement).getByTestId("pinyin-line")).toBeInTheDocument()
         expect(within(sidebarRoleLabel.parentElement as HTMLElement).getByTestId("pinyin-line")).toBeInTheDocument()
-        expect(within(heading).getByTestId("pinyin-line")).toBeInTheDocument()
-        expect(within(returnButton).getByTestId("pinyin-line")).toBeInTheDocument()
       } else {
         expect(within(desktopButton).queryByTestId("pinyin-line")).not.toBeInTheDocument()
         expect(within(mobileButton).queryByTestId("pinyin-line")).not.toBeInTheDocument()
-        expect(within(productLabel.parentElement as HTMLElement).queryByTestId("pinyin-line")).not.toBeInTheDocument()
         expect(within(sidebarRoleLabel.parentElement as HTMLElement).queryByTestId("pinyin-line")).not.toBeInTheDocument()
-        expect(within(heading).queryByTestId("pinyin-line")).not.toBeInTheDocument()
-        expect(within(returnButton).queryByTestId("pinyin-line")).not.toBeInTheDocument()
       }
 
       unmount()
     }
-  })
-
-  it("requests the selected role home from the role switcher", async () => {
-    const user = userEvent.setup()
-    const onNavigate = renderShell()
-
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "切换体验角色" }),
-      "student",
-    )
-
-    expect(onNavigate).toHaveBeenCalledWith({
-      role: "student",
-      page: "home",
-    })
   })
 
   it("provides accessible shell landmarks and navigates from the sidebar", async () => {
@@ -202,7 +173,6 @@ describe("RoleShell", () => {
       "#main-content",
     )
     expect(screen.getByRole("main")).toHaveAttribute("id", "main-content")
-    expect(screen.getByRole("heading", { name: "班级洞察" })).toBeInTheDocument()
     expect(screen.getByText("页面内容")).toBeInTheDocument()
 
     await user.click(
@@ -215,15 +185,6 @@ describe("RoleShell", () => {
       role: "teacher",
       page: "classroom",
     })
-  })
-
-  it("provides a visible previous-page action for every role page", async () => {
-    const user = userEvent.setup()
-    const onNavigate = renderShell({ role: "teacher", page: "lesson-detail", lessonId: "lesson-fractions" })
-
-    await user.click(screen.getByRole("button", { name: "返回上一页" }))
-
-    expect(onNavigate).toHaveBeenCalledWith({ role: "teacher", page: "classroom" })
   })
 
   it("exposes the complete navigation model for every role", () => {

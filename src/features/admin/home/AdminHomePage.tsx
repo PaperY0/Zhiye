@@ -42,13 +42,15 @@ const metricCards = [
 function NavigationButton({
   children,
   onClick,
+  compact = false,
 }: {
   children: React.ReactNode
   onClick(): void
+  compact?: boolean
 }) {
   return (
     <button
-      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#173022] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(22,52,34,.18)] transition hover:-translate-y-0.5 hover:bg-[#264932] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#73947b]/30"
+      className={`inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#173022] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(22,52,34,.18)] transition hover:-translate-y-0.5 hover:bg-[#264932] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#73947b]/30 ${compact ? "px-4 text-[13px]" : ""}`}
       onClick={onClick}
       type="button"
     >
@@ -138,6 +140,7 @@ export function AdminHomePage({ onNavigate }: AdminHomePageProps) {
               </StatusChip>
             </div>
             <NavigationButton
+              compact
               onClick={() => onNavigate({ role: "admin", page: "safety" })}
             >
               打开保护性反馈队列

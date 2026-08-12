@@ -117,6 +117,8 @@ export function StudentsPage({ onNavigate }: StudentsPageProps) {
   const [query, setQuery] = useState("")
   const [focus, setFocus] = useState("all")
   const [attention, setAttention] = useState<AttentionFilter>("all")
+  const [importOpen, setImportOpen] = useState(false)
+  const [importFileName, setImportFileName] = useState("")
 
   const focusOptions = useMemo(
     () =>
@@ -329,14 +331,72 @@ export function StudentsPage({ onNavigate }: StudentsPageProps) {
               size={28}
             />
             <h2 className="mt-4 text-xl font-black text-[#243a2a]">
-              没有符合条件的学生
+              {students.length === 0 ? "还没有学生" : "没有符合条件的学生"}
             </h2>
             <p className="mt-2 text-sm text-[#75847b]">
-              尝试清除关键词或切换关注知识点。
+              {students.length === 0
+                ? "先去导入学生名单，之后这里会出现学生档案。"
+                : "尝试清除关键词或切换关注知识点。"}
             </p>
+            {students.length === 0 ? (
+              <button
+                className="mt-5 rounded-full bg-[#173022] px-5 py-3 text-sm font-black text-white"
+                onClick={() => setImportOpen(true)}
+                type="button"
+              >
+                去导入学生名单
+              </button>
+            ) : null}
           </div>
         </GlassSurface>
       )}
+
+      {importOpen ? (
+        <div
+          aria-label="导入学生名单"
+          className="fixed inset-0 z-50 grid place-items-center bg-[#15251a]/25 p-4 backdrop-blur-sm"
+          role="dialog"
+        >
+          <GlassSurface className="w-full max-w-lg p-6" weight="sheet">
+            <h2 className="text-2xl font-black text-[#203427]">导入学生名单</h2>
+            <p className="mt-2 text-sm leading-6 text-[#718078]">
+              当前为本地原型接入点。后续接入真实名单服务后，可上传 CSV 或从校务系统同步。
+            </p>
+            <label className="mt-5 block rounded-2xl border border-dashed border-[#a9c2ac] bg-white/55 p-5 text-sm font-bold text-[#486750]">
+              <span className="block">选择 CSV 文件</span>
+              <input
+                accept=".csv,text/csv"
+                className="mt-3 block w-full text-sm"
+                onChange={(event) =>
+                  setImportFileName(event.target.files?.[0]?.name ?? "")
+                }
+                type="file"
+              />
+            </label>
+            {importFileName ? (
+              <p className="mt-3 text-sm font-bold text-[#55705b]">
+                已选择：{importFileName}（等待服务接入）
+              </p>
+            ) : null}
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                className="rounded-full border border-[#d5e1d3] px-4 py-2 text-sm font-black text-[#55705b]"
+                onClick={() => setImportOpen(false)}
+                type="button"
+              >
+                取消
+              </button>
+              <button
+                className="rounded-full bg-[#173022] px-4 py-2 text-sm font-black text-white"
+                onClick={() => setImportOpen(false)}
+                type="button"
+              >
+                确认接入
+              </button>
+            </div>
+          </GlassSurface>
+        </div>
+      ) : null}
     </div>
   )
 }

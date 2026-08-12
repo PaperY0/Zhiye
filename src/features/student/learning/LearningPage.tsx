@@ -583,7 +583,7 @@ export function LearningPage() {
               if (entry.kind === "student") {
                 return (
                   <div
-                    className="ml-auto max-w-[85%] rounded-[24px_24px_8px_24px] bg-[#183020] px-5 py-4 text-sm font-bold leading-6 text-white shadow-[0_12px_28px_rgba(25,49,32,.16)]"
+                    className="ml-auto max-w-[85%] rounded-[24px_24px_8px_24px] border border-[#c8dfc9] bg-[#e5f2e4] px-5 py-4 text-sm font-bold leading-6 text-[#416449] shadow-[0_12px_28px_rgba(80,121,86,.10)]"
                     key={entry.id}
                   >
                     {entry.body}
@@ -713,7 +713,7 @@ export function LearningPage() {
                 />
                 <div className="mt-3 flex justify-end">
                   <button
-                    className="min-h-11 rounded-2xl bg-[#1d3323] px-5 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-45"
+                    className="min-h-11 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-5 text-sm font-black text-[#416449] disabled:cursor-not-allowed disabled:opacity-45"
                     disabled={!retell.trim()}
                     onClick={submitRetell}
                     type="button"
@@ -759,7 +759,7 @@ export function LearningPage() {
                 />
                 <button
                   aria-label="发送问题"
-                  className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#1d3323] text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#bed7c1] bg-[#dceedd] text-[#416449] disabled:cursor-not-allowed disabled:opacity-40"
                   disabled={!question.trim()}
                   onClick={() => sendQuestion(question)}
                   type="button"

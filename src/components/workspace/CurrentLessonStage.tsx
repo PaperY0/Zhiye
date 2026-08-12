@@ -1,9 +1,49 @@
 import { ArrowRight, Sparkles, Waves } from "lucide-react"
 import type { AppRoute } from "../../app/routes"
+import { usePrototypeOptional } from "../../app/prototype/PrototypeContext"
 
 const timeline = ["课堂录音", "已转写", "复习卡草稿", "学生困难"]
 
 export default function CurrentLessonStage({ onNavigate = () => undefined }: { onNavigate?: (route: AppRoute) => void }) {
+  const prototype = usePrototypeOptional()
+  if (prototype && (prototype.lessons.length === 0 || prototype.students.length === 0)) {
+    return (
+      <section
+        aria-labelledby="current-lesson-title"
+        className="workspace-task-stage flex min-h-0 flex-col items-center justify-center text-center"
+        data-testid="current-lesson-stage"
+      >
+        <div className="workspace-stage-kicker">
+          <Sparkles aria-hidden="true" className="h-4 w-4" />
+          下一步
+        </div>
+        <h1 className="mt-3 text-3xl font-black tracking-[-0.06em] sm:text-4xl" id="current-lesson-title">
+          {prototype.lessons.length === 0 ? "还没有课堂" : "还没有学生"}
+        </h1>
+        <p className="mt-4 max-w-xl text-base leading-7 text-[#68776e]">
+          {prototype.lessons.length === 0
+            ? "先去录音，课堂结束后这里会出现课堂记录和复习卡。"
+            : "先去导入学生名单，之后课堂复盘才能发布给学生。"}
+        </p>
+        <button
+          className="workspace-primary-action mt-7 w-fit"
+          onClick={() =>
+            onNavigate({
+              role: "teacher",
+              page: prototype.lessons.length === 0 ? "classroom" : "students",
+            })
+          }
+          type="button"
+        >
+          {prototype.lessons.length === 0 ? "去录音" : "去导入学生"}
+          <ArrowRight aria-hidden="true" className="h-4 w-4" />
+        </button>
+      </section>
+    )
+  }
+  const lesson = prototype?.lessons.find((item) => item.id === "lesson-fractions")
+  const isPublished = lesson?.status === "published"
+  const studentCount = prototype?.students.length ?? 32
   return (
     <section
       aria-labelledby="current-lesson-title"
@@ -26,10 +66,14 @@ export default function CurrentLessonStage({ onNavigate = () => undefined }: { o
             分数的基本性质
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[#68776e]">
-            40 分钟课堂录音已经整理好，确认后 32 名学生将看到复习卡。
+            {isPublished
+              ? `复习卡已发布给 ${studentCount} 名学生，课堂依据和教师报告仍仅对教师可见。`
+              : `40 分钟课堂录音已经整理好，确认后 ${studentCount} 名学生将看到复习卡。`}
           </p>
         </div>
-        <span className="workspace-status-chip">待确认</span>
+        <span className="workspace-status-chip">
+          {isPublished ? "已发布" : "待确认"}
+        </span>
       </div>
 
       <ol aria-label="课堂回响处理进度" className="workspace-echo-timeline">
@@ -84,7 +128,7 @@ export default function CurrentLessonStage({ onNavigate = () => undefined }: { o
             onClick={() => onNavigate({ role: "teacher", page: "lesson-detail", lessonId: "lesson-fractions" })}
             type="button"
           >
-            确认并发布
+            {isPublished ? "查看已发布课堂" : "确认并发布"}
             <ArrowRight aria-hidden="true" className="h-4 w-4" />
           </button>
         </div>

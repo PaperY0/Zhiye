@@ -8,6 +8,7 @@ import StudentsPage from "./students/StudentsPage"
 import TasksPage from "./tasks/TasksPage"
 import MessagesPage from "./messages/MessagesPage"
 import TeacherSettingsPage from "./settings/TeacherSettingsPage"
+import HistoryPage from "../shared/HistoryPage"
 import TeacherWorkspacePage from "./workspace/TeacherWorkspacePage"
 
 type TeacherRoute = Extract<AppRoute, { role: "teacher" }>
@@ -38,6 +39,8 @@ export default function TeacherRoutes({
       return <MessagesPage />
     case "settings":
       return <TeacherSettingsPage />
+    case "history":
+      return <HistoryPage role="teacher" />
     case "workspace":
       return <TeacherWorkspacePage onNavigate={onNavigate} />
   }

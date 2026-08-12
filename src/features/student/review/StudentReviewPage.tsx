@@ -109,7 +109,7 @@ export function StudentReviewPage({
             它可能还没有发布，或课堂内容正在同步。
           </p>
           <button
-            className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-2xl bg-[#1b3021] px-5 font-black text-white focus:outline-none focus:ring-4 focus:ring-[#8daa91]/40"
+            className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-5 font-black text-[#416449] focus:outline-none focus:ring-4 focus:ring-[#8daa91]/40"
             onClick={() => onNavigate?.({ role: "student", page: "home" })}
             type="button"
           >
@@ -154,7 +154,7 @@ export function StudentReviewPage({
             onClick={() => onNavigate?.({ role: "student", page: "home" })}
             type="button"
           >
-            <ArrowLeft aria-hidden size={17} /> 返回首页
+            <ArrowLeft aria-hidden size={17} /> 返回学生首页
           </button>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <StatusChip tone="info">{lesson.subject}复习卡</StatusChip>
@@ -369,7 +369,7 @@ export function StudentReviewPage({
             </div>
           </div>
           <button
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#1b3021] px-5 text-sm font-black text-white shadow-lg focus:outline-none focus:ring-4 focus:ring-[#8daa91]/40"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-5 text-sm font-black text-[#416449] shadow-lg focus:outline-none focus:ring-4 focus:ring-[#8daa91]/40"
             onClick={() => onNavigate?.({ role: "student", page: "learning" })}
             type="button"
           >

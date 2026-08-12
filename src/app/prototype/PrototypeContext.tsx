@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -21,6 +22,7 @@ import {
 import { acceptanceFixtureSet } from "./acceptanceFixtures"
 import { emptyFixtureSet } from "./emptyFixtures"
 import { isCompleteLessonAnalysis } from "../../services/lessonAnalysis"
+import { listenForPrototypeSync, publishPrototypeSync } from "./prototypeSync"
 import type {
   AuditEvent,
   ApprovedStudentObservation,
@@ -215,9 +217,14 @@ export function PrototypeProvider({
   const [auditEvents, setAuditEvents] = useState(() =>
     cloneFixture(persisted?.auditEvents ?? fixtureSet?.auditEvents ?? auditEventFixtures),
   )
+  const skipNextSyncPublishRef = useRef(false)
 
   useEffect(() => {
     if (!persist) return
+    if (skipNextSyncPublishRef.current) {
+      skipNextSyncPublishRef.current = false
+      return
+    }
     try {
       const snapshot: PrototypeSnapshot = {
         lessons,
@@ -231,10 +238,28 @@ export function PrototypeProvider({
         auditEvents,
       }
       window.localStorage.setItem(storageKey, JSON.stringify(snapshot))
+      publishPrototypeSync(storageKey, snapshot)
     } catch {
       // Storage is best-effort in the prototype; in-memory state remains usable.
     }
   }, [auditEvents, conversations, lessons, parentSummary, persist, plans, quizzes, safetyCases, students, tasks])
+
+  useEffect(() => {
+    if (!persist || dataset === "empty") return
+    return listenForPrototypeSync(storageKey, (incoming) => {
+      const snapshot = incoming as Partial<PrototypeSnapshot>
+      skipNextSyncPublishRef.current = true
+      if (snapshot.lessons) setLessons(cloneFixture(snapshot.lessons))
+      if (snapshot.students) setStudents(cloneFixture(snapshot.students))
+      if (snapshot.plans) setPlans(cloneFixture(snapshot.plans))
+      if (snapshot.quizzes) setQuizzes(cloneFixture(snapshot.quizzes))
+      if (snapshot.tasks) setTasks(cloneFixture(snapshot.tasks))
+      if (snapshot.conversations) setConversations(cloneFixture(snapshot.conversations))
+      if ("parentSummary" in snapshot) setParentSummary(cloneFixture(snapshot.parentSummary ?? null))
+      if (snapshot.safetyCases) setSafetyCases(cloneFixture(snapshot.safetyCases))
+      if (snapshot.auditEvents) setAuditEvents(cloneFixture(snapshot.auditEvents))
+    })
+  }, [dataset, persist, storageKey])
 
   const value = useMemo<PrototypeContextValue>(
     () => ({

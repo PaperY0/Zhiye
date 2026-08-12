@@ -121,7 +121,7 @@ export function StudentTasksPage() {
             aria-pressed={filter === value}
             className={`rounded-full px-4 py-2 text-sm font-bold transition ${
               filter === value
-                ? "bg-[#183023] text-white shadow-md"
+                ? "border border-[#bed7c1] bg-[#dceedd] text-[#416449] shadow-md"
                 : "border border-white/80 bg-white/55 text-[#3c5142] hover:bg-white/80"
             }`}
             key={value}
@@ -163,7 +163,7 @@ export function StudentTasksPage() {
               </div>
               <button
                 aria-label={`打开${task.title}`}
-                className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#183023] px-4 py-3 text-sm font-black text-white shadow-lg shadow-[#183023]/15 transition hover:-translate-y-0.5"
+                className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-4 py-3 text-sm font-black text-[#416449] shadow-lg shadow-[#527a5a]/10 transition hover:-translate-y-0.5"
                 onClick={() => setSelectedTaskId(task.id)}
                 type="button"
               >
@@ -256,7 +256,7 @@ export function StudentTasksPage() {
               {(progress[selectedTask.id] ??
                 initialStudentState(selectedTask)) === "not-started" ? (
                 <button
-                  className="min-h-12 rounded-2xl bg-[#183023] px-5 font-black text-white"
+                  className="min-h-12 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-5 font-black text-[#416449]"
                   onClick={() =>
                     (() => {
                       updateTaskCompletion(
@@ -279,7 +279,7 @@ export function StudentTasksPage() {
               {(progress[selectedTask.id] ??
                 initialStudentState(selectedTask)) === "in-progress" ? (
                 <button
-                  className="min-h-12 rounded-2xl bg-[#183023] px-5 font-black text-white"
+                  className="min-h-12 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-5 font-black text-[#416449]"
                   onClick={() =>
                     (() => {
                       updateTaskCompletion(

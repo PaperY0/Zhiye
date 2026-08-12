@@ -33,8 +33,8 @@ export function RoleMobileNav({ route, onNavigate }: RoleMobileNavProps) {
             aria-current={isCurrent ? "page" : undefined}
             className={`flex min-w-[66px] flex-1 flex-col items-center justify-center gap-1 rounded-[17px] px-2 py-2 text-[11px] font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#54775d] ${
               isCurrent
-                ? "bg-[#dce9d7] text-[#294d33]"
-                : "text-[#748078] hover:bg-white/70 hover:text-[#35543e]"
+                ? "bg-[#e4f1e3] text-[#46684e]"
+                : "text-[#829188] hover:bg-white/70 hover:text-[#52745a]"
             }`}
             onClick={() => onNavigate(item.route)}
           >

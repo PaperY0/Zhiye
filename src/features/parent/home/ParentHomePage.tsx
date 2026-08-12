@@ -12,6 +12,7 @@ import { usePrototype } from "../../../app/prototype/PrototypeContext"
 import type { AppRoute } from "../../../app/routes"
 import type { ParentSummary } from "../../../app/prototype/types"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
+import { PinyinText } from "../../../components/pinyin/PinyinText"
 
 export type ParentHomePageProps = {
   onNavigate(route: AppRoute): void
@@ -48,16 +49,16 @@ export function ParentHomePage({ onNavigate }: ParentHomePageProps) {
   if (students.length === 0) {
     return (
       <GlassSurface className="mx-auto mt-8 max-w-xl p-8 text-center" weight="sheet">
-        <h1 className="text-2xl font-black text-[#203427]">还没有绑定学生</h1>
+        <h1 className="text-2xl font-black text-[#203427]"><PinyinText text="还没有绑定学生" /></h1>
         <p className="mt-3 text-sm leading-6 text-[#718078]">
           先联系老师完成孩子绑定，之后这里会显示学习摘要和课堂回响。
         </p>
         <button
-          className="mt-5 rounded-full bg-[#173022] px-5 py-3 text-sm font-black text-white"
+          className="mt-5 rounded-full border border-[#c9e2c8] bg-[#dcefd9] px-5 py-3 text-sm font-black text-[#355a3d]"
           onClick={() => onNavigate({ role: "parent", page: "messages" })}
           type="button"
         >
-          联系老师完成绑定
+          <PinyinText text="联系老师完成绑定" />
         </button>
       </GlassSurface>
     )
@@ -65,7 +66,7 @@ export function ParentHomePage({ onNavigate }: ParentHomePageProps) {
   if (!isPublishedParentSummary(parentSummary)) {
     return (
       <GlassSurface className="mx-auto mt-8 max-w-xl p-8 text-center" weight="sheet">
-        <h1 className="text-2xl font-black text-[#203427]">本周摘要尚未发布</h1>
+        <h1 className="text-2xl font-black text-[#203427]"><PinyinText text="本周摘要尚未发布" /></h1>
         <p className="mt-3 text-sm leading-6 text-[#718078]">
           教师确认并发布后，这里才会显示可追溯的学习摘要。
         </p>
@@ -90,7 +91,7 @@ export function ParentHomePage({ onNavigate }: ParentHomePageProps) {
       <header className="flex flex-col gap-4 rounded-[2rem] border border-white/75 bg-white/45 p-5 shadow-[0_24px_70px_rgba(51,78,59,0.09)] backdrop-blur-2xl sm:p-7 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-black tracking-[0.08em] text-[#62806a]">
-            家庭学习陪伴
+            <PinyinText text="家庭学习陪伴" />
           </p>
           <h1 className="mt-2 text-3xl font-black tracking-tight text-[#142319] sm:text-4xl">
             {parentSummary.studentName}的本周学习摘要
@@ -105,7 +106,7 @@ export function ParentHomePage({ onNavigate }: ParentHomePageProps) {
       </header>
 
       <GlassSurface aria-label="摘要发布依据" className="p-4" role="region" weight="light">
-        <p className="text-xs font-black tracking-[0.1em] text-[#718276]">已确认的可追溯信息</p>
+        <PinyinText className="text-xs font-black tracking-[0.1em] text-[#718276]" text="已确认的可追溯信息" />
         <p className="mt-2 text-sm font-bold text-[#405448]">
           来源：{parentSummary.source} · 教师确认于 {new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(parentSummary.confirmedAt))}
         </p>
@@ -271,7 +272,7 @@ export function ParentHomePage({ onNavigate }: ParentHomePageProps) {
             </p>
             <button
               aria-label={isPlaying ? "停止模拟语音家书" : "播放模拟语音家书"}
-              className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#183023] px-5 font-black text-white shadow-[0_12px_28px_rgba(24,48,35,.2)]"
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#c9e2c8] bg-[#dcefd9] px-5 font-black text-[#355a3d] shadow-[0_12px_28px_rgba(84,126,87,.12)]"
               onClick={toggleAudioLetter}
               type="button"
             >

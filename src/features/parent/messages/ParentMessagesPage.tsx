@@ -56,15 +56,15 @@ export function ParentMessagesPage() {
     setNotice("消息已保存到本地原型，不会真实发送给老师")
   }
 
-  if (!conversation) {
+  if (!conversation || !parentSummary) {
     return (
       <section className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
         <GlassSurface className="p-8 text-center">
           <h1 className="text-2xl font-black text-[#1c3022]">
-            暂时无法打开家校消息
+            还没有家校消息
           </h1>
           <p className="mt-3 text-sm leading-6 text-[#69796e]">
-            当前没有找到与绑定学生对应的教师会话，请稍后再试。
+            先完成学生绑定，之后这里会出现与老师的沟通记录。
           </p>
         </GlassSurface>
       </section>
@@ -137,16 +137,16 @@ export function ParentMessagesPage() {
               <li
                 className={`max-w-[88%] rounded-[1.6rem] px-4 py-3 text-sm leading-6 shadow-sm sm:max-w-[72%] ${
                   mine
-                    ? "ml-auto rounded-br-md bg-[#23452d] text-white"
+                    ? "ml-auto rounded-br-md border border-[#c9e2c8] bg-[#dcefd9] text-[#355a3d]"
                     : "rounded-bl-md border border-white/80 bg-white/72 text-[#314239]"
                 }`}
                 key={message.id}
               >
                 <div className="flex items-center justify-between gap-4 text-xs">
-                  <span className={mine ? "text-white/75" : "text-[#687a6e]"}>
+                  <span className={mine ? "text-[#729177]" : "text-[#687a6e]"}>
                     {senderLabel(message)}
                   </span>
-                  <time className={mine ? "text-white/60" : "text-[#839087]"}>
+                  <time className={mine ? "text-[#8aa48d]" : "text-[#839087]"}>
                     {messageTime(message.sentAt)}
                   </time>
                 </div>
@@ -182,7 +182,7 @@ export function ParentMessagesPage() {
               />
             </label>
             <button
-              className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#183023] px-6 font-black text-white shadow-[0_12px_28px_rgba(24,48,35,.2)] disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-[#c9e2c8] bg-[#dcefd9] px-6 font-black text-[#355a3d] shadow-[0_12px_28px_rgba(84,126,87,.12)] disabled:cursor-not-allowed disabled:opacity-45"
               disabled={!draft.trim()}
               onClick={submitMessage}
               type="button"

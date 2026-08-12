@@ -1,5 +1,6 @@
 import { BookOpen, CheckSquare2, MessageCircle, Sparkles } from "lucide-react"
 import type { AppRoute } from "../../app/routes"
+import { usePrototypeOptional } from "../../app/prototype/PrototypeContext"
 
 const queue = [
   { label: "确认课堂复盘", detail: "现在最值得处理", icon: Sparkles, route: { role: "teacher", page: "lesson-detail", lessonId: "lesson-fractions" } as AppRoute },
@@ -9,6 +10,22 @@ const queue = [
 ]
 
 export default function WorkspaceActivityRail({ onNavigate }: { onNavigate: (route: AppRoute) => void }) {
+  const prototype = usePrototypeOptional()
+  if (prototype && (prototype.lessons.length === 0 || prototype.students.length === 0)) {
+    return (
+      <aside aria-label="空数据引导" className="workspace-activity-rail h-full">
+        <section className="workspace-side-surface workspace-side-surface-centered workspace-apple-glass-surface flex-1 justify-center">
+          <h2 className="text-sm font-black">开始使用知野</h2>
+          <p className="mt-3 text-sm leading-6 text-[#65766b]">
+            {prototype.lessons.length === 0
+              ? "录下一节课堂，系统才有内容可整理。"
+              : "导入学生名单，课堂复习卡才能准确送达。"}
+          </p>
+        </section>
+      </aside>
+    )
+  }
+  const affectedStudentCount = prototype?.signals[0]?.affectedCount ?? 12
   return (
     <aside aria-label="今日行动与班级脉搏" className="workspace-activity-rail h-full">
       <section className="workspace-side-surface workspace-side-surface-centered workspace-apple-glass-surface flex-1">
@@ -56,7 +73,7 @@ export default function WorkspaceActivityRail({ onNavigate }: { onNavigate: (rou
           ))}
         </div>
         <p className="text-sm leading-6 text-[#65766b]">
-          <strong className="text-[#445f49]">12 位学生</strong>
+          <strong className="text-[#445f49]">{affectedStudentCount} 位学生</strong>
           在“<span>单位换算 × 计算</span>”处停下来。
         </p>
       </button>

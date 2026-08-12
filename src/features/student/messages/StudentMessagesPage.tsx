@@ -190,7 +190,7 @@ export function StudentMessagesPage() {
                   <li
                     className={`max-w-[86%] rounded-3xl px-4 py-3 text-sm leading-6 shadow-sm ${
                       mine
-                        ? "ml-auto bg-[#21412d] text-white"
+                        ? "ml-auto border border-[#c8dfc9] bg-[#e5f2e4] text-[#416449]"
                         : "mr-auto border border-white/80 bg-white/75 text-[#26372b]"
                     }`}
                     key={message.id}
@@ -248,7 +248,7 @@ export function StudentMessagesPage() {
                   />
                 </label>
                 <button
-                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#183023] px-5 font-black text-white disabled:cursor-not-allowed disabled:opacity-45"
+                    className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-5 font-black text-[#416449] disabled:cursor-not-allowed disabled:opacity-45"
                   disabled={!draft.trim()}
                   onClick={submitMessage}
                   type="button"
@@ -268,7 +268,7 @@ export function StudentMessagesPage() {
       <Dialog
         footer={
           <button
-            className="min-h-12 rounded-2xl bg-[#183023] px-5 font-black text-white"
+            className="min-h-12 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-5 font-black text-[#416449]"
             onClick={closeHelp}
             type="button"
           >

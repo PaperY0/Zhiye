@@ -1,6 +1,20 @@
 import { render, screen, within } from "@testing-library/react"
+import { useEffect } from "react"
 import { vi } from "vitest"
+import { PrototypeProvider, usePrototype } from "../app/prototype/PrototypeContext"
 import WorkspaceScreen from "./WorkspaceScreen"
+
+function PublishLessonOnMount() {
+  const { publishLesson } = usePrototype()
+
+  useEffect(() => {
+    publishLesson("lesson-fractions")
+    // The fixture action is intentionally fired once to model the prior page action.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return null
+}
 
 describe("WorkspaceScreen", () => {
   it("presents the classroom recap as the primary task", () => {
@@ -88,5 +102,20 @@ describe("WorkspaceScreen", () => {
       "workspace-side-surface-centered",
       "workspace-apple-glass-surface",
     )
+  })
+
+  it("removes the publish action after the lesson is published", async () => {
+    render(
+      <PrototypeProvider persist={false}>
+        <PublishLessonOnMount />
+        <WorkspaceScreen onNavigate={vi.fn()} />
+      </PrototypeProvider>,
+    )
+
+    expect(screen.queryByRole("button", { name: "确认并发布" })).not.toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "查看已发布课堂" }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/复习卡已发布给 \d+ 名学生/)).toBeInTheDocument()
   })
 })

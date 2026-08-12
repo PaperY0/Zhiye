@@ -8,11 +8,12 @@
 
 **技术栈：** TypeScript、React、Tailwind CSS、Next.js App Router、PostgreSQL、Prisma、SQLite 本地开发、Redis、BullMQ、S3、SSE、Auth.js、Zod、Vitest、Testing Library、Playwright、Docker Compose。
 
-## 当前基线与边界
+## 当前基线与边界（2026-08-02 更新）
 
-- 当前已完成：沉浸式知野欢迎页、教师/学生/家长/管理角色路由、统一角色壳层、本地 fixture、跨页面原型状态、课堂复盘/备课/任务/答疑/错题/家长摘要/保护性反馈/审计页面。
+- 当前已完成：沉浸式知野欢迎页、教师/学生/家长/管理角色路由、统一角色壳层、本地 fixture、跨页面原型状态、课堂复盘/备课/任务/答疑/错题/家长摘要/保护性反馈/审计页面、最小验收数据链、统一历史记录中心。
 - 当前性质：高保真本地交互原型；页面中的消息、音频、题图、AI 结果和设置均不会连接真实学校系统。
-- 当前已知问题：完整测试为 108 通过、1 失败；失败来自 `src/features/teacher/workspace/TeacherWorkspacePage.test.tsx` 仍查找已移除的旧导航名称。
+- 当前验证状态：`npm.cmd run test -- --run` 为 34 个测试文件、130 个测试通过；`npm.cmd run build` 成功。当前预览数据已重置为 1 条最小验收数据链。
+- 当前已知问题：未知 hash 的页面内容会安全回到欢迎页，但地址栏不会自动规范化为 `#/welcome`；生产能力仍未实现。
 - 当前生产差距：无真实认证、组织权限、数据库、对象存储、异步队列、AI Gateway、SSE、离线加密同步、真实审计和部署环境。
 - 产品取舍：比赛演示与真实试点必须分开验收。演示可以使用确定性 fixture；试点必须使用真实状态、真实权限和可追溯任务。
 
@@ -24,9 +25,9 @@
 - 修改：`src/features/teacher/workspace/TeacherWorkspacePage.test.tsx`
 - 检查：`src/app/AppRouter.test.tsx`、`src/components/shell/RoleShell.test.tsx`
 
-- [ ] 将旧的 `教师功能导航` 断言改为 `教师端主导航`。
-- [ ] 保留“确认并发布”和工作台行动卡跳转断言。
-- [ ] 执行 `npm.cmd run test -- --run`，结果必须为全绿。
+- [x] 将旧的 `教师功能导航` 断言改为 `教师端主导航`。
+- [x] 保留“确认并发布”和工作台行动卡跳转断言。
+- [x] 执行 `npm.cmd run test -- --run`，结果为 34 个测试文件、130 个测试通过。
 
 ### 任务 0.2：完成原型验收矩阵
 
@@ -34,8 +35,8 @@
 - 新建：`docs/qa/zhiye-prototype-acceptance.md`
 - 检查：`src/app/routes.ts`、全部 `src/features/**/` 页面
 
-- [ ] 逐条验收 24 个 hash 路由、刷新、前进/后退、角色切换。
-- [ ] 验收教师主线：工作台 → 课堂详情 → 复习卡发布 → 学生复习卡可见。
+- [ ] 逐条验收当前 27 个角色 hash 路由、刷新、前进/后退、角色切换。
+- [x] 验收教师主线：工作台 → 课堂详情 → 复习卡发布 → 学生复习卡可见。2026-08-02 已完成最小数据链验收。
 - [ ] 验收学生主线：拍题 → 卡点选择 → 分层提示 → 复述 → 保存错题。
 - [ ] 验收保护主线：想说一说 → 普通反馈/保护性反馈分流 → 人工处理 → 审计事件。
 - [ ] 验收桌面、平板、手机三种宽度；记录 overflow、键盘焦点、减少动效和减少透明度问题。
@@ -44,13 +45,19 @@
 
 ## 第二阶段：冻结试点产品契约（2–3 天）
 
-### 任务 1.1：冻结首发范围
+### 任务 1.1：冻结首发范围（已完成）
 
-- [ ] 首发只承诺数学、五年级、教师课堂复盘、学生单题答疑、班级困惑回流、家长陪伴摘要和保护性反馈。
-- [ ] 语文、英语保留数据结构和导航入口，但不作为首轮质量指标。
-- [ ] 不把“实时课堂录音分析”“方言高准确率”“自动诊断”放入首轮承诺。
+**提交文档：** `docs/product/zhiye-pilot-scope.md`
+
+- [x] 首发只承诺数学、五年级、教师课堂复盘、学生单题答疑、班级困惑回流、家长陪伴摘要和保护性反馈。
+- [x] 语文、英语保留数据结构和导航入口，但不作为首轮质量指标。
+- [x] 不把“实时课堂录音分析”“方言高准确率”“自动诊断”放入首轮承诺。
 
 ### 任务 1.2：建立指标与事件字典
+
+**当前状态：** 已建立草案，进入产品/工程/隐私评审。
+
+**提交文档：** `docs/product/zhiye-pilot-metrics.md`、`docs/product/zhiye-event-dictionary.md`
 
 **文件：**
 - 新建：`docs/product/zhiye-pilot-metrics.md`
@@ -66,18 +73,28 @@
 
 ### 任务 2.1：建立生产应用边界
 
+**生产边界契约：** `docs/product/zhiye-production-boundary.md`
+
+当前状态：边界与迁移顺序已提交；Prisma schema、Prisma 7 配置、首个 `0001_init` 结构迁移和可执行脱敏 seed 已落地；PostgreSQL、Redis、MinIO 已通过本地 Compose 启动，唯一验收数据已写入数据库；独立 `apps/web` Next.js 生产入口骨架已建立。
+
+当前纵向切片：`packages/domain` 已建立课堂发布状态机、事件 schema 和基础权限拒绝规则；尚未接入 Web、数据库或真实身份。
+
 **文件：**
 - 新建：`apps/web/`（Next.js App Router）
 - 新建：`apps/worker/`（BullMQ Worker）
 - 新建：`packages/domain/`（领域类型、Zod schema、权限规则）
 - 修改：根目录 `package.json`、`docker-compose.yml`
 
-- [ ] 保留现有 Vite 原型可运行，作为 `apps/prototype` 或独立演示入口，不与生产路由混用。
+- [x] 保留现有 Vite 原型可运行，并建立独立 `apps/web` 生产入口，不与生产路由混用。
 - [ ] 为 web、worker、domain 建立 TypeScript project references 和共享 lint/test 命令。
-- [ ] Docker Compose 启动 PostgreSQL、Redis、MinIO（S3 兼容）和 web/worker。
+- [x] Docker Compose 启动 PostgreSQL、Redis、MinIO（S3 兼容）基础依赖，并完成运行态验收。
 - [ ] 所有环境变量通过 `.env.example` 声明，模型密钥和数据库密钥不进入仓库。
 
 ### 任务 2.2：身份、组织与权限
+
+**权限契约草案：** `docs/product/zhiye-permission-matrix.md`
+
+当前状态：领域层已实现会话角色、班级归属、监护绑定和保护案件的拒绝规则，并补齐了 HttpOnly Cookie policy 与 `getSessionUser` 会话解析契约；Auth.js、真实登录页、服务端 API 查询前置校验尚未接入。
 
 **接口：**
 - `getSessionUser(): Promise<SessionUser | null>`
@@ -87,10 +104,10 @@
 
 **数据：** `User`、`School`、`Classroom`、`Enrollment`、`GuardianLink`、`Invite`、`SafeguardingRouting`。
 
-- [ ] 使用 Auth.js + HttpOnly Cookie；公共设备退出后不可恢复上一个人的会话。
+- [x] 建立 Auth.js route handler、登录页、退出按钮和本地 Credentials Provider 边界；演示邮箱已查询 PostgreSQL 脱敏种子用户，演示凭据在生产环境明确拒绝，真实学校账号 Provider/Adapter 仍待接入。
 - [ ] 邀请码/绑定码只保存哈希，设置过期、使用次数和撤销状态。
 - [ ] 每个 API 在查询前做组织、班级、监护关系校验；Prisma 不替代权限判断。
-- [ ] 为教师、学生、家长、管理员、保护负责人分别写权限矩阵和拒绝测试。
+- [x] 为教师、学生、家长、管理员、保护负责人建立首轮领域权限矩阵和拒绝测试；API/Auth.js 接入留到下一切片。
 
 ## 第四阶段：教师第一闭环（1.5 周）
 

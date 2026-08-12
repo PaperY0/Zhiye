@@ -167,7 +167,7 @@ export function MistakesPage() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-[1500px] space-y-5 pb-12 text-[#19271e]">
+    <section className="mx-auto w-full max-w-[1280px] space-y-4 pb-10 text-[#19271e] px-2 sm:px-4">
       <GlassSurface className="p-5 sm:p-7" weight="light">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
@@ -275,10 +275,10 @@ export function MistakesPage() {
       </GlassSurface>
 
       {filtered.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((mistake) => (
             <GlassSurface
-              className="group flex min-h-[320px] flex-col overflow-hidden p-0 transition hover:-translate-y-0.5 hover:shadow-[0_24px_52px_rgba(44,71,50,.12)]"
+              className="group flex min-h-[286px] flex-col overflow-hidden p-0 transition hover:-translate-y-0.5 hover:shadow-[0_20px_42px_rgba(44,71,50,.18)]"
               key={mistake.id}
               weight="card"
             >
@@ -294,11 +294,11 @@ export function MistakesPage() {
                 </span>
               </div>
 
-              <div className="flex flex-1 flex-col p-5">
+              <div className="flex flex-1 flex-col p-4">
                 <p className="text-xs font-black tracking-[0.1em] text-[#5d7562]">
                   {mistake.knowledgePoint}
                 </p>
-                <div className="mt-4 grid min-h-32 place-items-center rounded-[22px] border border-[#e2e8dd] bg-[#fffef9]/82 p-5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,.95)]">
+                <div className="mt-3 grid min-h-24 place-items-center rounded-[20px] border border-[#d4e3d0] bg-[#fffef9]/90 p-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,.95)]">
                   <p className="text-lg font-black leading-8 text-[#213027]">
                     {mistake.prompt}
                   </p>
@@ -316,7 +316,7 @@ export function MistakesPage() {
                 </div>
                 <button
                   aria-label={`查看错题：${mistake.prompt}`}
-                  className="mt-5 inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#1d3323] px-5 text-sm font-black text-white shadow-[0_12px_24px_rgba(29,51,35,.16)]"
+                  className="mt-5 inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-5 text-sm font-black text-[#416449] shadow-[0_12px_24px_rgba(72,110,79,.12)]"
                   onClick={() => setSelectedId(mistake.id)}
                   type="button"
                 >
@@ -332,7 +332,7 @@ export function MistakesPage() {
           <EmptyState
             action={
               <button
-                className="min-h-11 rounded-2xl bg-[#1d3323] px-5 text-sm font-black text-white"
+                className="min-h-11 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-5 text-sm font-black text-[#416449]"
                 onClick={resetFilters}
                 type="button"
               >

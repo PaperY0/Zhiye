@@ -220,7 +220,7 @@ export function MistakeDetailDrawer({
               />
             </label>
             <button
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#1d3323] px-5 text-sm font-black text-white shadow-[0_12px_24px_rgba(29,51,35,.16)]"
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-5 text-sm font-black text-[#416449] shadow-[0_12px_24px_rgba(80,121,86,.10)]"
               onClick={() => {
                 onSave(mistake.id, mastery, note)
 

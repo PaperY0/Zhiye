@@ -6,6 +6,7 @@ import {
   FileClock,
   GraduationCap,
   Home,
+  History,
   LayoutDashboard,
   Lightbulb,
   ListChecks,
@@ -77,6 +78,7 @@ export const ROLE_NAVIGATION: Record<Role, readonly RoleNavigationItem[]> = {
     { label: "任务", icon: ListChecks, route: { role: "teacher", page: "tasks" } },
     { label: "消息", icon: MessageCircle, route: { role: "teacher", page: "messages" } },
     { label: "设置", icon: Settings, route: { role: "teacher", page: "settings" } },
+    { label: "历史记录", icon: History, route: { role: "teacher", page: "history" } },
   ],
   student: [
     { label: "首页", icon: Home, route: { role: "student", page: "home" } },
@@ -85,16 +87,19 @@ export const ROLE_NAVIGATION: Record<Role, readonly RoleNavigationItem[]> = {
     { label: "错题本", icon: ClipboardCheck, route: { role: "student", page: "mistakes" } },
     { label: "任务", icon: ListChecks, route: { role: "student", page: "tasks" } },
     { label: "消息", icon: MessageCircle, route: { role: "student", page: "messages" } },
+    { label: "历史记录", icon: History, route: { role: "student", page: "history" } },
   ],
   parent: [
     { label: "学习摘要", shortLabel: "摘要", icon: GraduationCap, route: { role: "parent", page: "home" } },
     { label: "联系老师", shortLabel: "消息", icon: MessagesSquare, route: { role: "parent", page: "messages" } },
+    { label: "历史记录", icon: History, route: { role: "parent", page: "history" } },
   ],
   admin: [
     { label: "管理概览", shortLabel: "概览", icon: School, route: { role: "admin", page: "home" } },
     { label: "保护性反馈", shortLabel: "反馈", icon: ShieldAlert, route: { role: "admin", page: "safety" } },
     { label: "审计记录", shortLabel: "审计", icon: FileClock, route: { role: "admin", page: "audit" } },
     { label: "学校设置", shortLabel: "设置", icon: Settings, route: { role: "admin", page: "settings" } },
+    { label: "历史记录", icon: History, route: { role: "admin", page: "history" } },
   ],
 }
 

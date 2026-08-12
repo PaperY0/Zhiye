@@ -7,6 +7,25 @@ export type GenerationKind =
   | "parent-summary"
   | "student-inference"
   | "tutoring"
+  | "student-companion"
+
+export type CompanionAction =
+  | "none"
+  | "go-tutoring"
+  | "go-learning"
+  | "go-mistakes"
+  | "go-tasks"
+  | "go-messages"
+
+export type StudentCompanionReply = {
+  reply: string
+  pinyin: string
+  action: CompanionAction
+  actionLabel?: string | null
+  actionPinyin?: string | null
+  instructions?: string | null
+  instructionsPinyin?: string | null
+}
 
 export type QuestionImageRecognition = {
   recognizedText: string
@@ -52,6 +71,17 @@ export function generateDraft(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ kind, context }),
   })
+}
+
+export async function generateCompanionReply(
+  message: string,
+  currentPage: string,
+) {
+  const response = await generateDraft("student-companion", {
+    message,
+    currentPage,
+  }) as { content: StudentCompanionReply }
+  return response.content
 }
 
 export function recognizeQuestionImage(file: File) {

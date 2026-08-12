@@ -25,6 +25,7 @@ GenerationKind = Literal[
     "parent-summary",
     "student-inference",
     "tutoring",
+    "student-companion",
 ]
 
 BASE64_PATTERN = re.compile(r"^[A-Za-z0-9+/_-]+={0,2}$")
@@ -179,6 +180,11 @@ class TutoringContext(ContextModel):
     attempt: TextOnly
 
 
+class StudentCompanionContext(ContextModel):
+    message: TextOnly = Field(max_length=1000)
+    currentPage: TextOnly = Field(max_length=100)
+
+
 CONTEXT_MODELS: dict[GenerationKind, type[ContextModel]] = {
     "lesson-plan": LessonPlanContext,
     "quiz": QuizContext,
@@ -188,6 +194,7 @@ CONTEXT_MODELS: dict[GenerationKind, type[ContextModel]] = {
     "parent-summary": ParentSummaryContext,
     "student-inference": StudentInferenceContext,
     "tutoring": TutoringContext,
+    "student-companion": StudentCompanionContext,
 }
 
 
@@ -286,3 +293,20 @@ class TutoringDraft(BaseModel):
         if answer not in options:
             raise ValueError("迁移题答案必须属于选项")
         return answer
+
+
+class StudentCompanionDraft(BaseModel):
+    reply: TextOnly = Field(max_length=1200)
+    pinyin: TextOnly = Field(max_length=2400)
+    action: Literal[
+        "none",
+        "go-tutoring",
+        "go-learning",
+        "go-mistakes",
+        "go-tasks",
+        "go-messages",
+    ] = "none"
+    actionLabel: TextOnly | None = Field(default=None, max_length=100)
+    actionPinyin: TextOnly | None = Field(default=None, max_length=200)
+    instructions: TextOnly | None = Field(default=None, max_length=800)
+    instructionsPinyin: TextOnly | None = Field(default=None, max_length=1600)

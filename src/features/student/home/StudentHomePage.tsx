@@ -9,7 +9,6 @@ import {
   Clock3,
   ListTodo,
   NotebookTabs,
-  Sparkles,
   Target,
   TrendingUp,
 } from "lucide-react"
@@ -17,7 +16,7 @@ import { usePrototype } from "../../../app/prototype/PrototypeContext"
 import type { AppRoute } from "../../../app/routes"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { StatusChip } from "../../../components/shared/StatusChip"
-import StudentCompanionCard from "../companion/StudentCompanionCard"
+import { PinyinText } from "../../../components/pinyin/PinyinText"
 
 type StudentHomePageProps = {
   onNavigate(route: AppRoute): void
@@ -47,7 +46,7 @@ function EntryCard({
         <span className="grid size-11 place-items-center rounded-2xl bg-[#e3ecdd] text-[#486750]">
           <Icon aria-hidden size={22} />
         </span>
-        <h2 className="mt-5 text-xl font-black text-[#203427]">{title}</h2>
+        <PinyinText className="mt-5 text-xl font-black text-[#203427]" text={title} />
         <p className="mt-2 text-sm font-medium leading-6 text-[#708078]">
           {description}
         </p>
@@ -114,17 +113,17 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
     return (
       <GlassSurface className="mx-auto max-w-xl p-8 text-center" weight="sheet">
         <h1 className="text-2xl font-black text-[#203427]">
-          还没有找到学生资料
+          <PinyinText text="还没有找到学生资料" />
         </h1>
         <p className="mt-3 text-sm text-[#718078]">
           请先让老师完成学生绑定，绑定后这里会显示课堂复习和学习任务。
         </p>
         <button
-          className="mt-5 rounded-full bg-[#173022] px-5 py-3 text-sm font-black text-white"
+          className="mt-5 rounded-full border border-[#bed7c1] bg-[#dceedd] px-5 py-3 text-sm font-black text-[#416449]"
           onClick={() => onNavigate({ role: "student", page: "messages" })}
           type="button"
         >
-          联系老师完成绑定
+          <PinyinText text="联系老师完成绑定" />
         </button>
       </GlassSurface>
     )
@@ -134,10 +133,6 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
     <div className="mx-auto w-full max-w-[1480px] px-1 pb-8 sm:px-2">
       <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-sm font-black text-[#58725e]">
-            <Sparkles aria-hidden size={17} />
-            今天也按自己的节奏来
-          </div>
           <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-[#17291d] sm:text-4xl">
             {student.name}，下午好
           </h1>
@@ -158,7 +153,7 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
           <div className="pointer-events-none absolute -right-16 -top-20 size-72 rounded-full bg-[#dcebd7]/55 blur-3xl" />
           <div className="relative">
             <div className="flex flex-wrap items-center gap-2">
-              <StatusChip tone="info">今日复习卡</StatusChip>
+              <StatusChip tone="info"><PinyinText text="今日复习卡" /></StatusChip>
               <span className="text-xs font-bold text-[#819087]">
                 {todayReview
                   ? `${todayReview.subject} · ${todayReview.durationMinutes} 分钟课堂`
@@ -187,7 +182,7 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
           </div>
           <div className="relative mt-6 flex justify-start lg:mt-0 lg:justify-end">
             <button
-              className="inline-flex min-h-14 items-center gap-3 rounded-[20px] bg-[#17291d] px-6 text-base font-black text-white shadow-[0_14px_30px_rgba(23,41,29,.2)] transition hover:-translate-y-0.5 hover:bg-[#243b2a] focus:outline-none focus:ring-4 focus:ring-[#8daa91]/40 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-14 items-center gap-3 rounded-[20px] border border-[#bed7c1] bg-[#dceedd] px-6 text-base font-black text-[#416449] shadow-[0_12px_26px_rgba(72,110,79,.12)] transition hover:-translate-y-0.5 hover:bg-[#e9f5e8] focus:outline-none focus:ring-4 focus:ring-[#8daa91]/40 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!todayReview}
               onClick={() =>
                 todayReview &&
@@ -205,10 +200,6 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
           </div>
         </GlassSurface>
       </section>
-
-      <div className="mt-5">
-        <StudentCompanionCard onNavigate={onNavigate} />
-      </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2 2xl:grid-cols-4">
         <EntryCard
@@ -231,7 +222,7 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
             </span>
             <StatusChip tone="warning">{studentTasks.length} 项待办</StatusChip>
           </div>
-          <h2 className="mt-5 text-xl font-black text-[#203427]">我的待办</h2>
+          <PinyinText className="mt-5 text-xl font-black text-[#203427]" text="我的待办" />
           <p className="mt-2 text-sm font-black text-[#3f5946]">
             {nextTask?.title ?? "今天的任务已完成"}
           </p>
@@ -256,7 +247,7 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
           <span className="grid size-11 place-items-center rounded-2xl bg-[#eadfd9] text-[#815746]">
             <NotebookTabs aria-hidden size={22} />
           </span>
-          <h2 className="mt-5 text-xl font-black text-[#203427]">我的错题</h2>
+          <PinyinText className="mt-5 text-xl font-black text-[#203427]" text="我的错题" />
           <p className="mt-2 text-sm font-black text-[#3f5946]">
             {latestMistake?.knowledgePoint ?? "还没有记录错题"}
           </p>
@@ -286,7 +277,7 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
               只和自己的记录比较
             </span>
           </div>
-          <h2 className="mt-5 text-xl font-black text-[#203427]">我的进度</h2>
+          <PinyinText className="mt-5 text-xl font-black text-[#203427]" text="我的进度" />
           <div className="mt-4 flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-bold text-[#7a8980]">任务完成率</p>
@@ -346,7 +337,7 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
             <Target aria-hidden size={20} />
           </span>
           <div>
-            <p className="text-sm font-black text-[#2e4935]">今天的小目标</p>
+            <PinyinText className="text-sm font-black text-[#2e4935]" text="今天的小目标" />
             <p className="text-xs font-medium text-[#76867c]">
               能用自己的话讲清一个知识点，就已经很棒。
             </p>

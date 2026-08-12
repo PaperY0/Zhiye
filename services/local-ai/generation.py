@@ -17,6 +17,7 @@ from schemas import (
     StudentInferenceDraft,
     TutoringDraft,
     LearningReplyDraft,
+    StudentCompanionDraft,
 )
 
 
@@ -41,6 +42,7 @@ RESPONSE_MODELS: dict[str, type[BaseModel]] = {
     "parent-summary": ParentSummaryDraft,
     "student-inference": StudentInferenceDraft,
     "tutoring": TutoringDraft,
+    "student-companion": StudentCompanionDraft,
 }
 
 
@@ -56,6 +58,8 @@ def build_request_body(request: GenerateRequest) -> dict[str, Any]:
                     "只可依据用户提供的 context；不得编造课堂事实、学生表现、学习结论或学生标签。"
                     "不得进行人格推断或诊断，包括 student-inference 任务；只能整理已提供的可审核事实。"
                     "结果仅供教师或学生审核，不得替代人工判断。"
+                    "当 task 为 student-companion 时，reply 与 pinyin 必须逐句对应；"
+                    "action 只能使用 schema 中的值，不要输出 URL；如果无法判断页面就使用 none。"
                 ),
             },
             {

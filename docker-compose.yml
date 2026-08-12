@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: zhiye-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zhiye
+      POSTGRES_PASSWORD: change-me
+      POSTGRES_DB: zhiye
+    ports:
+      - "5432:5432"
+    volumes:
+      - zhiye-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zhiye -d zhiye"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: zhiye-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - zhiye-redis-data:/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: zhiye-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: zhiye
+      MINIO_ROOT_PASSWORD: change-me-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - zhiye-minio-data:/data
+
+volumes:
+  zhiye-postgres-data:
+  zhiye-redis-data:
+  zhiye-minio-data:

@@ -1,6 +1,7 @@
 import type { CSSProperties, PropsWithChildren } from "react"
 import { ArrowLeft } from "lucide-react"
 import type { AppRoute } from "../../app/routes"
+import { PinyinText } from "../pinyin/PinyinText"
 import { getRouteTitle, ROLE_HOME_ROUTES, ROLE_METADATA, type RoleRoute } from "./navigation"
 import { RoleMobileNav } from "./RoleMobileNav"
 import { RoleSidebar } from "./RoleSidebar"
@@ -84,10 +85,10 @@ export function RoleShell({ route, onNavigate, children }: RoleShellProps) {
             <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4">
               <div className="min-w-0">
                 <p className="truncate text-[11px] font-black tracking-[0.14em] text-[#6e8173]">
-                  {metadata.productLabel}
+                  <PinyinText text={metadata.productLabel} showPinyin={theme.showPinyin} />
                 </p>
                 <h1 className="truncate text-lg font-black tracking-tight text-[#17271c] sm:text-xl">
-                  {title}
+                  <PinyinText text={title} showPinyin={theme.showPinyin} />
                 </h1>
               </div>
               <div className="flex shrink-0 items-center gap-2">
@@ -98,7 +99,7 @@ export function RoleShell({ route, onNavigate, children }: RoleShellProps) {
                   type="button"
                 >
                   <ArrowLeft aria-hidden="true" size={16} />
-                  <span className="hidden sm:inline">返回上一页</span>
+                  <PinyinText className="hidden sm:inline" text="返回上一页" showPinyin={theme.showPinyin} />
                 </button>
                 <RoleSwitcher role={route.role} onNavigate={onNavigate} />
               </div>

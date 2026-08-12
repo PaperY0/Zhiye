@@ -1,10 +1,12 @@
 import type { AppRoute } from "../../app/routes"
+import { PinyinText } from "../pinyin/PinyinText"
 import {
   isNavigationItemCurrent,
   ROLE_METADATA,
   ROLE_NAVIGATION,
   type RoleRoute,
 } from "./navigation"
+import { ROLE_THEME } from "./roleTheme"
 
 interface RoleMobileNavProps {
   route: RoleRoute
@@ -13,6 +15,7 @@ interface RoleMobileNavProps {
 
 export function RoleMobileNav({ route, onNavigate }: RoleMobileNavProps) {
   const metadata = ROLE_METADATA[route.role]
+  const showPinyin = ROLE_THEME[route.role].showPinyin
 
   return (
     <nav
@@ -36,7 +39,11 @@ export function RoleMobileNav({ route, onNavigate }: RoleMobileNavProps) {
             onClick={() => onNavigate(item.route)}
           >
             <Icon aria-hidden="true" size={18} strokeWidth={2.1} />
-            <span className="whitespace-nowrap">{item.shortLabel ?? item.label}</span>
+            <PinyinText
+              className="whitespace-nowrap"
+              text={item.shortLabel ?? item.label}
+              showPinyin={showPinyin}
+            />
           </button>
         )
       })}

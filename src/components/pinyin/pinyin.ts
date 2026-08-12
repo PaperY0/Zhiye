@@ -1,7 +1,18 @@
 import { clsx } from "clsx"
 
 const PINYIN_MAP: Record<string, string> = {
+  学生端: "xué shēng duān",
+  家长端: "jiā zhǎng duān",
+  教师端: "jiào shī duān",
+  管理端: "guǎn lǐ duān",
+  知野学习空间: "zhī yě xué xí kōng jiān",
+  知野家校空间: "zhī yě jiā xiào kōng jiān",
+  知野教学工作台: "zhī yě jiào xué gōng zuò tái",
+  知野管理中心: "zhī yě guǎn lǐ zhōng xīn",
   首页: "shǒu yè",
+  摘要: "zhāi yào",
+  答疑: "dá yí",
+  学习: "xué xí",
   拍照答疑: "pāi zhào dá yí",
   知识点学习: "zhī shí diǎn xué xí",
   错题本: "cuò tí běn",
@@ -35,4 +46,3 @@ export function cn(...inputs: Array<string | false | null | undefined>) {
 export function getPinyin(text: string): string | undefined {
   return PINYIN_MAP[text]
 }
-

@@ -1,4 +1,5 @@
 import type { AppRoute } from "../../app/routes"
+import { PinyinText } from "../pinyin/PinyinText"
 import {
   isNavigationItemCurrent,
   ROLE_MARK_ICONS,
@@ -6,6 +7,7 @@ import {
   ROLE_NAVIGATION,
   type RoleRoute,
 } from "./navigation"
+import { ROLE_THEME } from "./roleTheme"
 
 interface RoleSidebarProps {
   route: RoleRoute
@@ -15,6 +17,7 @@ interface RoleSidebarProps {
 export function RoleSidebar({ route, onNavigate }: RoleSidebarProps) {
   const metadata = ROLE_METADATA[route.role]
   const MarkIcon = ROLE_MARK_ICONS[route.role]
+  const showPinyin = ROLE_THEME[route.role].showPinyin
 
   return (
     <aside className="hidden min-h-dvh w-[232px] shrink-0 border-r border-white/70 bg-white/55 px-4 py-5 backdrop-blur-2xl lg:flex lg:flex-col">
@@ -25,13 +28,13 @@ export function RoleSidebar({ route, onNavigate }: RoleSidebarProps) {
         <div className="min-w-0">
           <p className="truncate text-base font-black tracking-tight text-[#142319]">知野</p>
           <p className="truncate text-[10px] font-bold tracking-[0.12em] text-[#7a8b7e]">
-            {metadata.label}端
+            <PinyinText text={`${metadata.label}端`} showPinyin={showPinyin} />
           </p>
         </div>
       </div>
 
       <p className="mb-2 mt-8 px-3 text-[11px] font-black tracking-[0.16em] text-[#93a096]">
-        {metadata.productLabel}
+        <PinyinText text={metadata.productLabel} showPinyin={showPinyin} />
       </p>
       <nav aria-label={`${metadata.label}端主导航`} className="space-y-1.5">
         {ROLE_NAVIGATION[route.role].map((item) => {
@@ -41,6 +44,7 @@ export function RoleSidebar({ route, onNavigate }: RoleSidebarProps) {
             <button
               key={`${item.route.role}-${item.route.page}`}
               type="button"
+              aria-label={item.label}
               aria-current={isCurrent ? "page" : undefined}
               className={`flex w-full items-center gap-3 rounded-[16px] px-3 py-3 text-left text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#54775d] focus-visible:ring-offset-2 ${
                 isCurrent
@@ -50,7 +54,7 @@ export function RoleSidebar({ route, onNavigate }: RoleSidebarProps) {
               onClick={() => onNavigate(item.route)}
             >
               <Icon aria-hidden="true" size={19} strokeWidth={2} />
-              <span>{item.label}</span>
+              <PinyinText text={item.label} showPinyin={showPinyin} />
             </button>
           )
         })}

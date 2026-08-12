@@ -18,6 +18,54 @@ function renderShell(
 }
 
 describe("RoleShell", () => {
+  it("exposes role theme attributes for every role shell", () => {
+    const expectations: Array<{
+      route: AppRoute
+      role: "teacher" | "student" | "parent" | "admin"
+      showPinyin: "true" | "false"
+    }> = [
+      {
+        route: { role: "student", page: "home" },
+        role: "student",
+        showPinyin: "true",
+      },
+      {
+        route: { role: "parent", page: "home" },
+        role: "parent",
+        showPinyin: "true",
+      },
+      {
+        route: { role: "teacher", page: "workspace" },
+        role: "teacher",
+        showPinyin: "false",
+      },
+      {
+        route: { role: "admin", page: "home" },
+        role: "admin",
+        showPinyin: "false",
+      },
+    ]
+
+    for (const expectation of expectations) {
+      const { unmount } = render(
+        <RoleShell route={expectation.route} onNavigate={vi.fn()}>
+          <p>{expectation.role}</p>
+        </RoleShell>,
+      )
+
+      expect(screen.getByTestId("role-shell")).toHaveAttribute(
+        "data-role",
+        expectation.role,
+      )
+      expect(screen.getByTestId("role-shell")).toHaveAttribute(
+        "data-show-pinyin",
+        expectation.showPinyin,
+      )
+
+      unmount()
+    }
+  })
+
   it("marks the current teacher destination in desktop and mobile navigation", () => {
     renderShell()
 
@@ -78,6 +126,15 @@ describe("RoleShell", () => {
     })
   })
 
+  it("provides a visible previous-page action for every role page", async () => {
+    const user = userEvent.setup()
+    const onNavigate = renderShell({ role: "teacher", page: "lesson-detail", lessonId: "lesson-fractions" })
+
+    await user.click(screen.getByRole("button", { name: "返回上一页" }))
+
+    expect(onNavigate).toHaveBeenCalledWith({ role: "teacher", page: "classroom" })
+  })
+
   it("exposes the complete navigation model for every role", () => {
     const expectedLabels: Record<"teacher" | "student" | "parent" | "admin", string[]> = {
       teacher: [
@@ -89,10 +146,11 @@ describe("RoleShell", () => {
         "任务",
         "消息",
         "设置",
+        "历史记录",
       ],
-      student: ["首页", "拍照答疑", "知识点学习", "错题本", "任务", "消息"],
-      parent: ["学习摘要", "联系老师"],
-      admin: ["管理概览", "保护性反馈", "审计记录", "学校设置"],
+      student: ["首页", "拍照答疑", "知识点学习", "错题本", "任务", "消息", "历史记录"],
+      parent: ["学习摘要", "联系老师", "历史记录"],
+      admin: ["管理概览", "保护性反馈", "审计记录", "学校设置", "历史记录"],
     }
     const homeRoutes: Record<keyof typeof expectedLabels, AppRoute> = {
       teacher: { role: "teacher", page: "workspace" },

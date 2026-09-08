@@ -1,0 +1,330 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  TEACHER
+  STUDENT
+  GUARDIAN
+  ADMIN
+  SAFEGUARDING_LEAD
+}
+
+enum LessonStatus {
+  SCHEDULED
+  RECORDING
+  PAUSED
+  PROCESSING
+  DRAFT_READY
+  PUBLISHED
+}
+
+enum ArtifactStatus {
+  DRAFT
+  CONFIRMED
+  PUBLISHED
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  NEEDS_REVIEW
+}
+
+enum LearningEventType {
+  RECAP_VIEWED
+  SELF_CHECK_COMPLETED
+  QUESTION_STARTED
+  QUESTION_COMPLETED
+  PRACTICE_SUBMITTED
+  MISTAKE_UPDATED
+}
+
+enum TaskStatus {
+  DRAFT
+  ACTIVE
+  REVIEW
+  COMPLETED
+}
+
+enum FeedbackStatus {
+  NEW
+  REVIEWING
+  TRANSFERRED
+  RESOLVED
+}
+
+model School {
+  id           String        @id @default(cuid())
+  name         String
+  createdAt    DateTime      @default(now())
+  users        User[]
+  classrooms   Classroom[]
+  lessons      Lesson[]
+  feedbackCases FeedbackCase[]
+  auditLogs    AuditLog[]
+  conversations Conversation[]
+}
+
+model User {
+  id                  String           @id @default(cuid())
+  schoolId            String
+  role                UserRole
+  displayName         String
+  email               String?          @unique
+  createdAt           DateTime         @default(now())
+  school              School           @relation(fields: [schoolId], references: [id])
+  enrollments         Enrollment[]
+  guardianLinks       GuardianLink[]   @relation("Guardian")
+  studentLinks        GuardianLink[]   @relation("Student")
+  createdLessons      Lesson[]         @relation("LessonCreator")
+  learningEvents      LearningEvent[]
+  sentMessages        Message[]        @relation("MessageSender")
+  assignedFeedback    FeedbackCase[]   @relation("FeedbackAssignee")
+  auditLogs           AuditLog[]
+
+  @@index([schoolId, role])
+}
+
+model Classroom {
+  id           String       @id @default(cuid())
+  schoolId     String
+  name         String
+  grade        String
+  school       School       @relation(fields: [schoolId], references: [id])
+  enrollments  Enrollment[]
+  lessons      Lesson[]
+  tasks        Task[]
+  insights     ClassInsight[]
+
+  @@index([schoolId, grade])
+}
+
+model Enrollment {
+  id          String    @id @default(cuid())
+  classroomId String
+  userId      String
+  joinedAt    DateTime  @default(now())
+  classroom   Classroom @relation(fields: [classroomId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@unique([classroomId, userId])
+}
+
+model GuardianLink {
+  id         String   @id @default(cuid())
+  guardianId String
+  studentId  String
+  createdAt  DateTime @default(now())
+  guardian   User     @relation("Guardian", fields: [guardianId], references: [id])
+  student    User     @relation("Student", fields: [studentId], references: [id])
+
+  @@unique([guardianId, studentId])
+}
+
+model Lesson {
+  id          String        @id @default(cuid())
+  schoolId    String
+  classroomId String
+  createdById  String
+  title       String
+  subject     String
+  grade       String
+  status      LessonStatus  @default(SCHEDULED)
+  date        DateTime
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  school      School        @relation(fields: [schoolId], references: [id])
+  classroom   Classroom     @relation(fields: [classroomId], references: [id])
+  createdBy   User          @relation("LessonCreator", fields: [createdById], references: [id])
+  recordings  LessonRecording[]
+  artifacts   LessonArtifact[]
+  learningEvents LearningEvent[]
+  tasks       Task[]
+  aiJobs      AIJob[]
+
+  @@index([schoolId, classroomId, date])
+}
+
+model LessonRecording {
+  id            String    @id @default(cuid())
+  lessonId      String
+  objectKey     String
+  status        JobStatus @default(QUEUED)
+  deleteAfterAt DateTime?
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  lesson        Lesson    @relation(fields: [lessonId], references: [id])
+
+  @@index([lessonId, status])
+}
+
+model LessonArtifact {
+  id             String         @id @default(cuid())
+  lessonId       String
+  status         ArtifactStatus @default(DRAFT)
+  recap          String
+  teacherReport  String?
+  confirmedById  String?
+  confirmedAt    DateTime?
+  publishedAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  lesson         Lesson         @relation(fields: [lessonId], references: [id])
+
+  @@index([lessonId, status])
+}
+
+model AIJob {
+  id             String    @id @default(cuid())
+  lessonId       String
+  status         JobStatus @default(QUEUED)
+  idempotencyKey String    @unique
+  failureCode    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lesson         Lesson    @relation(fields: [lessonId], references: [id])
+
+  @@index([lessonId, status])
+}
+
+model LearningEvent {
+  id        String           @id @default(cuid())
+  studentId String
+  lessonId  String?
+  type      LearningEventType
+  objectId  String
+  occurredAt DateTime
+  metadata  Json
+  student   User             @relation(fields: [studentId], references: [id])
+  lesson    Lesson?          @relation(fields: [lessonId], references: [id])
+
+  @@index([studentId, occurredAt])
+}
+
+model ClassInsight {
+  id             String    @id @default(cuid())
+  classroomId    String
+  knowledgePoint String
+  step           String
+  affectedCount  Int
+  evidence       Json
+  observedAt     DateTime
+  classroom      Classroom @relation(fields: [classroomId], references: [id])
+
+  @@index([classroomId, observedAt])
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  classroomId String
+  lessonId    String?
+  title       String
+  content     String
+  status      TaskStatus @default(DRAFT)
+  dueAt       DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  classroom   Classroom  @relation(fields: [classroomId], references: [id])
+  lesson      Lesson?    @relation(fields: [lessonId], references: [id])
+  submissions TaskSubmission[]
+
+  @@index([classroomId, status])
+}
+
+model TaskSubmission {
+  id          String   @id @default(cuid())
+  taskId      String
+  studentId   String
+  status      String
+  submittedAt DateTime?
+  updatedAt   DateTime @updatedAt
+  task        Task     @relation(fields: [taskId], references: [id])
+
+  @@unique([taskId, studentId])
+}
+
+model ParentSummary {
+  id          String   @id @default(cuid())
+  studentId   String
+  createdById String
+  weekLabel   String
+  topics      Json
+  content     Json
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([studentId, publishedAt])
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  schoolId  String
+  kind      String
+  createdAt DateTime  @default(now())
+  messages  Message[]
+  school    School    @relation(fields: [schoolId], references: [id])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  sentAt         DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id])
+
+  @@index([conversationId, sentAt])
+}
+
+model FeedbackCase {
+  id           String         @id @default(cuid())
+  schoolId     String
+  reporterId   String
+  assigneeId   String?
+  status       FeedbackStatus @default(NEW)
+  category     String
+  protectedBodyEncrypted String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  school       School         @relation(fields: [schoolId], references: [id])
+  assignee     User?          @relation("FeedbackAssignee", fields: [assigneeId], references: [id])
+  actions      FeedbackAction[]
+
+  @@index([schoolId, status])
+}
+
+model FeedbackAction {
+  id        String       @id @default(cuid())
+  caseId    String
+  actorId   String
+  action    String
+  metadata  Json
+  createdAt DateTime     @default(now())
+  case      FeedbackCase @relation(fields: [caseId], references: [id])
+
+  @@index([caseId, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  schoolId   String
+  actorId    String
+  action     String
+  objectType String
+  objectId   String
+  purpose    String
+  occurredAt DateTime @default(now())
+  school     School   @relation(fields: [schoolId], references: [id])
+  actor      User     @relation(fields: [actorId], references: [id])
+
+  @@index([schoolId, occurredAt])
+}

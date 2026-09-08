@@ -1,0 +1,25 @@
+{
+  "id": "job-fractions-01",
+  "goal": "根据这节分数课，为明天准备 5 分钟补讲",
+  "status": "needs-review",
+  "steps": [
+    { "key": "transcribe", "status": "succeeded", "summary": "已完成课堂转写", "evidenceIds": ["evidence-01", "evidence-02"] },
+    { "key": "extract-evidence", "status": "succeeded", "summary": "已提取 2 条课堂证据", "evidenceIds": ["evidence-01", "evidence-02"] },
+    { "key": "identify-gaps", "status": "succeeded", "summary": "识别到‘不为零条件’需要补讲", "evidenceIds": ["evidence-01", "evidence-02"] },
+    { "key": "generate-deliverables", "status": "succeeded", "summary": "已生成四项教师可审核成果", "evidenceIds": ["evidence-01", "evidence-02"] },
+    { "key": "teacher-review", "status": "pending", "summary": "等待教师审核后发布", "evidenceIds": [] }
+  ],
+  "deliverables": {
+    "studentRecap": "分子和分母同时变化，分数大小不变。",
+    "teacherReport": "学生能够复述核心规则，但需要补充不为零条件。",
+    "remedialPlan": "明天用 5 分钟补充不为零条件，再进入约分与通分。",
+    "practiceQuestions": ["3/5 的分子和分母同时乘 2，得到什么？"],
+    "evidence": [
+      { "id": "evidence-01", "quote": "分子和分母要同时乘同一个不为零的数。", "startSeconds": 85, "endSeconds": 112, "source": "transcript" },
+      { "id": "evidence-02", "quote": "如果只把分子乘二，分数是不是也一样？", "startSeconds": 952, "endSeconds": 978, "source": "transcript" }
+    ],
+    "inferences": [
+      { "id": "inference-01", "statement": "部分学生可能忽略‘不为零’条件。", "evidenceIds": ["evidence-01", "evidence-02"] }
+    ]
+  }
+}

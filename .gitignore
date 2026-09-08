@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.venv/
+services/local-ai/.venv/
+*.log

@@ -73,6 +73,7 @@ export type PrototypeContextValue = {
     teacherReport: string,
     progressSuggestion: string,
     evidence: string[],
+    title: string,
   ): void
   deleteLesson(id: string): void
   addPlan(plan: PlanDraft): void
@@ -128,6 +129,7 @@ type PrototypeSnapshot = Pick<
 
 export function hasCompleteLessonAnalysis(lesson: Lesson) {
   return isCompleteLessonAnalysis({
+    title: lesson.title,
     transcript: lesson.transcript,
     recap: lesson.recap,
     recapTags: lesson.recapTags,
@@ -156,6 +158,13 @@ function readPrototypeSnapshot(storageKey: string): Partial<PrototypeSnapshot> |
 
 function cloneFixture<T>(fixture: T): T {
   return structuredClone(fixture)
+}
+
+function formatLocalDate(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
 }
 
 export function PrototypeProvider({
@@ -293,7 +302,7 @@ export function PrototypeProvider({
             subject: "数学",
             grade: "五年级",
             className: "五年级（2）班",
-            date: "2026-07-26",
+            date: formatLocalDate(new Date()),
             durationMinutes: 0,
             status: "scheduled",
             syncStatus: "local",
@@ -389,8 +398,10 @@ export function PrototypeProvider({
         teacherReport,
         progressSuggestion,
         evidence,
+        title,
       ) {
         const analysis = {
+          title,
           transcript,
           recap,
           recapTags,
@@ -405,6 +416,10 @@ export function PrototypeProvider({
             lesson.id === id
               ? {
                   ...lesson,
+                  title: title.trim(),
+                  date: lesson.id.startsWith("lesson-recording-")
+                    ? formatLocalDate(new Date())
+                    : lesson.date,
                   transcript,
                   recap,
                   recapTags,

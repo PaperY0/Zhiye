@@ -18,6 +18,7 @@ function AnalysisSeed() {
       "学生在乘除方向上需要更多示范。",
       "下节课先复盘单位阶梯。",
       ["课堂中有两次关于乘除方向的提问。"],
+      "单位换算课堂复盘",
     )
   }, [])
   return null
@@ -38,7 +39,7 @@ describe("LessonDetailPage", () => {
     renderDetail("lesson-fractions", true)
 
     expect(
-      screen.getByRole("heading", { name: "分数的基本性质" }),
+      screen.getByRole("heading", { name: "单位换算课堂复盘" }),
     ).toBeInTheDocument()
     expect(screen.getByText("单位换算")).toBeInTheDocument()
 

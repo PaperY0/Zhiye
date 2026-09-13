@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react"
 import type { ReactNode } from "react"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   auditEventFixtures,
   conversationFixtures,
@@ -19,6 +19,10 @@ import type { Mistake, PlanDraft, Quiz, Task } from "./types"
 function wrapper({ children }: { children: ReactNode }) {
   return <PrototypeProvider>{children}</PrototypeProvider>
 }
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe("prototype fixtures", () => {
   it("provides deterministic fixtures for every prototype domain", () => {
@@ -101,6 +105,8 @@ describe("PrototypeProvider", () => {
   })
 
   it("creates a local lesson record for a new classroom recording", () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-09-13T09:30:00+08:00"))
     const { result } = renderHook(() => usePrototype(), { wrapper })
     let lessonId = ""
 
@@ -112,6 +118,7 @@ describe("PrototypeProvider", () => {
     expect(result.current.lessons.at(-1)).toMatchObject({
       id: lessonId,
       title: "新课堂录音",
+      date: "2026-09-13",
       status: "scheduled",
       syncStatus: "local",
     })
@@ -139,15 +146,46 @@ describe("PrototypeProvider", () => {
         "教师报告",
         "进度建议",
         ["课堂依据"],
+        "分数基本性质复习",
       )
     })
 
     expect(result.current.lessons.find((lesson) => lesson.id === "lesson-fractions"))
       .toMatchObject({
+        title: "分数基本性质复习",
         durationMinutes: 12,
         recap: "分子和分母同时乘或除以相同的数，分数大小不变。",
         status: "draft-ready",
       })
+  })
+
+  it("refreshes a recorded lesson date when its AI draft completes", () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-09-12T23:59:00+08:00"))
+    const { result } = renderHook(() => usePrototype(), { wrapper })
+    let lessonId = ""
+
+    act(() => {
+      lessonId = result.current.createLesson()
+    })
+    vi.setSystemTime(new Date("2026-09-13T00:01:00+08:00"))
+    act(() => {
+      result.current.updateLessonAnalysis(
+        lessonId,
+        [{ id: "live-01", speaker: "李老师", startSeconds: 0, endSeconds: 10, body: "单位换算" }],
+        "先判断单位变化方向。",
+        ["单位换算"],
+        "完成随堂自检",
+        1,
+        "课堂报告",
+        "进度建议",
+        ["课堂依据"],
+        "单位换算课堂复盘",
+      )
+    })
+
+    expect(result.current.lessons.find((lesson) => lesson.id === lessonId)?.date)
+      .toBe("2026-09-13")
   })
 
   it("stores the returned teacher report", () => {
@@ -172,6 +210,7 @@ describe("PrototypeProvider", () => {
         "教师报告",
         "进度建议",
         ["课堂依据"],
+        "单位换算课堂复盘",
       )
     })
 
@@ -197,6 +236,7 @@ describe("PrototypeProvider", () => {
         "教师报告",
         "进度建议",
         ["课堂依据"],
+        "单位换算课堂复盘",
       ),
     )
 
@@ -410,6 +450,7 @@ describe("PrototypeProvider", () => {
         "教师报告",
         "进度建议",
         ["课堂依据"],
+        "单位换算课堂复盘",
       ),
     )
     act(() => result.current.publishLesson("lesson-fractions"))

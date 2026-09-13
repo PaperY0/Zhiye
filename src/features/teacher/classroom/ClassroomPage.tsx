@@ -256,6 +256,7 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
             result.teacherReport,
             result.progressSuggestion,
             result.evidence,
+            result.title,
           )
         }}
         open={recordingOpen}

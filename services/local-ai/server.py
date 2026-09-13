@@ -147,6 +147,7 @@ def generate_with_deepseek(transcript: str) -> dict:
                 "role": "user",
                 "content": (
                     "请把下面的课堂转写整理为 JSON，字段必须是："
+                    "title（根据课堂内容总结的简短中文标题，不超过20个汉字）、"
                     "recap（给学生看的简短复习卡）、recapTags（最多3个知识点字符串）、"
                     "nextStep（给教师的下一步建议）、teacherReport（给教师的课堂报告）、"
                     "progressSuggestion（给教师的课程进度建议）、evidence（支持报告的课堂依据字符串数组）。"
@@ -177,9 +178,36 @@ def generate_with_deepseek(transcript: str) -> dict:
 
     try:
         content = payload["choices"][0]["message"]["content"]
-        return LessonAnalysisDraft.model_validate(json.loads(content)).model_dump()
-    except (KeyError, IndexError, TypeError, ValueError) as error:
+        if not isinstance(content, str):
+            raise TypeError("DeepSeek content must be a string")
+        return LessonAnalysisDraft.model_validate(_parse_json_object(content)).model_dump()
+    except (KeyError, IndexError, TypeError, ValueError, ValidationError) as error:
         raise HTTPException(status_code=502, detail="DeepSeek 返回内容不是有效课堂复盘 JSON") from error
+
+
+def _parse_json_object(content: str) -> dict:
+    """Accept plain JSON plus the markdown-wrapped JSON models sometimes return."""
+    text = content.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines and lines[0].lstrip().startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        start = text.find("{")
+        end = text.rfind("}")
+        if start < 0 or end <= start:
+            raise
+        parsed = json.loads(text[start : end + 1])
+
+    if not isinstance(parsed, dict):
+        raise ValueError("DeepSeek JSON root must be an object")
+    return parsed
 
 
 @app.get("/health")

@@ -6,6 +6,7 @@ describe("lesson analysis integrity", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
+        title: "单位换算课堂复盘",
         transcript: [{ id: " ", speaker: "李老师", startSeconds: 0, endSeconds: 10, body: "单位换算" }],
         recap: " ",
         recapTags: ["单位换算"],
@@ -23,6 +24,7 @@ describe("lesson analysis integrity", () => {
 
   it("accepts only a complete model-backed analysis", () => {
     expect(isCompleteLessonAnalysis({
+      title: "单位换算课堂复盘",
       transcript: [{ id: "live-01", speaker: "李老师", startSeconds: 0, endSeconds: 10, body: "单位换算" }],
       recap: "先判断单位变化方向。",
       recapTags: ["单位换算"],

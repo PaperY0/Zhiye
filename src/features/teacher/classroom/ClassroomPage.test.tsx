@@ -126,6 +126,7 @@ describe("ClassroomPage", () => {
 
   it("writes a completed local AI analysis into the newly recorded lesson", async () => {
     lessonAnalysis.analyzeLessonAudio.mockResolvedValue({
+      title: "单位换算中的乘除方向",
       transcript: [{ id: "live-01", speaker: "李老师", startSeconds: 0, endSeconds: 10, body: "单位换算" }],
       recap: "先判断单位变化方向。",
       recapTags: ["单位换算"],
@@ -152,6 +153,7 @@ describe("ClassroomPage", () => {
       expect(lessonAnalysis.analyzeLessonAudio).toHaveBeenCalledOnce()
       expect(within(dialog).getByText("AI 初稿已就绪")).toBeInTheDocument()
     })
+    expect(screen.getByText("单位换算中的乘除方向")).toBeInTheDocument()
 
     fireEvent.click(
       within(dialog).getByRole("button", { name: "查看 AI 初稿" }),

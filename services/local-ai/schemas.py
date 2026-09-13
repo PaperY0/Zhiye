@@ -210,6 +210,7 @@ class GenerateRequest(BaseModel):
 
 
 class LessonAnalysisDraft(BaseModel):
+    title: TextOnly = Field(max_length=40)
     recap: TextOnly
     recapTags: list[TextOnly] = Field(min_length=1, max_length=3)
     nextStep: TextOnly

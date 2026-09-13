@@ -2,6 +2,7 @@ import type { TranscriptSegment } from "../app/prototype/types"
 import { requestJson } from "./localAi"
 
 export type LessonAnalysisResult = {
+  title: string
   transcript: TranscriptSegment[]
   recap: string
   recapTags: string[]
@@ -36,6 +37,7 @@ export function isCompleteLessonAnalysis(
   if (!value || typeof value !== "object") return false
   const analysis = value as Record<string, unknown>
   return (
+    isNonBlankString(analysis.title) &&
     Array.isArray(analysis.transcript) &&
     analysis.transcript.length > 0 &&
     analysis.transcript.every(isCompleteTranscriptSegment) &&

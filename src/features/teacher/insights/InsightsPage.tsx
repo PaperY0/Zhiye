@@ -37,8 +37,6 @@ type TimeRange = "today" | "week" | "month"
 
 type SubjectFilter = "all" | Subject
 
-const prototypeToday = "2026-07-25"
-
 const severityMeta: Record<KnowledgeSignal["severity"], {
   label: string
   tone: StatusTone
@@ -50,8 +48,8 @@ const severityMeta: Record<KnowledgeSignal["severity"], {
   priority: { label: "优先处理", tone: "critical" },
 }
 
-function matchesTime(signal: KnowledgeSignal, range: TimeRange) {
-  if (range === "today") return signal.observedAt.startsWith(prototypeToday)
+function matchesTime(signal: KnowledgeSignal, range: TimeRange, referenceDate: string) {
+  if (range === "today") return signal.observedAt.startsWith(referenceDate)
 
   return true
 }
@@ -174,7 +172,7 @@ function TrendChart({ signals }: { signals: KnowledgeSignal[] }) {
 }
 
 export function InsightsPage() {
-  const { signals, tasks, addPlan, addQuiz } = usePrototype()
+  const { signals, tasks, addPlan, addQuiz, addSignal, deleteSignal, updateSignal } = usePrototype()
 
   const [timeRange, setTimeRange] = useState<TimeRange>("week")
 
@@ -190,16 +188,17 @@ export function InsightsPage() {
     message: string
   } | null>(null)
   const [generatingAction, setGeneratingAction] = useState<"plan" | "quiz" | null>(null)
+  const referenceDate = useMemo(() => signals.map((signal) => signal.observedAt.slice(0, 10)).sort().at(-1) ?? new Date().toISOString().slice(0, 10), [signals])
 
   const filteredSignals = useMemo(
     () =>
       signals.filter(
         (signal) =>
-          matchesTime(signal, timeRange) &&
+          matchesTime(signal, timeRange, referenceDate) &&
           (subject === "all" || signal.subject === subject),
       ),
 
-    [signals, subject, timeRange],
+    [referenceDate, signals, subject, timeRange],
   )
 
   const affectedCount = filteredSignals.reduce(
@@ -334,6 +333,11 @@ export function InsightsPage() {
             </select>
           </label>
         </FilterBar>
+        <button className="min-h-11 rounded-full bg-[#173022] px-5 text-sm font-black text-white" onClick={() => {
+          const signal: KnowledgeSignal = { id: `signal-${Date.now()}`, subject: "数学", knowledgePoint: "新知识点", step: "等待教师补充观察", severity: "watch", affectedStudentIds: [], affectedCount: 0, trend: [0, 0, 0, 0, 0], evidence: ["教师新增的待核实观察"], observedAt: new Date().toISOString() }
+          addSignal(signal)
+          setSelectedSignal(signal)
+        }} type="button">新增观察</button>
       </header>
 
       {notice ? (
@@ -441,6 +445,14 @@ export function InsightsPage() {
                 {selectedSignal.affectedCount} 名学生出现相似卡点
               </span>
             </div>
+
+            <section className="grid gap-3 rounded-[22px] border border-white/80 bg-white/60 p-5 sm:grid-cols-2" aria-label="校正知识信号">
+              <label className="grid gap-2 text-sm font-black">知识点<input aria-label="信号知识点" className="min-h-11 rounded-2xl border border-[#dce7da] bg-white/80 px-4" onChange={(event) => { const patch = { knowledgePoint: event.target.value }; updateSignal(selectedSignal.id, patch); setSelectedSignal({ ...selectedSignal, ...patch }) }} value={selectedSignal.knowledgePoint} /></label>
+              <label className="grid gap-2 text-sm font-black">优先级<select aria-label="信号优先级" className="min-h-11 rounded-2xl border border-[#dce7da] bg-white/80 px-4" onChange={(event) => { const patch = { severity: event.target.value as KnowledgeSignal["severity"] }; updateSignal(selectedSignal.id, patch); setSelectedSignal({ ...selectedSignal, ...patch }) }} value={selectedSignal.severity}><option value="watch">持续观察</option><option value="attention">需要关注</option><option value="priority">优先处理</option></select></label>
+              <label className="grid gap-2 text-sm font-black sm:col-span-2">困难步骤<textarea aria-label="信号困难步骤" className="min-h-20 rounded-2xl border border-[#dce7da] bg-white/80 p-4" onChange={(event) => { const patch = { step: event.target.value }; updateSignal(selectedSignal.id, patch); setSelectedSignal({ ...selectedSignal, ...patch }) }} value={selectedSignal.step} /></label>
+              <label className="grid gap-2 text-sm font-black">受影响人数<input aria-label="信号受影响人数" className="min-h-11 rounded-2xl border border-[#dce7da] bg-white/80 px-4" min="0" onChange={(event) => { const patch = { affectedCount: Number(event.target.value) }; updateSignal(selectedSignal.id, patch); setSelectedSignal({ ...selectedSignal, ...patch }) }} type="number" value={selectedSignal.affectedCount} /></label>
+              <button className="min-h-11 self-end rounded-full border border-[#e3c8c2] bg-[#fff5f2] px-4 text-sm font-black text-[#934f43]" onClick={() => { if (window.confirm(`确认移除“${selectedSignal.knowledgePoint}”信号吗？`)) { deleteSignal(selectedSignal.id); setSelectedSignal(null) } }} type="button">移除这个信号</button>
+            </section>
 
             <section
               aria-labelledby="insight-step-title"

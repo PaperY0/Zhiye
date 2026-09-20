@@ -124,6 +124,20 @@ describe("PrototypeProvider", () => {
     })
   })
 
+  it("uses the selected class grade for a new classroom recording", () => {
+    const { result } = renderHook(() => usePrototype(), { wrapper })
+    let lessonId = ""
+
+    act(() => {
+      lessonId = result.current.createLesson({ className: "六年级（3）班" })
+    })
+
+    expect(result.current.lessons.find((lesson) => lesson.id === lessonId)).toMatchObject({
+      grade: "六年级",
+      className: "六年级（3）班",
+    })
+  })
+
   it("writes live analysis results and recording duration to a lesson", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
 

@@ -36,6 +36,20 @@ pnpm dev
 
 服务默认监听 `http://127.0.0.1:8787`。题图 OCR 在本地运行；课堂录音由 FunASR 转写后，再交给 DeepSeek 生成教师可审核草稿。
 
+## 快速启动
+
+以后可以直接运行下面这一条命令，同时启动前端、本地 AI，并打开教师端页面：
+
+```powershell
+.\scripts\start-dev.ps1
+```
+
+脚本会自动读取 `.env.local` 中的 `DEEPSEEK_API_KEY`。如果系统阻止 PowerShell 脚本执行，可先运行：
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+```
+
 ## 验证
 
 ```powershell

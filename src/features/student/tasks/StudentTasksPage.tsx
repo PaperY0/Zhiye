@@ -92,16 +92,16 @@ export function StudentTasksPage() {
   const completedCount = visibleTasks.length - pendingCount
 
   return (
-    <section className="mx-auto w-full max-w-6xl space-y-5 px-4 py-5 sm:px-6 lg:px-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <section className="role-page role-page-flow">
+      <header className="role-page-header">
         <div>
-          <p className="text-sm font-bold text-[#5f765f]">
+          <p className="role-page-kicker">
             李老师发布给你的学习安排
           </p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight text-[#142319]">
+          <h1 className="role-page-title">
             我的任务
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#65736a]">
+          <p className="role-page-description">
             按自己的节奏完成，状态会同步到当前原型中的任务记录。
           </p>
         </div>

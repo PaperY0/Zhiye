@@ -13,31 +13,11 @@ import { usePrototype } from "../../../app/prototype/PrototypeContext"
 import type { AppRoute } from "../../../app/routes"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { StatusChip } from "../../../components/shared/StatusChip"
+import { readSavedAdminSettings } from "../settings/adminSettings"
 
 export interface AdminHomePageProps {
   onNavigate(route: AppRoute): void
 }
-
-const metricCards = [
-  {
-    label: "学校",
-    value: "1",
-    detail: "知野实验学校",
-    icon: Building2,
-  },
-  {
-    label: "班级",
-    value: "6",
-    detail: "小学五、六年级",
-    icon: School,
-  },
-  {
-    label: "教师",
-    value: "18",
-    detail: "含班主任与支持人员",
-    icon: UsersRound,
-  },
-] as const
 
 function NavigationButton({
   children,
@@ -50,7 +30,7 @@ function NavigationButton({
 }) {
   return (
     <button
-      className={`inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#173022] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(22,52,34,.18)] transition hover:-translate-y-0.5 hover:bg-[#264932] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#73947b]/30 ${compact ? "px-4 text-[13px]" : ""}`}
+      className={`role-action-primary whitespace-nowrap ${compact ? "px-4 text-[13px]" : ""}`}
       onClick={onClick}
       type="button"
     >
@@ -61,23 +41,30 @@ function NavigationButton({
 }
 
 export function AdminHomePage({ onNavigate }: AdminHomePageProps) {
-  const { safetyCases } = usePrototype()
+  const { safetyCases, students } = usePrototype()
+  const settings = readSavedAdminSettings()
+  const classNames = Array.from(new Set(students.map(({ className }) => className)))
+  const metricCards = [
+    { label: "学校", value: "1", detail: settings.schoolName, icon: Building2 },
+    { label: "班级", value: String(classNames.length), detail: classNames.join("、") || "尚未创建班级", icon: School },
+    { label: "教师", value: String(settings.teacherCount), detail: "可在学校设置中修改", icon: UsersRound },
+  ]
   const pendingSafetyCases = safetyCases.filter(
     ({ status }) => status === "new" || status === "reviewing",
   ).length
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] px-4 pb-28 pt-5 sm:px-6 lg:px-8">
-      <header className="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <div className="role-page role-page-flow">
+      <header className="role-page-header">
         <div>
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <StatusChip tone="info">管理端</StatusChip>
             <StatusChip tone="neutral">模拟运营数据</StatusChip>
           </div>
-          <h1 className="text-3xl font-black tracking-[-0.045em] text-[#132219] sm:text-4xl">
+          <h1 className="role-page-title">
             学校管理概览
           </h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-[#66796d] sm:text-base">
+          <p className="role-page-description">
             汇总学校组织、接入凭据、数据留存和需要人工核实的保护性反馈入口。
           </p>
         </div>
@@ -167,15 +154,15 @@ export function AdminHomePage({ onNavigate }: AdminHomePageProps) {
           <dl className="mt-5 divide-y divide-[#385443]/10 rounded-[20px] border border-white/75 bg-white/42 px-4">
             <div className="flex items-center justify-between gap-4 py-4">
               <dt className="text-sm font-bold text-[#33483a]">课堂原始音频</dt>
-              <dd className="text-sm font-black text-[#173022]">7 天</dd>
+              <dd className="text-sm font-black text-[#173022]">{settings.retentionDays} 天</dd>
             </div>
             <div className="flex items-center justify-between gap-4 py-4">
               <dt className="text-sm font-bold text-[#33483a]">AI 生成内容</dt>
-              <dd className="text-sm font-black text-[#173022]">90 天</dd>
+              <dd className="text-sm font-black text-[#173022]">{settings.aiContentDays} 天</dd>
             </div>
             <div className="flex items-center justify-between gap-4 py-4">
               <dt className="text-sm font-bold text-[#33483a]">审计记录</dt>
-              <dd className="text-sm font-black text-[#173022]">365 天</dd>
+              <dd className="text-sm font-black text-[#173022]">{settings.auditDays} 天</dd>
             </div>
           </dl>
         </GlassSurface>
@@ -201,7 +188,7 @@ export function AdminHomePage({ onNavigate }: AdminHomePageProps) {
                 <KeyRound aria-hidden="true" size={15} /> 学校邀请码
               </p>
               <strong className="mt-2 block font-mono text-lg text-[#183023]">
-                ZY-SCHOOL-2026
+                {settings.invitationCode}
               </strong>
             </div>
             <div className="min-w-[220px] rounded-[20px] border border-white/80 bg-white/48 px-4 py-3">
@@ -209,7 +196,7 @@ export function AdminHomePage({ onNavigate }: AdminHomePageProps) {
                 <Link2 aria-hidden="true" size={15} /> 五年级（2）班绑定码
               </p>
               <strong className="mt-2 block font-mono text-lg text-[#183023]">
-                520826
+                {settings.bindingCode}
               </strong>
             </div>
           </div>

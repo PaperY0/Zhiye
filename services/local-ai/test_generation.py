@@ -421,7 +421,7 @@ def test_analyze_response_contains_the_model_teacher_fields(monkeypatch):
         "evidence": ["课堂中有两次关于乘除方向的提问。"],
     }
     monkeypatch.setattr(server, "transcribe", lambda _: "单位换算课堂")
-    monkeypatch.setattr(server, "generate_with_deepseek", lambda _: generated)
+    monkeypatch.setattr(server, "generate_with_deepseek", lambda *_: generated)
 
     response = client.post("/analyze", files={"audio": ("lesson.webm", b"audio")})
 
@@ -439,7 +439,7 @@ def test_analyze_route_rejects_incomplete_generated_result(monkeypatch):
     monkeypatch.setattr(
         server,
         "generate_with_deepseek",
-        lambda _: {"recap": "复习卡", "recapTags": ["单位换算"], "nextStep": "补讲"},
+        lambda *_: {"recap": "复习卡", "recapTags": ["单位换算"], "nextStep": "补讲"},
     )
 
     response = client.post("/analyze", files={"audio": ("lesson.webm", b"audio")})

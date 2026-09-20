@@ -5,6 +5,7 @@ import { RoleMobileNav } from "./RoleMobileNav"
 import { RoleSidebar } from "./RoleSidebar"
 import { ROLE_THEME } from "./roleTheme"
 import { StudentCompanionAssistant } from "../../features/student/companion/StudentCompanionAssistant"
+import { RoleSearch } from "./RoleSearch"
 
 interface RoleShellProps extends PropsWithChildren {
   route: RoleRoute
@@ -19,7 +20,7 @@ export function RoleShell({ route, onNavigate, children }: RoleShellProps) {
       data-testid="role-shell"
       data-role={route.role}
       data-show-pinyin={theme.showPinyin}
-      className={`role-shell role-shell-${route.role} ${theme.className} relative isolate min-h-dvh overflow-hidden bg-cover bg-center bg-fixed bg-no-repeat text-[#142319]`}
+      className={`role-shell role-shell-${route.role} ${theme.className} relative isolate h-dvh overflow-hidden bg-cover bg-center bg-fixed bg-no-repeat text-[#142319]`}
       style={{
         "--role-background-image": `url(${theme.backgroundImage})`,
         backgroundImage:
@@ -33,17 +34,20 @@ export function RoleShell({ route, onNavigate, children }: RoleShellProps) {
         跳到主要内容
       </a>
 
-      <div className="relative z-10 flex min-h-dvh">
+      <div className="relative z-10 flex h-full min-h-0">
         <RoleSidebar route={route} onNavigate={onNavigate} />
 
-        <div className="role-shell-main min-w-0 flex-1 overflow-x-hidden pb-24 lg:pb-0">
-          <main id="main-content" tabIndex={-1} className="min-w-0 focus:outline-none">
+        <div className="role-shell-main h-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pb-24 lg:pb-0">
+          <main id="main-content" tabIndex={-1} className="min-h-full min-w-0 focus:outline-none lg:h-full">
             {children}
           </main>
         </div>
       </div>
 
       <RoleMobileNav route={route} onNavigate={onNavigate} />
+      <div className="fixed right-4 top-4 z-30 lg:hidden">
+        <RoleSearch iconOnly role={route.role} onNavigate={onNavigate} />
+      </div>
       {route.role === "student" ? <StudentCompanionAssistant currentPage={route.page} onNavigate={onNavigate} /> : null}
     </div>
   )

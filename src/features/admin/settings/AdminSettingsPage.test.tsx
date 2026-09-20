@@ -46,7 +46,7 @@ describe("AdminSettingsPage", () => {
     renderSettings()
 
     await user.click(screen.getByRole("button", { name: "生成模拟邀请码" }))
-    expect(screen.getByText("ZY-2026-0725-01")).toBeInTheDocument()
+    expect(screen.getByText(/^ZY-\d{4}-[A-Z0-9]{6}$/)).toBeInTheDocument()
     expect(screen.getByText(/邀请码仅在当前页面显示/)).toBeInTheDocument()
 
     await user.type(

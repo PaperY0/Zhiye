@@ -24,8 +24,24 @@ export function useHashRoute(): AppRoute {
   useEffect(() => {
     if (window.location.hash === "") {
       window.history.replaceState(null, "", formatRoute({ page: "welcome" }))
+      return
     }
-  }, [])
+
+    if (window.location.hash === "#/teacher/recap-agent") {
+      const oldURL = window.location.href
+      window.history.replaceState(
+        null,
+        "",
+        formatRoute({ role: "teacher", page: "classroom" }),
+      )
+      window.dispatchEvent(
+        new HashChangeEvent("hashchange", {
+          oldURL,
+          newURL: window.location.href,
+        }),
+      )
+    }
+  }, [hash])
 
   return parseHash(hash)
 }

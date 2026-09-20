@@ -19,67 +19,15 @@ import {
   ToastRegion,
   type ToastMessage,
 } from "../../../components/shared/ToastRegion"
-
-type TeacherSettings = {
-  teacherName: string
-  teacherTitle: string
-  currentClass: string
-  textbook: string
-  chapter: string
-  additionalScope: string
-  aiDetail: string
-  includeEvidence: boolean
-  includeLifeExamples: boolean
-  requireReviewBeforePublish: boolean
-  speechLanguage: string
-  readAloudVoice: string
-  lessonReadyNotification: boolean
-  taskDueNotification: boolean
-  parentMessageNotification: boolean
-  safetyNotification: boolean
-  recordingRetention: string
-  generatedContentRetention: string
-  parentTeacherMessages: boolean
-  studentLearningEvidence: boolean
-  hideStudentRankings: boolean
-}
-
-const initialSettings: TeacherSettings = {
-  teacherName: "李老师",
-  teacherTitle: "五年级数学教师",
-  currentClass: "五年级（2）班",
-  textbook: "人教版",
-  chapter: "分数的意义和性质",
-  additionalScope: "重点覆盖约分、通分与分数基本性质。",
-  aiDetail: "平衡",
-  includeEvidence: true,
-  includeLifeExamples: true,
-  requireReviewBeforePublish: true,
-  speechLanguage: "普通话",
-  readAloudVoice: "温和女声",
-  lessonReadyNotification: true,
-  taskDueNotification: true,
-  parentMessageNotification: true,
-  safetyNotification: true,
-  recordingRetention: "7 天",
-  generatedContentRetention: "本学期",
-  parentTeacherMessages: true,
-  studentLearningEvidence: true,
-  hideStudentRankings: true,
-}
-
-const teacherSettingsStorageKey = "zhiye-teacher-settings-v1"
-
-function readSavedSettings(): TeacherSettings {
-  try {
-    const saved = window.localStorage.getItem(teacherSettingsStorageKey)
-    return saved
-      ? { ...initialSettings, ...(JSON.parse(saved) as Partial<TeacherSettings>) }
-      : initialSettings
-  } catch {
-    return initialSettings
-  }
-}
+import {
+  defaultTeacherSettings,
+  getGradeFromClassName,
+  getTeacherSettings,
+  primaryClassGroups,
+  resetTeacherSettings,
+  saveTeacherSettings,
+  type TeacherSettings,
+} from "./teacherSettings"
 
 const inputClassName =
   "mt-2 min-h-11 w-full rounded-2xl border border-white/80 bg-white/65 px-4 py-2.5 text-sm font-semibold text-[#193025] shadow-[inset_0_1px_0_rgba(255,255,255,.95)] outline-none transition focus:border-[#719174] focus:ring-4 focus:ring-[#86a988]/15"
@@ -159,9 +107,10 @@ function ToggleRow({
 
 export function TeacherSettingsPage() {
   const { resetPrototype } = usePrototype()
-  const [settings, setSettings] = useState<TeacherSettings>(readSavedSettings)
+  const [settings, setSettings] = useState<TeacherSettings>(getTeacherSettings)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
+  const currentGrade = getGradeFromClassName(settings.currentClass)
 
   function updateSetting<Key extends keyof TeacherSettings>(
     key: Key,
@@ -170,13 +119,25 @@ export function TeacherSettingsPage() {
     setSettings((current) => ({ ...current, [key]: value }))
   }
 
+  function updateCurrentClass(currentClass: string) {
+    setSettings((current) => {
+      const previousGrade = getGradeFromClassName(current.currentClass)
+      const nextGrade = getGradeFromClassName(currentClass)
+      const teacherTitle = current.teacherTitle === `${previousGrade}数学教师`
+        ? `${nextGrade}数学教师`
+        : current.teacherTitle
+
+      return { ...current, currentClass, teacherTitle }
+    })
+  }
+
   function saveSettings() {
-    window.localStorage.setItem(teacherSettingsStorageKey, JSON.stringify(settings))
+    saveTeacherSettings(settings)
     setToasts([
       {
         id: "teacher-settings-saved",
-        title: "设置已保存到当前原型",
-        description: "这些修改已保存到当前浏览器，刷新页面后仍会保留。",
+        title: "设置已保存并全局生效",
+        description: "课堂默认信息与 AI 教学偏好已更新，刷新页面后仍会保留。",
         tone: "success",
       },
     ])
@@ -188,14 +149,14 @@ export function TeacherSettingsPage() {
         <div>
           <div className="mb-3 flex items-center gap-2">
             <StatusChip tone="info">教师端</StatusChip>
-            <StatusChip tone="neutral">本地原型设置</StatusChip>
+            <StatusChip tone="neutral">本机全局设置</StatusChip>
           </div>
           <h1 className="text-3xl font-black tracking-[-0.045em] text-[#132219] sm:text-4xl">
             教师设置
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[#66796d] sm:text-base">
             配置班级教学范围、AI
-            辅助方式、通知和数据边界。所有选择都由教师确认后生效。
+            辅助方式、通知和数据边界。保存后会同步应用到课堂与 AI 生成流程。
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -232,7 +193,8 @@ export function TeacherSettingsPage() {
               className="rounded-full bg-[#8a4f3f] px-5 py-2.5 text-sm font-black text-white"
               onClick={() => {
               resetPrototype()
-              setSettings(initialSettings)
+              resetTeacherSettings()
+              setSettings(defaultTeacherSettings)
               setResetConfirmOpen(false)
               setToasts([
                 {
@@ -261,8 +223,8 @@ export function TeacherSettingsPage() {
       <div className="mb-6 flex items-start gap-3 rounded-[22px] border border-[#d8c691]/45 bg-[#fff8df]/70 px-4 py-3.5 text-sm leading-6 text-[#67582d] shadow-[inset_0_1px_0_rgba(255,255,255,.8)]">
         <ShieldCheck aria-hidden="true" className="mt-0.5 shrink-0" size={19} />
         <p>
-          <strong>原型说明：</strong>
-          设置会保存在当前浏览器，但不会上传或改变真实学校数据。
+          <strong>本机设置：</strong>
+          保存后会在当前浏览器全局生效，并随 AI 请求发送教学偏好；不会上传真实学校数据。
         </p>
       </div>
 
@@ -299,14 +261,16 @@ export function TeacherSettingsPage() {
               当前班级
               <select
                 className={inputClassName}
-                onChange={(event) =>
-                  updateSetting("currentClass", event.target.value)
-                }
+                onChange={(event) => updateCurrentClass(event.target.value)}
                 value={settings.currentClass}
               >
-                <option>五年级（2）班</option>
-                <option>五年级（1）班</option>
-                <option>五年级（3）班</option>
+                {primaryClassGroups.map((group) => (
+                  <optgroup key={group.grade} label={group.grade}>
+                    {group.classes.map((className) => (
+                      <option key={className}>{className}</option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
             </label>
           </div>
@@ -388,7 +352,7 @@ export function TeacherSettingsPage() {
             />
             <ToggleRow
               checked={settings.includeLifeExamples}
-              description="优先使用适合五年级学生理解的真实生活情境。"
+              description={`优先使用适合${currentGrade}学生理解的真实生活情境。`}
               label="加入生活化例子"
               onChange={(checked) =>
                 updateSetting("includeLifeExamples", checked)
@@ -441,7 +405,7 @@ export function TeacherSettingsPage() {
             </label>
           </div>
           <p className="mt-4 rounded-2xl bg-[#edf4eb]/75 px-4 py-3 text-xs leading-5 text-[#5c7262]">
-            方言选项只改变原型中的识别偏好展示，不会采集真实音频。
+            语言偏好会随课堂分析请求发送，用于内容整理提示；不会额外采集音频。
           </p>
         </SettingsSection>
 

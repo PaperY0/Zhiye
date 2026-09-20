@@ -32,14 +32,6 @@ const statusTones: Record<SafetyCaseStatus, "critical" | "warning" | "info" | "s
     resolved: "success",
   }
 
-const localTimes = [
-  "2026-07-25T16:00:00+08:00",
-  "2026-07-25T16:05:00+08:00",
-  "2026-07-25T16:10:00+08:00",
-  "2026-07-25T16:15:00+08:00",
-  "2026-07-25T16:20:00+08:00",
-]
-
 export function SafetyPage({ onAuditEvent }: SafetyPageProps) {
   const { addAuditEvent, safetyCases, updateSafetyCase } = usePrototype()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
@@ -74,7 +66,7 @@ export function SafetyPage({ onAuditEvent }: SafetyPageProps) {
       objectType: "safety-case",
       objectId: safetyCase.id,
       purpose,
-      occurredAt: localTimes[index] ?? "2026-07-25T16:30:00+08:00",
+      occurredAt: new Date(Date.now() + index).toISOString(),
     }
     setLocalAuditEvents((current) => [...current, event])
     addAuditEvent(event)
@@ -96,7 +88,7 @@ export function SafetyPage({ onAuditEvent }: SafetyPageProps) {
     updateSafetyCase(selectedCase.id, {
       assignee: "王老师 · 德育负责人",
       status: "reviewing",
-      updatedAt: "2026-07-25T16:05:00+08:00",
+      updatedAt: new Date().toISOString(),
     })
     appendAudit("分配保护性反馈", selectedCase)
   }
@@ -110,10 +102,10 @@ export function SafetyPage({ onAuditEvent }: SafetyPageProps) {
           id: `safety-note-local-${selectedCase.notes.length + 1}`,
           author: "王老师",
           body,
-          createdAt: "2026-07-25T16:10:00+08:00",
+          createdAt: new Date().toISOString(),
         },
       ],
-      updatedAt: "2026-07-25T16:10:00+08:00",
+      updatedAt: new Date().toISOString(),
     })
     appendAudit("添加人工核实备注", selectedCase)
   }
@@ -123,7 +115,7 @@ export function SafetyPage({ onAuditEvent }: SafetyPageProps) {
     updateSafetyCase(selectedCase.id, {
       transferredTo: recipient,
       status: "transferred",
-      updatedAt: "2026-07-25T16:15:00+08:00",
+      updatedAt: new Date().toISOString(),
     })
     appendAudit(
       "转交保护性反馈",
@@ -137,7 +129,7 @@ export function SafetyPage({ onAuditEvent }: SafetyPageProps) {
     if (!selectedCase) return
     updateSafetyCase(selectedCase.id, {
       status: "resolved",
-      updatedAt: "2026-07-25T16:20:00+08:00",
+      updatedAt: new Date().toISOString(),
     })
     appendAudit(
       "记录核实结果并结案",
@@ -148,17 +140,17 @@ export function SafetyPage({ onAuditEvent }: SafetyPageProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-5 p-4 sm:p-6 lg:p-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="role-page role-page-flow">
+      <header className="role-page-header">
         <div>
-          <div className="flex items-center gap-2 text-sm font-black text-[#53705b]">
+          <div className="role-page-kicker flex items-center gap-2">
             <ShieldCheck aria-hidden="true" size={18} />
             学生支持与人工核实
           </div>
-          <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-[#15231a] sm:text-4xl">
+          <h1 className="role-page-title">
             保护性反馈
           </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-7 text-[#657469]">
+          <p className="role-page-description">
             仅向获授权人员展示最少必要信息。风险提示仅用于人工核实，不作诊断、自动判断或学生标签。
           </p>
         </div>
@@ -287,8 +279,7 @@ export function SafetyPage({ onAuditEvent }: SafetyPageProps) {
           className="rounded-2xl bg-[#e8f0e5] px-4 py-3 text-sm font-bold text-[#36503c]"
           role="status"
         >
-          本页已新增 {localAuditEvents.length} 条审计记录。由于本任务不修改共享
-          Context，这些增量仅保存在当前页面，并通过可选回调交给上层整合。
+          本页已新增 {localAuditEvents.length} 条审计记录，并已写入统一数据状态。
         </p>
       ) : null}
 

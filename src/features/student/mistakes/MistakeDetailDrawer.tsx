@@ -58,17 +58,19 @@ const reminderLabels: Record<ReminderChoice, string> = {
 }
 
 function reminderChoiceFromDate(reminderAt?: string): ReminderChoice {
-  if (reminderAt?.startsWith("2026-07-26")) return "tomorrow"
-  if (reminderAt?.startsWith("2026-08-01")) return "7-days"
+  if (!reminderAt) return "3-days"
+  const days = Math.round((new Date(reminderAt).getTime() - Date.now()) / 86_400_000)
+  if (days <= 1) return "tomorrow"
+  if (days >= 6) return "7-days"
   return "3-days"
 }
 
 const reminderFeedback: Record<ReminderChoice, string> = {
-  tomorrow: "已设置 7 月 26 日 19:00 的模拟提醒",
+  tomorrow: "已设置明天的复习提醒",
 
-  "3-days": "已设置 7 月 28 日 19:00 的模拟提醒",
+  "3-days": "已设置 3 天后的复习提醒",
 
-  "7-days": "已设置 8 月 1 日 19:00 的模拟提醒",
+  "7-days": "已设置 7 天后的复习提醒",
 }
 
 const masteryLabels: Record<MistakeMastery, string> = {

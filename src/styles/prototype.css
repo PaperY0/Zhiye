@@ -135,6 +135,226 @@
   margin-inline: auto;
 }
 
+/* Shared page grammar for every role. Individual pages own their content,
+   while the shell owns a consistent frame, hierarchy and interaction layer. */
+.role-page {
+  width: 100%;
+  max-width: 1400px;
+  min-width: 0;
+  margin-inline: auto;
+  padding: clamp(16px, 2vw, 30px);
+  padding-bottom: max(clamp(28px, 4vw, 52px), env(safe-area-inset-bottom));
+}
+
+.role-page-narrow { max-width: 1120px; }
+.role-page-medium { max-width: 1200px; }
+
+.role-page-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.role-page-header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.role-page-header > :first-child { min-width: 0; }
+
+.role-page-kicker {
+  margin: 0;
+  color: #637d69;
+  font-size: 0.75rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+
+.role-page-title {
+  margin: 6px 0 0;
+  color: #15251a;
+  font-size: clamp(2rem, 3vw, 2.6rem);
+  font-weight: 900;
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+}
+
+.role-page-description {
+  max-width: 46rem;
+  margin: 9px 0 0;
+  color: #65766b;
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+
+.role-section-title {
+  color: #203126;
+  font-size: 1rem;
+  font-weight: 850;
+  letter-spacing: -0.015em;
+}
+
+.role-action-primary,
+.role-action-secondary {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 14px;
+  padding-inline: 18px;
+  font-size: 0.875rem;
+  font-weight: 850;
+  transition: transform 160ms ease, background-color 160ms ease,
+    border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.role-action-primary {
+  color: white;
+  background: #173022;
+  box-shadow: 0 8px 20px rgba(23, 48, 34, 0.16);
+}
+
+.role-action-secondary {
+  border: 1px solid rgba(56, 83, 64, 0.12);
+  color: #3d5d46;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.role-action-primary:active,
+.role-action-secondary:active { transform: scale(0.98); }
+
+/* Content surfaces stay stable; translucency is reserved for shell chrome,
+   dialogs and other functional layers. */
+.role-shell-student .prototype-glass,
+.role-shell-parent .prototype-glass,
+.role-shell-admin .prototype-glass {
+  border-color: rgba(49, 79, 56, 0.09);
+  background: rgba(251, 253, 249, 0.93);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.96),
+    0 14px 34px rgba(49, 75, 55, 0.07);
+  -webkit-backdrop-filter: blur(8px) saturate(112%);
+  backdrop-filter: blur(8px) saturate(112%);
+}
+
+.role-shell-student .prototype-glass--light,
+.role-shell-parent .prototype-glass--light,
+.role-shell-admin .prototype-glass--light {
+  background: rgba(248, 251, 247, 0.88);
+}
+
+.role-shell-student .prototype-glass--sheet,
+.role-shell-parent .prototype-glass--sheet,
+.role-shell-admin .prototype-glass--sheet {
+  background: rgba(253, 254, 251, 0.96);
+}
+
+@media (min-width: 1024px) {
+  .role-page-fixed {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 767px) {
+  .role-page { padding: 14px 4px 104px; }
+  .role-page-flow { gap: 16px; }
+  .role-page-header { align-items: stretch; flex-direction: column; gap: 14px; }
+  .role-page-title { font-size: clamp(1.8rem, 9vw, 2.25rem); }
+  .role-page-header > :last-child:not(:first-child) { align-self: stretch; }
+}
+
+/* Chromium's customizable select keeps native form semantics while allowing
+   the picker to belong visually to the product instead of the operating system. */
+@supports (appearance: base-select) {
+  .role-shell select,
+  .role-shell ::picker(select) {
+    appearance: base-select;
+  }
+
+  .role-shell select {
+    cursor: pointer;
+  }
+
+  .role-shell select::picker-icon {
+    color: #526b59;
+    transition: rotate 160ms ease;
+  }
+
+  .role-shell select:open::picker-icon {
+    rotate: 180deg;
+  }
+
+  .role-shell ::picker(select) {
+    max-height: min(320px, 52dvh);
+    margin-block-start: 8px;
+    padding: 6px;
+    overflow-y: auto;
+    border: 1px solid rgba(67, 96, 73, 0.16);
+    border-radius: 18px;
+    background: rgba(250, 252, 249, 0.96);
+    box-shadow: 0 18px 48px rgba(30, 55, 37, 0.18), inset 0 1px rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(20px) saturate(135%);
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+    transition: opacity 140ms ease, transform 160ms ease, display 160ms allow-discrete,
+      overlay 160ms allow-discrete;
+  }
+
+  .role-shell select:open::picker(select) {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  @starting-style {
+    .role-shell select:open::picker(select) {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.985);
+    }
+  }
+
+  .role-shell select option {
+    min-height: 42px;
+    margin: 2px 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    color: #203429;
+    font-weight: 700;
+  }
+
+  .role-shell select option:hover,
+  .role-shell select option:focus-visible {
+    background: #edf4eb;
+  }
+
+  .role-shell select option:checked {
+    background: #dfece0;
+    color: #284c32;
+  }
+
+  .role-shell select option::checkmark {
+    color: #446d4f;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .role-shell ::picker(select),
+  .role-shell select::picker-icon {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .role-shell ::picker(select) {
+    background: #f8faf7;
+    backdrop-filter: none;
+  }
+}
+
 .role-shell-student .role-sidebar {
   background: rgba(248, 252, 247, 0.48);
   border-color: rgba(255, 255, 255, 0.82);
@@ -310,6 +530,209 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
   -webkit-backdrop-filter: blur(16px) saturate(130%);
   backdrop-filter: blur(16px) saturate(130%);
+}
+
+.classroom-record-button,
+.classroom-open-button,
+.classroom-delete-button,
+.classroom-dialog-cancel,
+.classroom-dialog-delete {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 800;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.classroom-record-button {
+  padding: 0 20px;
+  color: white;
+  background: #142219;
+  box-shadow: 0 12px 25px rgba(20, 34, 25, 0.18);
+}
+
+.classroom-record-button:hover { background: #23382a; }
+.classroom-record-button:active,
+.classroom-open-button:active,
+.classroom-delete-button:active { transform: scale(0.98); }
+
+.classroom-filter-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow-x: auto;
+  border-radius: 20px;
+  padding: 6px;
+  scrollbar-width: none;
+}
+
+.classroom-filter-bar::-webkit-scrollbar { display: none; }
+
+.classroom-filter-button {
+  display: inline-flex;
+  min-height: 42px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  border-radius: 15px;
+  padding: 0 13px;
+  color: #506157;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  transition: color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.classroom-filter-button:hover { background: rgba(255, 255, 255, 0.62); }
+
+.classroom-filter-button--active {
+  color: white;
+  background: #24462f;
+  box-shadow: 0 5px 14px rgba(36, 70, 47, 0.18);
+}
+
+.classroom-filter-count {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 999px;
+  padding-inline: 5px;
+  color: #65766a;
+  background: rgba(31, 55, 39, 0.07);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.classroom-filter-button--active .classroom-filter-count {
+  color: white;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.classroom-list-panel {
+  overflow: hidden;
+  border: 1px solid rgba(51, 79, 58, 0.1);
+  border-radius: 24px;
+  background: rgba(250, 252, 249, 0.9);
+  box-shadow: 0 18px 44px rgba(36, 62, 43, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.classroom-list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 15px;
+  border-bottom: 1px solid rgba(43, 69, 49, 0.08);
+}
+
+.classroom-list-heading h2 {
+  margin: 0;
+  color: #203126;
+  font-size: 0.95rem;
+  font-weight: 850;
+}
+
+.classroom-list-heading p {
+  margin: 3px 0 0;
+  color: #758279;
+  font-size: 0.75rem;
+}
+
+.classroom-lesson-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding: 22px 24px;
+}
+
+.classroom-lesson-row + .classroom-lesson-row {
+  border-top: 1px solid rgba(43, 69, 49, 0.08);
+}
+
+.classroom-lesson-content { min-width: 0; }
+
+.classroom-lesson-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.classroom-open-button {
+  border: 1px solid rgba(45, 75, 53, 0.12);
+  padding: 0 18px;
+  color: #24462f;
+  background: white;
+  box-shadow: 0 3px 10px rgba(36, 62, 43, 0.06);
+}
+
+.classroom-open-button:hover { background: #f4f8f3; }
+
+.classroom-delete-button {
+  padding: 0 12px;
+  color: #7b5d5d;
+  background: transparent;
+}
+
+.classroom-delete-button:hover {
+  color: #9a3737;
+  background: rgba(162, 71, 71, 0.08);
+}
+
+.classroom-dialog-cancel,
+.classroom-dialog-delete { padding: 0 18px; }
+
+.classroom-dialog-cancel {
+  color: #385343;
+  background: rgba(56, 83, 67, 0.07);
+}
+
+.classroom-dialog-delete {
+  color: white;
+  background: #a24747;
+  box-shadow: 0 8px 18px rgba(162, 71, 71, 0.18);
+}
+
+.classroom-dialog-delete:hover { background: #8f3939; }
+
+.classroom-delete-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 16px;
+  padding: 14px 16px;
+  color: #873d3d;
+  background: rgba(162, 71, 71, 0.08);
+}
+
+.classroom-delete-notice p { margin: 0; font-size: 0.875rem; font-weight: 750; }
+
+@media (max-width: 640px) {
+  .classroom-page { gap: 16px; }
+  .classroom-record-button { width: 100%; }
+  .classroom-list-heading { padding: 18px 18px 13px; }
+  .classroom-lesson-row {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 20px 18px;
+  }
+  .classroom-lesson-actions { width: 100%; }
+  .classroom-open-button { flex: 1 1 auto; }
+  .classroom-delete-button { min-width: 88px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .classroom-record-button,
+  .classroom-open-button,
+  .classroom-delete-button,
+  .classroom-dialog-cancel,
+  .classroom-dialog-delete,
+  .classroom-filter-button { transition: none; }
 }
 
 .prototype-empty-state {

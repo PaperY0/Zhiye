@@ -5,15 +5,19 @@ import {
   CheckCircle2,
   ChevronRight,
   Search,
+  Pencil,
+  Plus,
   SlidersHorizontal,
   Sparkles,
   UsersRound,
+  Trash2,
 } from "lucide-react"
 import type { AppRoute } from "../../../app/routes"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
 import type { Student } from "../../../app/prototype/types"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { StatusChip } from "../../../components/shared/StatusChip"
+import { Dialog } from "../../../components/shared/Dialog"
 
 export interface StudentsPageProps {
   onNavigate: (route: AppRoute) => void
@@ -27,12 +31,38 @@ function studentAttention(student: Student): Exclude<AttentionFilter, "all"> {
     : "steady"
 }
 
+function parseCsvLine(line: string) {
+  const cells: string[] = []
+  let cell = ""
+  let quoted = false
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index]
+    if (character === '"' && line[index + 1] === '"' && quoted) {
+      cell += '"'
+      index += 1
+    } else if (character === '"') {
+      quoted = !quoted
+    } else if (character === "," && !quoted) {
+      cells.push(cell.trim())
+      cell = ""
+    } else {
+      cell += character
+    }
+  }
+  cells.push(cell.trim())
+  return cells
+}
+
 function StudentCard({
   student,
   onOpen,
+  onEdit,
+  onDelete,
 }: {
   student: Student
   onOpen: () => void
+  onEdit: () => void
+  onDelete: () => void
 }) {
   const needsReview = studentAttention(student) === "needs-review"
 
@@ -106,6 +136,10 @@ function StudentCard({
             查看学习档案
             <ChevronRight aria-hidden="true" size={17} />
           </button>
+          <div className="mt-2 flex justify-end gap-2">
+            <button aria-label={`编辑${student.name}`} className="grid size-9 place-items-center rounded-full bg-white/70 text-[#46624d]" onClick={onEdit} type="button"><Pencil aria-hidden="true" size={15} /></button>
+            <button aria-label={`删除${student.name}`} className="grid size-9 place-items-center rounded-full bg-[#fff4f1] text-[#934f43]" onClick={onDelete} type="button"><Trash2 aria-hidden="true" size={15} /></button>
+          </div>
         </div>
       </div>
     </article>
@@ -113,12 +147,87 @@ function StudentCard({
 }
 
 export function StudentsPage({ onNavigate }: StudentsPageProps) {
-  const { students, tasks } = usePrototype()
+  const { addStudent, deleteStudent, students, tasks, updateStudent } = usePrototype()
   const [query, setQuery] = useState("")
   const [focus, setFocus] = useState("all")
   const [attention, setAttention] = useState<AttentionFilter>("all")
   const [importOpen, setImportOpen] = useState(false)
   const [importFileName, setImportFileName] = useState("")
+  const [importStudents, setImportStudents] = useState<Student[]>([])
+  const [importError, setImportError] = useState("")
+  const [studentDraft, setStudentDraft] = useState<Student | null>(null)
+  const [studentEditorOpen, setStudentEditorOpen] = useState(false)
+
+  function createStudentDraft(): Student {
+    const id = `student-${Date.now()}`
+    return {
+      id,
+      name: "新学生",
+      avatarText: "新",
+      className: students[0]?.className ?? "五年级（2）班",
+      grade: students[0]?.grade ?? "五年级",
+      guardianName: "待填写",
+      guardianRelation: "监护人",
+      voluntaryQuestions: 0,
+      practiceCount: 0,
+      taskCompletionRate: 0,
+      currentFocus: [],
+      facts: [],
+      aiInferences: [],
+      teacherNotes: [],
+      mistakes: [],
+      timeline: [],
+    }
+  }
+
+  async function prepareCsvImport(file?: File) {
+    setImportFileName(file?.name ?? "")
+    setImportStudents([])
+    setImportError("")
+    if (!file) return
+
+    const lines = (await file.text())
+      .replace(/^\uFEFF/, "")
+      .split(/\r?\n/)
+      .filter((line) => line.trim())
+    if (lines.length < 2) {
+      setImportError("CSV 至少需要表头和一行学生资料。")
+      return
+    }
+    const headers = parseCsvLine(lines[0]).map((header) => header.toLowerCase())
+    const findColumn = (...names: string[]) => headers.findIndex((header) => names.includes(header))
+    const nameColumn = findColumn("name", "姓名", "学生姓名")
+    if (nameColumn < 0) {
+      setImportError("未找到“姓名”列。支持：姓名、班级、监护人、关系、当前关注。")
+      return
+    }
+    const classColumn = findColumn("classname", "class", "班级")
+    const guardianColumn = findColumn("guardianname", "guardian", "监护人", "监护人姓名")
+    const relationColumn = findColumn("guardianrelation", "relation", "关系", "监护人关系")
+    const focusColumn = findColumn("focus", "当前关注", "关注知识点")
+    const timestamp = Date.now()
+    const parsed = lines.slice(1).flatMap((line, index) => {
+      const cells = parseCsvLine(line)
+      const name = cells[nameColumn]?.trim()
+      if (!name) return []
+      const draft = createStudentDraft()
+      return [{
+        ...draft,
+        id: `student-import-${timestamp}-${index}`,
+        name,
+        avatarText: name.slice(0, 1),
+        className: cells[classColumn]?.trim() || draft.className,
+        guardianName: cells[guardianColumn]?.trim() || draft.guardianName,
+        guardianRelation: cells[relationColumn]?.trim() || draft.guardianRelation,
+        currentFocus: (cells[focusColumn] ?? "").split(/[、;；|]/).map((item) => item.trim()).filter(Boolean),
+      } satisfies Student]
+    })
+    if (parsed.length === 0) {
+      setImportError("没有读取到有效学生，请检查姓名列。")
+      return
+    }
+    setImportStudents(parsed)
+  }
 
   const focusOptions = useMemo(
     () =>
@@ -182,9 +291,11 @@ export function StudentsPage({ onNavigate }: StudentsPageProps) {
             以可核实学习记录为主线查看成长轨迹，AI 只提供待教师判断的辅助线索。
           </p>
         </div>
-        <StatusChip className="self-start lg:self-auto" tone="info">
-          数据更新于今天 15:40
-        </StatusChip>
+        <div className="flex flex-wrap items-center gap-3">
+          <StatusChip tone="info">实时本地数据</StatusChip>
+          <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#cbdaca] bg-white/70 px-5 text-sm font-black text-[#3f5d46]" onClick={() => setImportOpen(true)} type="button">导入学生名单</button>
+          <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#173022] px-5 text-sm font-black text-white" onClick={() => { setStudentDraft(createStudentDraft()); setStudentEditorOpen(true) }} type="button"><Plus aria-hidden="true" size={17} />新增学生</button>
+        </div>
       </header>
 
       <section
@@ -316,6 +427,10 @@ export function StudentsPage({ onNavigate }: StudentsPageProps) {
                 })
               }
               student={student}
+              onEdit={() => { setStudentDraft(structuredClone(student)); setStudentEditorOpen(true) }}
+              onDelete={() => {
+                if (window.confirm(`确认删除“${student.name}”的学生档案吗？`)) deleteStudent(student.id)
+              }}
             />
           ))}
         </section>
@@ -360,24 +475,23 @@ export function StudentsPage({ onNavigate }: StudentsPageProps) {
           <GlassSurface className="w-full max-w-lg p-6" weight="sheet">
             <h2 className="text-2xl font-black text-[#203427]">导入学生名单</h2>
             <p className="mt-2 text-sm leading-6 text-[#718078]">
-              当前为本地原型接入点。后续接入真实名单服务后，可上传 CSV 或从校务系统同步。
+              CSV 会在浏览器内解析并写入当前档案，不上传文件。支持姓名、班级、监护人、关系和当前关注列。
             </p>
             <label className="mt-5 block rounded-2xl border border-dashed border-[#a9c2ac] bg-white/55 p-5 text-sm font-bold text-[#486750]">
               <span className="block">选择 CSV 文件</span>
               <input
                 accept=".csv,text/csv"
                 className="mt-3 block w-full text-sm"
-                onChange={(event) =>
-                  setImportFileName(event.target.files?.[0]?.name ?? "")
-                }
+                onChange={(event) => void prepareCsvImport(event.target.files?.[0])}
                 type="file"
               />
             </label>
             {importFileName ? (
               <p className="mt-3 text-sm font-bold text-[#55705b]">
-                已选择：{importFileName}（等待服务接入）
+                已读取：{importFileName} · {importStudents.length} 名学生
               </p>
             ) : null}
+            {importError ? <p className="mt-3 text-sm font-bold text-[#994f43]" role="alert">{importError}</p> : null}
             <div className="mt-6 flex justify-end gap-3">
               <button
                 className="rounded-full border border-[#d5e1d3] px-4 py-2 text-sm font-black text-[#55705b]"
@@ -387,16 +501,45 @@ export function StudentsPage({ onNavigate }: StudentsPageProps) {
                 取消
               </button>
               <button
-                className="rounded-full bg-[#173022] px-4 py-2 text-sm font-black text-white"
-                onClick={() => setImportOpen(false)}
+                className="rounded-full bg-[#173022] px-4 py-2 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={importStudents.length === 0}
+                onClick={() => {
+                  importStudents.forEach(addStudent)
+                  setImportOpen(false)
+                  setImportFileName("")
+                  setImportStudents([])
+                }}
                 type="button"
               >
-                确认接入
+                导入 {importStudents.length || ""} 名学生
               </button>
             </div>
           </GlassSurface>
         </div>
       ) : null}
+
+      <Dialog
+        description="学生资料会同步到档案、搜索、任务和学习记录。"
+        footer={studentDraft ? <div className="flex justify-end gap-3"><button className="rounded-full border border-[#cbdaca] px-4 py-2.5 text-sm font-black" onClick={() => setStudentEditorOpen(false)} type="button">取消</button><button className="rounded-full bg-[#173022] px-5 py-2.5 text-sm font-black text-white" onClick={() => {
+          if (!studentDraft.name.trim()) return
+          const exists = students.some((student) => student.id === studentDraft.id)
+          if (exists) updateStudent(studentDraft.id, studentDraft)
+          else addStudent(studentDraft)
+          setStudentEditorOpen(false)
+        }} type="button">保存学生资料</button></div> : null}
+        onClose={() => setStudentEditorOpen(false)}
+        open={studentEditorOpen}
+        title={studentDraft && students.some((student) => student.id === studentDraft.id) ? "编辑学生资料" : "新增学生"}
+      >
+        {studentDraft ? <div className="grid gap-4 sm:grid-cols-2">
+          <label className="grid gap-2 text-sm font-black">姓名<input aria-label="学生姓名" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setStudentDraft({ ...studentDraft, name: event.target.value, avatarText: event.target.value.slice(0, 1) || "新" })} value={studentDraft.name} /></label>
+          <label className="grid gap-2 text-sm font-black">班级<input aria-label="学生班级" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setStudentDraft({ ...studentDraft, className: event.target.value })} value={studentDraft.className} /></label>
+          <label className="grid gap-2 text-sm font-black">监护人<input aria-label="监护人姓名" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setStudentDraft({ ...studentDraft, guardianName: event.target.value })} value={studentDraft.guardianName} /></label>
+          <label className="grid gap-2 text-sm font-black">关系<input aria-label="监护人关系" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setStudentDraft({ ...studentDraft, guardianRelation: event.target.value })} value={studentDraft.guardianRelation} /></label>
+          <label className="grid gap-2 text-sm font-black">任务完成率<input aria-label="任务完成率" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" max="100" min="0" onChange={(event) => setStudentDraft({ ...studentDraft, taskCompletionRate: Number(event.target.value) })} type="number" value={studentDraft.taskCompletionRate} /></label>
+          <label className="grid gap-2 text-sm font-black sm:col-span-2">当前关注（用顿号分隔）<input aria-label="学生当前关注" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setStudentDraft({ ...studentDraft, currentFocus: event.target.value.split(/[、,，]/).map((item) => item.trim()).filter(Boolean) })} value={studentDraft.currentFocus.join("、")} /></label>
+        </div> : null}
+      </Dialog>
     </div>
   )
 }

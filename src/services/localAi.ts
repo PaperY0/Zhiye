@@ -1,3 +1,6 @@
+import type { RecapJob } from "../app/prototype/types"
+import { teacherSettingsForAi } from "../features/teacher/settings/teacherSettings"
+
 export type GenerationKind =
   | "lesson-plan"
   | "quiz"
@@ -69,7 +72,11 @@ export function generateDraft(
   return requestJson<unknown>(`${baseUrl}/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ kind, context }),
+    body: JSON.stringify({
+      kind,
+      context,
+      teacherSettings: teacherSettingsForAi(),
+    }),
   })
 }
 
@@ -111,4 +118,3 @@ export function retryRecapJob(jobId: string, stepKey: string) {
     body,
   })
 }
-import type { RecapJob } from "../app/prototype/types"

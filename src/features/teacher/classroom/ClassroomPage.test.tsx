@@ -4,6 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { PrototypeProvider, usePrototype } from "../../../app/prototype/PrototypeContext"
 import type { AppRoute } from "../../../app/routes"
 import { ClassroomPage } from "./ClassroomPage"
+import {
+  defaultTeacherSettings,
+  resetTeacherSettings,
+  saveTeacherSettings,
+} from "../settings/teacherSettings"
 
 const lessonAnalysis = vi.hoisted(() => ({
   analyzeLessonAudio: vi.fn(),
@@ -78,6 +83,8 @@ class TestMediaRecorder {
 }
 
 beforeEach(() => {
+  localStorage.clear()
+  resetTeacherSettings()
   TestMediaRecorder.instances = []
   TestMediaRecorder.emitData = true
   Object.defineProperty(navigator, "mediaDevices", {
@@ -97,6 +104,19 @@ afterEach(() => {
 })
 
 describe("ClassroomPage", () => {
+  it("uses the saved class and chapter for a new recording", () => {
+    saveTeacherSettings({
+      ...defaultTeacherSettings,
+      currentClass: "五年级（1）班",
+      chapter: "小数乘法",
+    })
+    renderClassroom()
+
+    fireEvent.click(screen.getByRole("button", { name: "开始新课堂录音" }))
+
+    expect(screen.getByText(/五年级（1）班 · \d{4}-\d{2}-\d{2}/)).toBeInTheDocument()
+  })
+
   it("filters lessons by status and exposes duration, sync, and student visibility", async () => {
     const user = userEvent.setup()
     renderClassroom()
@@ -122,6 +142,43 @@ describe("ClassroomPage", () => {
     await user.click(screen.getByRole("button", { name: "已发布" }))
     expect(screen.getByText("单位换算中的乘除步骤")).toBeInTheDocument()
     expect(screen.queryByText("小数乘法估算")).not.toBeInTheDocument()
+  })
+
+  it("deletes a classroom only after explicit confirmation", async () => {
+    const user = userEvent.setup()
+    renderClassroom()
+
+    await user.click(screen.getByRole("button", { name: "删除分数的基本性质" }))
+
+    const dialog = screen.getByRole("dialog", { name: "删除“分数的基本性质”？" })
+    expect(within(dialog).getByText("课堂记录及其 AI 初稿会被一并删除。")).toBeInTheDocument()
+    expect(within(dialog).getByText("删除后可从页面通知中立即撤销。")).toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole("button", { name: "取消" }))
+    expect(screen.getByText("分数的基本性质")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "删除分数的基本性质" }))
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "删除课堂" }))
+
+    expect(screen.queryByText("分数的基本性质")).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "全部" })).toHaveTextContent("2")
+
+    await user.click(screen.getByRole("button", { name: "撤销删除" }))
+    expect(screen.getByText("分数的基本性质")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "全部" })).toHaveTextContent("3")
+  })
+
+  it("warns when deleting a published classroom", async () => {
+    const user = userEvent.setup()
+    renderClassroom()
+
+    await user.click(screen.getByRole("button", { name: "删除单位换算中的乘除步骤" }))
+
+    expect(
+      within(screen.getByRole("dialog")).getByText(
+        "这节课堂已向学生发布。删除后，学生将无法继续查看对应复习卡。",
+      ),
+    ).toBeInTheDocument()
   })
 
   it("writes a completed local AI analysis into the newly recorded lesson", async () => {

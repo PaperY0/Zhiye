@@ -73,17 +73,17 @@ export function AuditPage({ localEvents = [] }: AuditPageProps) {
   const localIds = new Set(localEvents.map((event) => event.id))
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-5 p-4 sm:p-6 lg:p-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="role-page role-page-flow">
+      <header className="role-page-header">
         <div>
-          <div className="flex items-center gap-2 text-sm font-black text-[#53705b]">
+          <div className="role-page-kicker flex items-center gap-2">
             <ClipboardList aria-hidden="true" size={18} />
             受控访问与操作留痕
           </div>
-          <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-[#15231a] sm:text-4xl">
+          <h1 className="role-page-title">
             审计记录
           </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-7 text-[#657469]">
+          <p className="role-page-description">
             查看谁在什么时间、因何目的访问或处理了受控对象。记录只展示必要的操作元数据，不展示学生表达、普通对话或未经核实的敏感内容。
           </p>
         </div>

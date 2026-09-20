@@ -4,7 +4,7 @@ export type AppRoute = {
   page: "welcome"
 } | {
   role: "teacher"
-  page: "workspace" | "classroom" | "insights" | "planning" | "students" | "tasks" | "messages" | "settings" | "history" | "recap-agent"
+  page: "workspace" | "classroom" | "insights" | "planning" | "students" | "tasks" | "messages" | "settings" | "history"
 } | {
   role: "teacher"
   page: "lesson-detail"
@@ -42,7 +42,6 @@ const teacherPages = [
   "messages",
   "settings",
   "history",
-  "recap-agent",
 ] as const satisfies readonly TeacherStaticPage[]
 
 const studentPages = [
@@ -97,6 +96,10 @@ export function parseHash(hash: string): AppRoute {
   const [role, page, identifier] = segments
 
   if (role === "teacher") {
+    if (segments.length === 2 && page === "recap-agent") {
+      return { role, page: "classroom" }
+    }
+
     if (segments.length === 2 && isKnownPage(teacherPages, page)) {
       return { role, page }
     }

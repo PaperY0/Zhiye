@@ -110,7 +110,7 @@ describe("InsightsPage", () => {
     await user.click(screen.getByRole("button", { name: /^单位换算 × 计算/ }))
 
     const drawer = screen.getByRole("dialog", { name: "单位换算 · 计算步骤" })
-    expect(within(drawer).getByText("判断乘除方向")).toBeInTheDocument()
+    expect(within(drawer).getByRole("heading", { name: "判断乘除方向" })).toBeInTheDocument()
     expect(
       within(drawer).getByText("随堂练习第 3 题停顿时间增加"),
     ).toBeInTheDocument()

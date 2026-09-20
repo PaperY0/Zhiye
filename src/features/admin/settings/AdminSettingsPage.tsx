@@ -16,37 +16,12 @@ import {
   ToastRegion,
   type ToastMessage,
 } from "../../../components/shared/ToastRegion"
-
-type AdminSettings = {
-  primaryContact: string
-  backupContact: string
-  escalationContact: string
-  retentionDays: "7" | "14" | "30"
-  aiContentDays: "30" | "90" | "180"
-  auditDays: "180" | "365" | "730"
-}
-
-const initialSettings: AdminSettings = {
-  primaryContact: "王老师 · 德育负责人",
-  backupContact: "陈老师 · 年级负责人",
-  escalationContact: "周主任 · 校务负责人",
-  retentionDays: "7",
-  aiContentDays: "90",
-  auditDays: "365",
-}
-
-const adminSettingsStorageKey = "zhiye-admin-settings-v1"
-
-function readSavedSettings(): AdminSettings {
-  try {
-    const saved = window.localStorage.getItem(adminSettingsStorageKey)
-    return saved
-      ? { ...initialSettings, ...(JSON.parse(saved) as Partial<AdminSettings>) }
-      : initialSettings
-  } catch {
-    return initialSettings
-  }
-}
+import {
+  adminSettingsStorageKey,
+  initialAdminSettings,
+  readSavedAdminSettings,
+  type AdminSettings,
+} from "./adminSettings"
 
 const inputClassName =
   "mt-2 min-h-11 w-full rounded-2xl border border-white/80 bg-white/60 px-4 text-sm font-semibold text-[#263b2d] outline-none transition placeholder:text-[#91a097] focus:border-[#7f9b84] focus:ring-4 focus:ring-[#6f9475]/18"
@@ -83,11 +58,9 @@ function SettingsSection({
 
 export function AdminSettingsPage() {
   const { resetPrototype } = usePrototype()
-  const [settings, setSettings] = useState<AdminSettings>(readSavedSettings)
+  const [settings, setSettings] = useState<AdminSettings>(readSavedAdminSettings)
   const [savedRetentionDays, setSavedRetentionDays] =
-    useState<AdminSettings["retentionDays"]>(readSavedSettings().retentionDays)
-  const [invitationCode, setInvitationCode] = useState<string | null>(null)
-  const [bindingCode, setBindingCode] = useState("")
+    useState<AdminSettings["retentionDays"]>(readSavedAdminSettings().retentionDays)
   const [bindingFeedback, setBindingFeedback] = useState("")
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
@@ -101,11 +74,11 @@ export function AdminSettingsPage() {
   }
 
   function simulateBinding() {
-    if (bindingCode.trim() === "520826") {
+    if (settings.bindingCode.trim()) {
       setBindingFeedback("已在本地原型中绑定五年级（2）班")
       return
     }
-    setBindingFeedback("绑定码未匹配演示班级，请输入 520826")
+    setBindingFeedback("请先设置有效绑定码")
   }
 
   function confirmSave() {
@@ -123,30 +96,30 @@ export function AdminSettingsPage() {
   }
 
   return (
-    <div className="relative mx-auto w-full max-w-[1500px] px-4 pb-28 pt-5 sm:px-6 lg:px-8">
-      <header className="mb-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <div className="role-page role-page-flow relative">
+      <header className="role-page-header">
         <div>
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <StatusChip tone="info">管理端</StatusChip>
             <StatusChip tone="neutral">本地学校设置</StatusChip>
           </div>
-          <h1 className="text-3xl font-black tracking-[-0.045em] text-[#132219] sm:text-4xl">
+          <h1 className="role-page-title">
             学校与数据设置
           </h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-[#66796d] sm:text-base">
+          <p className="role-page-description">
             配置人工响应联系人、学校接入凭据和数据留存边界。敏感变更必须再次确认。
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <button
-            className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#cbd9cb] bg-white/70 px-5 text-sm font-black text-[#46614c]"
+            className="role-action-secondary"
             onClick={() => setResetOpen(true)}
             type="button"
           >
             重置全部演示数据
           </button>
           <button
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#15251b] px-6 text-sm font-black text-white shadow-[0_12px_28px_rgba(20,40,27,.18)] transition hover:-translate-y-0.5 hover:bg-[#223b2a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#66886d]/30"
+            className="role-action-primary"
             onClick={() => setConfirmOpen(true)}
             type="button"
           >
@@ -165,6 +138,27 @@ export function AdminSettingsPage() {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-2">
+        <SettingsSection
+          description="这些信息会同步显示在管理概览中。"
+          icon={<ShieldCheck aria-hidden="true" size={21} />}
+          title="学校资料"
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className={`${labelClassName} sm:col-span-2`}>
+              学校名称
+              <input className={inputClassName} onChange={(event) => updateSetting("schoolName", event.target.value)} value={settings.schoolName} />
+            </label>
+            <label className={labelClassName}>
+              教师人数
+              <input className={inputClassName} min="0" onChange={(event) => updateSetting("teacherCount", Number(event.target.value))} type="number" value={settings.teacherCount} />
+            </label>
+            <label className={labelClassName}>
+              班级绑定码
+              <input className={inputClassName} onChange={(event) => updateSetting("bindingCode", event.target.value)} value={settings.bindingCode} />
+            </label>
+          </div>
+        </SettingsSection>
+
         <SettingsSection
           description="指定保护性反馈进入人工流程时的校内可信任联系人。"
           icon={<UserRoundCog aria-hidden="true" size={21} />}
@@ -224,15 +218,15 @@ export function AdminSettingsPage() {
               </div>
               <button
                 className="min-h-11 rounded-full border border-[#53715b]/18 bg-[#e5eee2] px-4 text-sm font-black text-[#365640] transition hover:bg-[#dbe9d8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#6f9475]/25"
-                onClick={() => setInvitationCode("ZY-2026-0725-01")}
+                onClick={() => updateSetting("invitationCode", `ZY-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`)}
                 type="button"
               >
                 生成模拟邀请码
               </button>
             </div>
-            {invitationCode ? (
+            {settings.invitationCode ? (
               <strong className="mt-4 block rounded-2xl bg-[#173022] px-4 py-3 text-center font-mono text-lg tracking-[0.08em] text-white">
-                {invitationCode}
+                {settings.invitationCode}
               </strong>
             ) : null}
           </div>
@@ -243,10 +237,10 @@ export function AdminSettingsPage() {
               <input
                 className={inputClassName}
                 inputMode="numeric"
-                onChange={(event) => setBindingCode(event.target.value)}
+                onChange={(event) => updateSetting("bindingCode", event.target.value)}
                 placeholder="例如 520826"
                 type="text"
-                value={bindingCode}
+                value={settings.bindingCode}
               />
             </label>
             <button
@@ -413,8 +407,9 @@ export function AdminSettingsPage() {
               className="rounded-full bg-[#8a4f3f] px-5 py-2.5 text-sm font-black text-white"
               onClick={() => {
                 resetPrototype()
-                setSettings(initialSettings)
-                setSavedRetentionDays(initialSettings.retentionDays)
+                window.localStorage.removeItem(adminSettingsStorageKey)
+                setSettings(initialAdminSettings)
+                setSavedRetentionDays(initialAdminSettings.retentionDays)
                 setResetOpen(false)
                 setToasts([
                   {

@@ -4,6 +4,7 @@ export const emptyFixtureSet = {
   lessons: [],
   students: [],
   signals: [],
+  learningTopics: [],
   plans: [],
   quizzes: [],
   tasks: [],

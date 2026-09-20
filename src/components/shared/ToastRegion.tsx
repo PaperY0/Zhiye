@@ -7,6 +7,8 @@ export interface ToastMessage {
   title: string
   description?: string
   tone?: StatusTone
+  actionLabel?: string
+  onAction?: () => void
 }
 
 export interface ToastRegionProps {
@@ -46,6 +48,15 @@ export function ToastRegion({
               <strong>{toast.title}</strong>
               {toast.description ? <p>{toast.description}</p> : null}
             </div>
+            {toast.actionLabel && toast.onAction ? (
+              <button
+                className="rounded-full border border-current/20 px-3 py-2 text-xs font-black"
+                onClick={toast.onAction}
+                type="button"
+              >
+                {toast.actionLabel}
+              </button>
+            ) : null}
             {onDismiss ? (
               <button
                 aria-label={`关闭通知：${toast.title}`}

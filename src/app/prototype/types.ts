@@ -122,6 +122,15 @@ export type KnowledgeSignal = {
   observedAt: string
 }
 
+export type LearningTopic = {
+  id: string
+  title: string
+  subject: Subject
+  summary: string
+  lastStudied: string
+  prompts: string[]
+}
+
 export type PlanDraft = {
   id: string
   title: string

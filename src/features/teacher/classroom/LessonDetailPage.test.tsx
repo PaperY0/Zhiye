@@ -70,7 +70,8 @@ describe("LessonDetailPage", () => {
     )
     await user.click(screen.getByRole("button", { name: "保存复习卡" }))
 
-    expect(screen.getByText("复习卡已保存")).toBeInTheDocument()
+    const dialog = screen.getByRole("dialog", { name: "复习卡已保存" })
+    expect(within(dialog).getByText(/学生不可见/)).toBeInTheDocument()
     expect(editor).toHaveValue(
       "分子和分母同时乘或除以相同且不为零的数，分数大小不变。",
     )
@@ -113,19 +114,32 @@ describe("LessonDetailPage", () => {
     await user.type(nextStep, "通分综合练习")
     await user.click(screen.getByRole("button", { name: "保存课程进度" }))
 
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "课程进度保存成功 · 已同步到课堂记录",
-    )
+    const dialog = screen.getByRole("dialog", { name: "课程进度已保存" })
+    expect(within(dialog).getByText(/80%/)).toBeInTheDocument()
     expect(nextStep).toHaveValue("通分综合练习")
   })
 
-  it("routes complete lessons into the shared recap review flow", async () => {
+  it("reviews and publishes a complete lesson without leaving classroom detail", async () => {
     const user = userEvent.setup()
     renderDetail("lesson-fractions", true)
 
     expect(screen.getByText("学生不可见")).toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "进入复盘审核" }))
-    expect(window.location.hash).toBe("#/teacher/recap-agent")
+    await user.click(screen.getByRole("button", { name: "审核学生复习卡" }))
+    expect(screen.getByRole("tab", { name: "学生复习卡" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    )
+
+    await user.click(screen.getByRole("button", { name: "确认并发布" }))
+    const dialog = screen.getByRole("dialog", { name: "发布“单位换算课堂复盘”复习卡？" })
+    expect(within(dialog).getByText(/学生将立即看到这张复习卡/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/课堂转写与教师报告不会公开/)).toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole("button", { name: "确认发布" }))
+
+    expect(screen.getByText("复习卡已发布，学生现在可以查看。")).toBeInTheDocument()
+    expect(screen.getByText("学生可见")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "确认并发布" })).not.toBeInTheDocument()
   })
 
   it("shows a recoverable empty state for an unknown lesson", () => {

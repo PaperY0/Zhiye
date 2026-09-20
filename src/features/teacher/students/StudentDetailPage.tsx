@@ -347,8 +347,8 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
         })}
       </section>
 
-      <div className="mt-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,.75fr)]">
-        <div className="min-w-0 space-y-5">
+      <div className="app-split-layout mt-5">
+        <div className="app-split-primary space-y-5">
           <GlassSurface className="p-5 sm:p-7" weight="card">
             <div className="flex items-center gap-3">
               <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#e9f1e6] text-[#55705b]">
@@ -463,7 +463,7 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
           </GlassSurface>
         </div>
 
-        <aside className="min-w-0 space-y-5">
+        <aside className="app-split-rail app-split-rail-scroll space-y-5">
           <GlassSurface
             aria-label="可核实事实"
             className="p-5 sm:p-6"

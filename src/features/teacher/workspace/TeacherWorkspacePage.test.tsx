@@ -2,18 +2,21 @@ import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { expect, it, vi } from "vitest"
 import { RoleShell } from "../../../components/shell/RoleShell"
+import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
 import TeacherWorkspacePage from "./TeacherWorkspacePage"
 
 it("connects workspace navigation cards to teacher routes", async () => {
   const user = userEvent.setup()
   const onNavigate = vi.fn()
   render(
-    <RoleShell
-      route={{ role: "teacher", page: "workspace" }}
-      onNavigate={onNavigate}
-    >
-      <TeacherWorkspacePage onNavigate={onNavigate} />
-    </RoleShell>,
+    <PrototypeProvider persist={false}>
+      <RoleShell
+        route={{ role: "teacher", page: "workspace" }}
+        onNavigate={onNavigate}
+      >
+        <TeacherWorkspacePage onNavigate={onNavigate} />
+      </RoleShell>
+    </PrototypeProvider>,
   )
 
   await user.click(
@@ -24,12 +27,13 @@ it("connects workspace navigation cards to teacher routes", async () => {
   )
   expect(onNavigate).toHaveBeenLastCalledWith({ role: "teacher", page: "classroom" })
 
-  await user.click(screen.getByRole("button", { name: "进入复盘审核" }))
+  await user.click(screen.getByRole("button", { name: "审核并发布" }))
   expect(onNavigate).toHaveBeenLastCalledWith({
     role: "teacher",
-    page: "recap-agent",
+    page: "lesson-detail",
+    lessonId: "lesson-fractions",
   })
 
-  await user.click(screen.getByRole("button", { name: "打开班级脉搏" }))
+  await user.click(screen.getByRole("button", { name: "查看班级动态" }))
   expect(onNavigate).toHaveBeenLastCalledWith({ role: "teacher", page: "insights" })
 })

@@ -1,12 +1,13 @@
+import { lazy } from "react"
 import type { AppRoute } from "../../app/routes"
-import StudentHomePage from "./home/StudentHomePage"
-import StudentReviewPage from "./review/StudentReviewPage"
-import TutoringPage from "./tutoring/TutoringPage"
-import LearningPage from "./learning/LearningPage"
-import MistakesPage from "./mistakes/MistakesPage"
-import StudentTasksPage from "./tasks/StudentTasksPage"
-import StudentMessagesPage from "./messages/StudentMessagesPage"
-import HistoryPage from "../shared/HistoryPage"
+const StudentHomePage = lazy(() => import("./home/StudentHomePage"))
+const StudentReviewPage = lazy(() => import("./review/StudentReviewPage"))
+const TutoringPage = lazy(() => import("./tutoring/TutoringPage"))
+const LearningPage = lazy(() => import("./learning/LearningPage"))
+const MistakesPage = lazy(() => import("./mistakes/MistakesPage"))
+const StudentTasksPage = lazy(() => import("./tasks/StudentTasksPage"))
+const StudentMessagesPage = lazy(() => import("./messages/StudentMessagesPage"))
+const HistoryPage = lazy(() => import("../shared/HistoryPage"))
 
 type StudentRoute = Extract<AppRoute, { role: "student" }>
 
@@ -25,6 +26,6 @@ export default function StudentRoutes({
     case "mistakes": return <MistakesPage />
     case "tasks": return <StudentTasksPage />
     case "messages": return <StudentMessagesPage />
-    case "history": return <HistoryPage role="student" />
+    case "history": return <HistoryPage role="student" onNavigate={onNavigate} />
   }
 }

@@ -127,7 +127,7 @@ describe("MistakesPage", () => {
     )
 
     expect(within(drawer).getByRole("status")).toHaveTextContent(
-      "已设置 7 月 28 日 19:00 的模拟提醒",
+      "已设置 3 天后的复习提醒",
     )
 
     expect(within(drawer).getByText(/只保存在当前页面/)).toBeInTheDocument()

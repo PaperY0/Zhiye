@@ -12,7 +12,7 @@ interface CreateTaskDialogProps {
 
 type AudienceKind = Task["audience"]["kind"]
 
-const defaultDueAt = "2026-07-27T20:00"
+const defaultDueAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
 
 export function CreateTaskDialog({
   open,
@@ -97,7 +97,7 @@ export function CreateTaskDialog({
         studentId,
         status: "not-started",
       })),
-      createdAt: "2026-07-25T17:30:00+08:00",
+      createdAt: new Date().toISOString(),
     })
   }
 

@@ -7,9 +7,12 @@ import {
   Lightbulb,
   MessageCircleQuestion,
   Mic,
+  Pencil,
+  Plus,
   Send,
   Sparkles,
   Square,
+  Trash2,
 } from "lucide-react"
 
 import { GlassSurface } from "../../../components/shared/GlassSurface"
@@ -17,23 +20,11 @@ import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
 
 import { StatusChip } from "../../../components/shared/StatusChip"
+import { Dialog } from "../../../components/shared/Dialog"
 import { generateDraft } from "../../../services/localAi"
+import type { LearningTopic } from "../../../app/prototype/types"
 
-type TopicId = "fractions" | "units" | "decimals"
-
-type Topic = {
-  id: TopicId
-
-  title: string
-
-  subject: string
-
-  summary: string
-
-  lastStudied: string
-
-  prompts: string[]
-}
+type TopicId = string
 
 type LearningReply = {
   explanation: string
@@ -130,68 +121,6 @@ type ConversationEntry =
   | LoadingEntry
   | ErrorEntry
 
-const topics: Topic[] = [
-  {
-    id: "fractions",
-
-    title: "分数的基本性质",
-
-    subject: "数学",
-
-    summary: "同时、相同、非零，是保持分数大小不变的三个关键。",
-
-    lastStudied: "今天 16:20",
-
-    prompts: [
-      "我怎么判断分子和分母要怎样变化？",
-
-      "为什么不能只改变分子？",
-
-      "给我一个生活里的例子",
-    ],
-  },
-
-  {
-    id: "units",
-
-    title: "单位换算",
-
-    subject: "数学",
-
-    summary: "先判断单位方向，再根据进率决定乘或除。",
-
-    lastStudied: "昨天 19:10",
-
-    prompts: [
-      "为什么换算时有时乘、有时除？",
-
-      "千米和米之间怎样换算？",
-
-      "怎样检查换算结果？",
-    ],
-  },
-
-  {
-    id: "decimals",
-
-    title: "小数乘法估算",
-
-    subject: "数学",
-
-    summary: "先取接近且好算的数，再判断估算结果是否合理。",
-
-    lastStudied: "7 月 23 日",
-
-    prompts: [
-      "估算时应该把数看成多少？",
-
-      "怎样判断估算结果合理？",
-
-      "给我一道简单的估算题",
-    ],
-  },
-]
-
 function createEntryId(prefix: string, index: number) {
   return `${prefix}-${index}`
 }
@@ -229,17 +158,13 @@ function isLocalAiDraft<TContent>(
 }
 
 export function LearningPage() {
-  const { addStudentTimelineEvent } = usePrototype()
-  const [activeTopicId, setActiveTopicId] = useState<TopicId>("fractions")
+  const { addStudentTimelineEvent, deleteLearningTopic, learningTopics, upsertLearningTopic } = usePrototype()
+  const [activeTopicId, setActiveTopicId] = useState<TopicId>(() => learningTopics[0]?.id ?? "")
+  const [topicEditorOpen, setTopicEditorOpen] = useState(false)
+  const [topicDraft, setTopicDraft] = useState<LearningTopic | null>(null)
 
   const [conversations, setConversations] =
-    useState<Record<TopicId, ConversationEntry[]>>({
-      fractions: [],
-
-      units: [],
-
-      decimals: [],
-    })
+    useState<Record<TopicId, ConversationEntry[]>>({})
 
   const [question, setQuestion] = useState("")
 
@@ -250,12 +175,12 @@ export function LearningPage() {
   const [retell, setRetell] = useState("")
 
   const activeTopic = useMemo(
-    () => topics.find((topic) => topic.id === activeTopicId) ?? topics[0],
+    () => learningTopics.find((topic) => topic.id === activeTopicId) ?? learningTopics[0],
 
-    [activeTopicId],
+    [activeTopicId, learningTopics],
   )
 
-  const activeEntries = conversations[activeTopicId]
+  const activeEntries = conversations[activeTopicId] ?? []
 
   function selectTopic(topicId: TopicId) {
     setActiveTopicId(topicId)
@@ -276,7 +201,7 @@ export function LearningPage() {
   ) {
     setConversations((current) => ({
       ...current,
-      [topicId]: current[topicId].map((entry) =>
+      [topicId]: (current[topicId] ?? []).map((entry) =>
         entry.id === entryId ? nextEntry : entry,
       ),
     }))
@@ -337,6 +262,7 @@ export function LearningPage() {
   }
 
   function sendQuestion(body: string) {
+    if (!activeTopic) return
     const normalized = body.trim()
 
     if (!normalized) return
@@ -346,7 +272,7 @@ export function LearningPage() {
       type: "message",
       title: `提问：${activeTopic.title}`,
       detail: normalized,
-      occurredAt: "2026-08-02T10:00:00+08:00",
+      occurredAt: new Date().toISOString(),
       fact: true,
     })
 
@@ -358,13 +284,14 @@ export function LearningPage() {
     const entryId = createEntryId(`${activeTopicId}-assistant`, Date.now())
 
     setConversations((current) => {
-      const nextIndex = current[activeTopicId].length
+      const activeConversation = current[activeTopicId] ?? []
+      const nextIndex = activeConversation.length
 
       return {
         ...current,
 
         [activeTopicId]: [
-          ...current[activeTopicId],
+          ...activeConversation,
 
           {
             id: createEntryId(`${activeTopicId}-student`, nextIndex),
@@ -407,6 +334,7 @@ export function LearningPage() {
   }
 
   function submitRetell() {
+    if (!activeTopic) return
     const normalized = retell.trim()
 
     if (!normalized) return
@@ -418,13 +346,13 @@ export function LearningPage() {
       ...current,
 
       [activeTopicId]: [
-        ...current[activeTopicId],
+        ...(current[activeTopicId] ?? []),
 
         {
           id: createEntryId(
             `${activeTopicId}-retell`,
 
-            current[activeTopicId].length,
+            (current[activeTopicId] ?? []).length,
           ),
 
           kind: "retell",
@@ -469,18 +397,18 @@ export function LearningPage() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-[1500px] space-y-5 pb-12 text-[#19271e]">
+    <section className="role-page role-page-flow role-page-fixed app-fixed-page text-[#19271e]">
       <GlassSurface className="overflow-hidden p-5 sm:p-7" weight="light">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-2 text-xs font-black tracking-[0.14em] text-[#5d7563]">
+            <span className="role-page-kicker inline-flex items-center gap-2">
               <Sparkles aria-hidden="true" size={16} />
               和知识点聊一聊
             </span>
-            <h1 className="mt-3 text-3xl font-black tracking-[-0.04em] sm:text-4xl">
+            <h1 className="role-page-title">
               知识点学习
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#66766b] sm:text-base">
+            <p className="role-page-description">
               从一个问题开始，先理解，再用自己的话讲出来。这里的对话和语音都是本地原型演示。
             </p>
           </div>
@@ -491,8 +419,8 @@ export function LearningPage() {
         </div>
       </GlassSurface>
 
-      <div className="grid min-h-[680px] gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <GlassSurface className="flex flex-col gap-4 p-4 sm:p-5" weight="card">
+      <div className="app-fixed-body grid min-h-[680px] gap-4 xl:min-h-0 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <GlassSurface className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4 sm:p-5" weight="card">
           <div>
             <div className="flex items-center gap-2 text-[#41634a]">
               <History aria-hidden="true" size={18} />
@@ -504,19 +432,23 @@ export function LearningPage() {
           </div>
 
           <nav aria-label="学习历史" className="grid gap-3">
-            {topics.map((topic) => {
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-bold text-[#748178]">{learningTopics.length} 个主题</span>
+              <button className="inline-flex min-h-9 items-center gap-1 rounded-full bg-[#e7efe4] px-3 text-xs font-black text-[#3e6247]" onClick={() => {
+                const id = `topic-${Date.now()}`
+                setTopicDraft({ id, title: "新知识点", subject: "数学", summary: "填写这个知识点最重要的理解。", lastStudied: "刚刚", prompts: ["我最不明白的地方是什么？"] })
+                setTopicEditorOpen(true)
+              }} type="button"><Plus aria-hidden="true" size={14} />新增</button>
+            </div>
+            {learningTopics.map((topic) => {
               const selected = topic.id === activeTopicId
 
               return (
+                <div className={`rounded-[22px] border p-2 ${selected ? "border-[#9db69f] bg-[#e9f0e6]" : "border-white/80 bg-white/48"}`} key={topic.id}>
                 <button
                   aria-label={`继续学习${topic.title}`}
                   aria-pressed={selected}
-                  className={`rounded-[22px] border p-4 text-left transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#426c4c]/20 ${
-                    selected
-                      ? "border-[#9db69f] bg-[#e9f0e6] shadow-[0_12px_28px_rgba(45,76,52,.1)]"
-                      : "border-white/80 bg-white/48 hover:bg-white/72"
-                  }`}
-                  key={topic.id}
+                  className="w-full rounded-[16px] p-2 text-left transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#426c4c]/20"
                   onClick={() => selectTopic(topic.id)}
                   type="button"
                 >
@@ -531,28 +463,32 @@ export function LearningPage() {
                   <span className="mt-2 block text-xs leading-5 text-[#68786e]">
                     {topic.summary}
                   </span>
-                  <span className="sr-only">继续学习{topic.title}</span>
                 </button>
+                <div className="flex justify-end gap-2 px-2 pb-1">
+                  <button aria-label={`编辑${topic.title}`} className="grid size-8 place-items-center rounded-full bg-white/70" onClick={() => { setTopicDraft(structuredClone(topic)); setTopicEditorOpen(true) }} type="button"><Pencil aria-hidden="true" size={14} /></button>
+                  <button aria-label={`删除${topic.title}`} className="grid size-8 place-items-center rounded-full bg-[#fff4f1] text-[#934f43]" onClick={() => { deleteLearningTopic(topic.id); if (activeTopicId === topic.id) setActiveTopicId(learningTopics.find((item) => item.id !== topic.id)?.id ?? "") }} type="button"><Trash2 aria-hidden="true" size={14} /></button>
+                </div>
+                </div>
               )
             })}
           </nav>
         </GlassSurface>
 
         <GlassSurface
-          className="flex min-h-[620px] flex-col overflow-hidden p-0"
+          className="flex min-h-[620px] flex-col overflow-hidden p-0 xl:min-h-0"
           weight="sheet"
         >
           <header className="border-b border-[#dce7dc]/80 px-5 py-5 sm:px-7">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-black tracking-[0.12em] text-[#66796b]">
-                  {activeTopic.subject} · 当前主题
+                  {activeTopic?.subject ?? "学习"} · 当前主题
                 </p>
                 <h2
                   className="mt-1 text-2xl font-black"
                   id="learning-topic-title"
                 >
-                  {activeTopic.title}
+                  {activeTopic?.title ?? "还没有知识点"}
                 </h2>
               </div>
               <StatusChip tone="success">循序理解</StatusChip>
@@ -561,11 +497,13 @@ export function LearningPage() {
 
           <div
             aria-live="polite"
-            aria-label={`${activeTopic.title}学习对话`}
+            aria-label={`${activeTopic?.title ?? "知识点"}学习对话`}
             className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-6 sm:px-7"
             role="log"
           >
-            {activeEntries.length === 0 ? (
+            {!activeTopic ? (
+              <div className="m-auto text-center"><h3 className="text-xl font-black">还没有知识点</h3><p className="mt-2 text-sm text-[#6b796f]">从左侧新增一个主题开始学习。</p></div>
+            ) : activeEntries.length === 0 ? (
               <div className="m-auto max-w-xl text-center">
                 <span className="mx-auto grid size-14 place-items-center rounded-[22px] bg-[#e8f0e6] text-[#45694e]">
                   <Brain aria-hidden="true" size={26} />
@@ -684,7 +622,7 @@ export function LearningPage() {
               aria-label="建议问题"
               className="flex gap-2 overflow-x-auto pb-3"
             >
-              {activeTopic.prompts.map((prompt) => (
+              {(activeTopic?.prompts ?? []).map((prompt) => (
                 <button
                   className="min-h-10 shrink-0 rounded-full border border-[#ceddce] bg-white/75 px-4 text-xs font-bold text-[#38563f] transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#426c4c]/20"
                   key={prompt}
@@ -787,6 +725,32 @@ export function LearningPage() {
           </div>
         </GlassSurface>
       </div>
+      <Dialog
+        description="这些内容会保存在当前浏览器，并用于后续学习对话与搜索。"
+        footer={topicDraft ? (
+          <div className="flex justify-end gap-3">
+            <button className="rounded-full border border-[#cbdaca] px-4 py-2.5 text-sm font-black" onClick={() => setTopicEditorOpen(false)} type="button">取消</button>
+            <button className="rounded-full bg-[#173021] px-5 py-2.5 text-sm font-black text-white" onClick={() => {
+              if (!topicDraft.title.trim() || !topicDraft.summary.trim()) return
+              upsertLearningTopic(topicDraft)
+              setActiveTopicId(topicDraft.id)
+              setTopicEditorOpen(false)
+            }} type="button">保存知识点</button>
+          </div>
+        ) : null}
+        onClose={() => setTopicEditorOpen(false)}
+        open={topicEditorOpen}
+        title={topicDraft?.id.startsWith("topic-") ? "新增知识点" : "编辑知识点"}
+      >
+        {topicDraft ? (
+          <div className="grid gap-4">
+            <label className="grid gap-2 text-sm font-black">名称<input aria-label="知识点名称" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setTopicDraft({ ...topicDraft, title: event.target.value })} value={topicDraft.title} /></label>
+            <label className="grid gap-2 text-sm font-black">学科<select aria-label="知识点学科" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setTopicDraft({ ...topicDraft, subject: event.target.value as LearningTopic["subject"] })} value={topicDraft.subject}><option>数学</option><option>语文</option><option>英语</option></select></label>
+            <label className="grid gap-2 text-sm font-black">核心理解<textarea aria-label="知识点摘要" className="min-h-24 rounded-2xl border border-[#d9e4d7] bg-white/80 p-4" onChange={(event) => setTopicDraft({ ...topicDraft, summary: event.target.value })} value={topicDraft.summary} /></label>
+            <label className="grid gap-2 text-sm font-black">建议问题（每行一个）<textarea aria-label="知识点建议问题" className="min-h-28 rounded-2xl border border-[#d9e4d7] bg-white/80 p-4" onChange={(event) => setTopicDraft({ ...topicDraft, prompts: event.target.value.split("\n").map((item) => item.trim()).filter(Boolean) })} value={topicDraft.prompts.join("\n")} /></label>
+          </div>
+        ) : null}
+      </Dialog>
     </section>
   )
 }

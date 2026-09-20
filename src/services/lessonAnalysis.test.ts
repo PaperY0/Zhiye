@@ -1,5 +1,15 @@
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { analyzeLessonAudio, isCompleteLessonAnalysis } from "./lessonAnalysis"
+import {
+  defaultTeacherSettings,
+  resetTeacherSettings,
+  saveTeacherSettings,
+} from "../features/teacher/settings/teacherSettings"
+
+beforeEach(() => {
+  localStorage.clear()
+  resetTeacherSettings()
+})
 
 describe("lesson analysis integrity", () => {
   it("rejects whitespace-only text and incomplete transcript segments", async () => {
@@ -33,5 +43,38 @@ describe("lesson analysis integrity", () => {
       progressSuggestion: "下节课先复盘单位阶梯。",
       evidence: ["课堂中有两次关于乘除方向的提问。"],
     })).toBe(true)
+  })
+
+  it("sends the saved teacher preferences with classroom audio", async () => {
+    saveTeacherSettings({
+      ...defaultTeacherSettings,
+      currentClass: "五年级（1）班",
+      chapter: "小数乘法",
+      aiDetail: "详细",
+    })
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        title: "小数乘法课堂复盘",
+        transcript: [{ id: "live-01", speaker: "李老师", startSeconds: 0, endSeconds: 10, body: "小数乘法" }],
+        recap: "先估算再计算。",
+        recapTags: ["小数乘法"],
+        nextStep: "完成练习",
+        teacherReport: "课堂报告",
+        progressSuggestion: "继续练习",
+        evidence: ["课堂依据"],
+      }),
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    await analyzeLessonAudio(new Blob(["audio"]))
+
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit
+    const body = request.body as FormData
+    expect(JSON.parse(String(body.get("teacher_settings")))).toMatchObject({
+      currentClass: "五年级（1）班",
+      chapter: "小数乘法",
+      detail: "详细",
+    })
   })
 })

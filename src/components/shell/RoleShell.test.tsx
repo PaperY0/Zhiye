@@ -69,7 +69,8 @@ describe("RoleShell", () => {
     }
   })
 
-  it("marks the current teacher destination in desktop and mobile navigation", () => {
+  it("keeps secondary destinations in the mobile more menu and marks the current section", async () => {
+    const user = userEvent.setup()
     renderShell()
 
     const desktopNavigation = screen.getByRole("navigation", {
@@ -82,12 +83,22 @@ describe("RoleShell", () => {
     expect(
       within(desktopNavigation).getByRole("button", { name: "班级洞察" }),
     ).toHaveAttribute("aria-current", "page")
-    expect(
-      within(mobileNavigation).getByRole("button", { name: "班级洞察" }),
-    ).toHaveAttribute("aria-current", "page")
+    const moreButton = within(mobileNavigation).getByRole("button", { name: "更多功能" })
+    expect(moreButton).toHaveAttribute("aria-current", "page")
+    expect(within(mobileNavigation).queryByRole("button", { name: "班级洞察" })).not.toBeInTheDocument()
+    await user.click(moreButton)
+    const moreDialog = screen.getByRole("dialog", { name: "更多功能" })
+    expect(moreDialog).toBeInTheDocument()
+    expect(within(moreDialog).getByRole("button", { name: "班级洞察" })).toHaveAttribute("aria-current", "page")
     expect(
       within(desktopNavigation).getByRole("button", { name: "工作台" }),
     ).not.toHaveAttribute("aria-current")
+  })
+
+  it("shows no more than five stable destinations in the mobile navigation", () => {
+    renderShell({ role: "teacher", page: "workspace" })
+    const mobileNavigation = screen.getByRole("navigation", { name: "教师端移动导航" })
+    expect(within(mobileNavigation).getAllByRole("button")).toHaveLength(5)
   })
 
   it("shows pinyin only for student and parent shared shell labels", () => {
@@ -187,6 +198,19 @@ describe("RoleShell", () => {
     })
   })
 
+  it("keeps desktop navigation fixed while the content pane owns scrolling", () => {
+    renderShell()
+
+    const shell = screen.getByTestId("role-shell")
+    const main = screen.getByRole("main").parentElement
+    const sidebar = screen.getByRole("navigation", { name: "教师端主导航" })
+      .closest("aside")
+
+    expect(shell).toHaveClass("h-dvh", "overflow-hidden")
+    expect(main).toHaveClass("h-full", "overflow-y-auto", "overscroll-contain")
+    expect(sidebar).toHaveClass("lg:sticky", "lg:top-3")
+  })
+
   it("exposes the complete navigation model for every role", () => {
     const expectedLabels: Record<"teacher" | "student" | "parent" | "admin", string[]> = {
       teacher: [
@@ -200,7 +224,7 @@ describe("RoleShell", () => {
         "设置",
         "历史记录",
       ],
-      student: ["首页", "拍照答疑", "知识点学习", "错题本", "任务", "消息", "历史记录"],
+      student: ["首页", "任务", "错题本", "消息", "历史记录"],
       parent: ["学习摘要", "联系老师", "历史记录"],
       admin: ["管理概览", "保护性反馈", "审计记录", "学校设置", "历史记录"],
     }

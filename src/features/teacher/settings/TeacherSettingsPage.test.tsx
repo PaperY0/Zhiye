@@ -17,7 +17,7 @@ beforeEach(() => {
 })
 
 describe("TeacherSettingsPage", () => {
-  it("presents every teacher setting area and explains prototype-only local state", () => {
+  it("presents every teacher setting area and explains globally applied local state", () => {
     renderSettings()
 
     expect(
@@ -38,8 +38,8 @@ describe("TeacherSettingsPage", () => {
       ).toBeInTheDocument()
     }
 
-    expect(screen.getByText(/设置会保存在当前浏览器/)).toBeInTheDocument()
-    expect(screen.getByText(/不会上传或改变真实学校数据/)).toBeInTheDocument()
+    expect(screen.getByText(/保存后会在当前浏览器全局生效/)).toBeInTheDocument()
+    expect(screen.getByText(/不会上传真实学校数据/)).toBeInTheDocument()
     expect(
       screen.getByText(/角色切换只用于体验不同端的原型页面/),
     ).toBeInTheDocument()
@@ -113,6 +113,20 @@ describe("TeacherSettingsPage", () => {
     ).not.toBeChecked()
   })
 
+  it("offers every primary grade and updates grade-aware guidance", async () => {
+    const user = userEvent.setup()
+    renderSettings()
+
+    const classSelect = screen.getByRole("combobox", { name: "当前班级" })
+    expect(within(classSelect).getByRole("option", { name: "一年级（1）班" })).toBeInTheDocument()
+    expect(within(classSelect).getByRole("option", { name: "六年级（3）班" })).toBeInTheDocument()
+
+    await user.selectOptions(classSelect, "六年级（3）班")
+
+    expect(screen.getByText(/适合六年级学生理解的真实生活情境/)).toBeInTheDocument()
+    expect(screen.getByRole("textbox", { name: "教师身份" })).toHaveValue("六年级数学教师")
+  })
+
   it("saves the current local draft and shows a dismissible confirmation toast", async () => {
     const user = userEvent.setup()
     renderSettings()
@@ -123,7 +137,7 @@ describe("TeacherSettingsPage", () => {
 
     const notifications = screen.getByRole("region", { name: "设置通知" })
     expect(within(notifications).getByRole("status")).toHaveTextContent(
-      "设置已保存到当前原型",
+      "设置已保存并全局生效",
     )
     expect(within(notifications).getByRole("status")).toHaveTextContent(
       "刷新页面后仍会保留",
@@ -131,7 +145,7 @@ describe("TeacherSettingsPage", () => {
 
     await user.click(
       within(notifications).getByRole("button", {
-        name: "关闭通知：设置已保存到当前原型",
+        name: "关闭通知：设置已保存并全局生效",
       }),
     )
     expect(within(notifications).queryByRole("status")).not.toBeInTheDocument()

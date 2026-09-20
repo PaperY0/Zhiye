@@ -12,7 +12,7 @@ describe("知野体验入口", () => {
     await user.click(screen.getByRole("button", { name: "以教师身份进入" }))
 
     expect(
-      screen.getByRole("heading", { name: "分数的基本性质" }),
+      await screen.findByRole("heading", { name: "分数的基本性质" }),
     ).toBeInTheDocument()
   })
 })

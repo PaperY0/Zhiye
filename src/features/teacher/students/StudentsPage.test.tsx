@@ -43,6 +43,30 @@ it("searches and filters student records, then opens 林晓雨", async () => {
   })
 })
 
+it("imports a local CSV into the live student records", async () => {
+  const user = userEvent.setup()
+  renderPrototype(<StudentsPage onNavigate={vi.fn()} />)
+
+  await user.click(screen.getByRole("button", { name: "导入学生名单" }))
+  const file = new File(
+    ["姓名,班级,监护人,关系,当前关注\n陈小满,五年级（3）班,陈女士,母亲,分数运算；单位换算"],
+    "students.csv",
+    { type: "text/csv" },
+  )
+  if (!file.text) {
+    Object.defineProperty(file, "text", {
+      value: async () => "姓名,班级,监护人,关系,当前关注\n陈小满,五年级（3）班,陈女士,母亲,分数运算；单位换算",
+    })
+  }
+  await user.upload(screen.getByLabelText("选择 CSV 文件"), file)
+
+  expect(await screen.findByText(/已读取：students.csv · 1 名学生/)).toBeInTheDocument()
+  await user.click(screen.getByRole("button", { name: "导入 1 名学生" }))
+
+  expect(screen.getByText("陈小满")).toBeInTheDocument()
+  expect(screen.getByText("13 名学生")).toBeInTheDocument()
+})
+
 it("shows 林晓雨 timeline, evidence, facts and clearly separated AI inference", () => {
   renderPrototype(<StudentDetailPage studentId="student-lin-xiaoyu" />)
 

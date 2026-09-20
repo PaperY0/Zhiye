@@ -11,6 +11,7 @@ import {
   auditEventFixtures,
   conversationFixtures,
   knowledgeSignalFixtures,
+  learningTopicFixtures,
   lessonFixtures,
   parentSummaryFixture,
   planFixtures,
@@ -23,12 +24,19 @@ import { acceptanceFixtureSet } from "./acceptanceFixtures"
 import { emptyFixtureSet } from "./emptyFixtures"
 import { isCompleteLessonAnalysis } from "../../services/lessonAnalysis"
 import { listenForPrototypeSync, publishPrototypeSync } from "./prototypeSync"
+import {
+  getGradeFromClassName,
+  getTeacherSettings,
+  resetTeacherSettings,
+} from "../../features/teacher/settings/teacherSettings"
 import type {
   AuditEvent,
   ApprovedStudentObservation,
   Conversation,
   KnowledgeSignal,
+  LearningTopic,
   Lesson,
+  Message,
   Mistake,
   ParentSummary,
   PlanDraft,
@@ -44,6 +52,7 @@ export type PrototypeContextValue = {
   lessons: Lesson[]
   students: Student[]
   signals: KnowledgeSignal[]
+  learningTopics: LearningTopic[]
   plans: PlanDraft[]
   quizzes: Quiz[]
   tasks: Task[]
@@ -52,7 +61,8 @@ export type PrototypeContextValue = {
   safetyCases: SafetyCase[]
   auditEvents: AuditEvent[]
   recapJobs: RecapJob[]
-  createLesson(): string
+  createLesson(defaults?: { className?: string; chapter?: string }): string
+  restoreLesson(lesson: Lesson): void
   updateLessonTitle(id: string, title: string): void
   updateLessonStatus(id: string, status: Lesson["status"]): void
   updateLessonSuggestionStatus(
@@ -76,11 +86,19 @@ export type PrototypeContextValue = {
     title: string,
   ): void
   deleteLesson(id: string): void
+  addStudent(student: Student): void
+  updateStudent(id: string, patch: Partial<Student>): void
+  deleteStudent(id: string): void
+  addSignal(signal: KnowledgeSignal): void
+  updateSignal(id: string, patch: Partial<KnowledgeSignal>): void
+  deleteSignal(id: string): void
   addPlan(plan: PlanDraft): void
   updatePlanTitle(id: string, title: string): void
+  updatePlan(id: string, patch: Partial<PlanDraft>): void
   deletePlan(id: string): void
   addQuiz(quiz: Quiz): void
   updateQuizTitle(id: string, title: string): void
+  updateQuiz(id: string, patch: Partial<Quiz>): void
   deleteQuiz(id: string): void
   addTask(task: Task): void
   updateTaskTitle(id: string, title: string): void
@@ -91,9 +109,16 @@ export type PrototypeContextValue = {
     studentId: string,
     status: Task["completions"][number]["status"],
   ): void
-  sendMessage(id: string, body: string): void
+  sendMessage(
+    id: string,
+    body: string,
+    sender?: Pick<Message, "senderId" | "senderName" | "senderRole">,
+  ): void
   updateConversationTitle(id: string, title: string): void
   deleteConversation(id: string): void
+  addConversation(conversation: Conversation): void
+  upsertLearningTopic(topic: LearningTopic): void
+  deleteLearningTopic(id: string): void
   addMistake(studentId: string, mistake: Student["mistakes"][number]): void
   updateMistake(studentId: string, mistakeId: string, patch: Partial<Mistake>): void
   addStudentTimelineEvent(studentId: string, event: StudentTimelineEvent): void
@@ -117,6 +142,8 @@ type PrototypeSnapshot = Pick<
   PrototypeContextValue,
   | "lessons"
   | "students"
+  | "signals"
+  | "learningTopics"
   | "plans"
   | "quizzes"
   | "tasks"
@@ -200,8 +227,11 @@ export function PrototypeProvider({
   const [students, setStudents] = useState(() =>
     cloneFixture(persisted?.students ?? fixtureSet?.students ?? studentFixtures),
   )
-  const [signals] = useState(() =>
-    cloneFixture(fixtureSet?.signals ?? knowledgeSignalFixtures),
+  const [signals, setSignals] = useState(() =>
+    cloneFixture(persisted?.signals ?? fixtureSet?.signals ?? knowledgeSignalFixtures),
+  )
+  const [learningTopics, setLearningTopics] = useState(() =>
+    cloneFixture(persisted?.learningTopics ?? fixtureSet?.learningTopics ?? learningTopicFixtures),
   )
   const [plans, setPlans] = useState(() =>
     cloneFixture(persisted?.plans ?? fixtureSet?.plans ?? planFixtures),
@@ -245,6 +275,8 @@ export function PrototypeProvider({
       const snapshot: PrototypeSnapshot = {
         lessons,
         students,
+        signals,
+        learningTopics,
         plans,
         quizzes,
         tasks,
@@ -259,7 +291,7 @@ export function PrototypeProvider({
     } catch {
       // Storage is best-effort in the prototype; in-memory state remains usable.
     }
-  }, [auditEvents, conversations, lessons, parentSummary, persist, plans, quizzes, recapJobs, safetyCases, students, tasks])
+  }, [auditEvents, conversations, learningTopics, lessons, parentSummary, persist, plans, quizzes, recapJobs, safetyCases, signals, students, tasks])
 
   useEffect(() => {
     if (!persist || dataset === "empty") return
@@ -268,6 +300,8 @@ export function PrototypeProvider({
       skipNextSyncPublishRef.current = true
       if (snapshot.lessons) setLessons(cloneFixture(snapshot.lessons))
       if (snapshot.students) setStudents(cloneFixture(snapshot.students))
+      if (snapshot.signals) setSignals(cloneFixture(snapshot.signals))
+      if (snapshot.learningTopics) setLearningTopics(cloneFixture(snapshot.learningTopics))
       if (snapshot.plans) setPlans(cloneFixture(snapshot.plans))
       if (snapshot.quizzes) setQuizzes(cloneFixture(snapshot.quizzes))
       if (snapshot.tasks) setTasks(cloneFixture(snapshot.tasks))
@@ -284,6 +318,7 @@ export function PrototypeProvider({
       lessons,
       students,
       signals,
+      learningTopics,
       plans,
       quizzes,
       tasks,
@@ -292,16 +327,17 @@ export function PrototypeProvider({
       safetyCases,
       auditEvents,
       recapJobs,
-      createLesson() {
+      createLesson(defaults) {
         const id = `lesson-recording-${lessons.length + 1}`
+        const className = defaults?.className?.trim() || "五年级（2）班"
         setLessons((current) => [
           ...current,
           {
             id,
             title: "新课堂录音",
             subject: "数学",
-            grade: "五年级",
-            className: "五年级（2）班",
+            grade: getGradeFromClassName(className),
+            className,
             date: formatLocalDate(new Date()),
             durationMinutes: 0,
             status: "scheduled",
@@ -312,13 +348,18 @@ export function PrototypeProvider({
             transcript: [],
             suggestions: [],
             progress: {
-              chapter: "待识别",
+              chapter: defaults?.chapter?.trim() || "待识别",
               completedPercent: 0,
               nextStep: "等待课堂内容整理",
             },
           },
         ])
         return id
+      },
+      restoreLesson(lesson) {
+        setLessons((current) => current.some((item) => item.id === lesson.id)
+          ? current
+          : [...current, cloneFixture(lesson)])
       },
       updateLessonTitle(id, title) {
         const normalized = title.trim()
@@ -400,6 +441,7 @@ export function PrototypeProvider({
         evidence,
         title,
       ) {
+        const requireReview = getTeacherSettings().requireReviewBeforePublish
         const analysis = {
           title,
           transcript,
@@ -426,8 +468,9 @@ export function PrototypeProvider({
                   teacherReport,
                   progressSuggestion,
                   evidence,
-                  status: "draft-ready",
+                  status: requireReview ? "draft-ready" : "published",
                   syncStatus: "local",
+                  studentVisibility: requireReview ? lesson.studentVisibility : "visible",
                   durationMinutes: Math.max(1, Math.ceil(durationMinutes)),
                   progress: {
                     ...lesson.progress,
@@ -441,6 +484,26 @@ export function PrototypeProvider({
       deleteLesson(id) {
         setLessons((current) => current.filter((lesson) => lesson.id !== id))
       },
+      addStudent(student) {
+        setStudents((current) => [...current, cloneFixture(student)])
+      },
+      updateStudent(id, patch) {
+        setStudents((current) => current.map((student) =>
+          student.id === id ? { ...student, ...cloneFixture(patch), id } : student))
+      },
+      deleteStudent(id) {
+        setStudents((current) => current.filter((student) => student.id !== id))
+      },
+      addSignal(signal) {
+        setSignals((current) => [...current, cloneFixture(signal)])
+      },
+      updateSignal(id, patch) {
+        setSignals((current) => current.map((signal) =>
+          signal.id === id ? { ...signal, ...cloneFixture(patch), id } : signal))
+      },
+      deleteSignal(id) {
+        setSignals((current) => current.filter((signal) => signal.id !== id))
+      },
       addPlan(plan) {
         setPlans((current) => [...current, cloneFixture(plan)])
       },
@@ -450,6 +513,10 @@ export function PrototypeProvider({
         setPlans((current) =>
           current.map((plan) => (plan.id === id ? { ...plan, title: normalized } : plan)),
         )
+      },
+      updatePlan(id, patch) {
+        setPlans((current) => current.map((plan) =>
+          plan.id === id ? { ...plan, ...cloneFixture(patch), id } : plan))
       },
       deletePlan(id) {
         setPlans((current) => current.filter((plan) => plan.id !== id))
@@ -463,6 +530,10 @@ export function PrototypeProvider({
         setQuizzes((current) =>
           current.map((quiz) => (quiz.id === id ? { ...quiz, title: normalized } : quiz)),
         )
+      },
+      updateQuiz(id, patch) {
+        setQuizzes((current) => current.map((quiz) =>
+          quiz.id === id ? { ...quiz, ...cloneFixture(patch), id } : quiz))
       },
       deleteQuiz(id) {
         setQuizzes((current) => current.filter((quiz) => quiz.id !== id))
@@ -486,6 +557,7 @@ export function PrototypeProvider({
         )
       },
       updateTaskCompletion(taskId, studentId, status) {
+        const updatedAt = new Date().toISOString()
         setTasks((current) =>
           current.map((task) => {
             if (task.id !== taskId) return task
@@ -500,10 +572,10 @@ export function PrototypeProvider({
                       ? {
                           ...completion,
                           status,
-                          updatedAt: "2026-08-02T10:00:00+08:00",
+                          updatedAt,
                           submittedAt:
                             status === "submitted" || status === "reviewed"
-                              ? "2026-08-01T16:00:00+08:00"
+                              ? updatedAt
                               : completion.submittedAt,
                         }
                       : completion,
@@ -516,9 +588,15 @@ export function PrototypeProvider({
           }),
         )
       },
-      sendMessage(id, body) {
+      sendMessage(id, body, sender) {
         const normalizedBody = body.trim()
         if (!normalizedBody) return
+
+        const author = sender ?? {
+          senderId: "teacher-li",
+          senderName: "李老师",
+          senderRole: "teacher" as const,
+        }
 
         setConversations((current) =>
           current.map((conversation) =>
@@ -529,12 +607,10 @@ export function PrototypeProvider({
                   messages: [
                     ...conversation.messages,
                     {
-                      id: `message-local-${conversation.messages.length + 1}`,
-                      senderId: "teacher-li",
-                      senderName: "李老师",
-                      senderRole: "teacher",
+                      id: `message-local-${author.senderRole}-${Date.now()}-${conversation.messages.length + 1}`,
+                      ...author,
                       body: normalizedBody,
-                      sentAt: "2026-07-25T16:00:00+08:00",
+                      sentAt: new Date().toISOString(),
                     },
                   ],
                 }
@@ -565,6 +641,17 @@ export function PrototypeProvider({
       },
       deleteConversation(id) {
         setConversations((current) => current.filter((conversation) => conversation.id !== id))
+      },
+      addConversation(conversation) {
+        setConversations((current) => [...current, cloneFixture(conversation)])
+      },
+      upsertLearningTopic(topic) {
+        setLearningTopics((current) => current.some((item) => item.id === topic.id)
+          ? current.map((item) => item.id === topic.id ? cloneFixture(topic) : item)
+          : [...current, cloneFixture(topic)])
+      },
+      deleteLearningTopic(id) {
+        setLearningTopics((current) => current.filter((topic) => topic.id !== id))
       },
       updateMistake(studentId, mistakeId, patch) {
         setStudents((current) =>
@@ -643,11 +730,13 @@ export function PrototypeProvider({
         )
       },
       resetPrototype() {
-        window.localStorage.removeItem("zhiye-teacher-settings-v1")
+        resetTeacherSettings()
         window.localStorage.removeItem("zhiye-admin-settings-v1")
         window.localStorage.removeItem(storageKey)
         setLessons(cloneFixture(fixtureSet?.lessons ?? lessonFixtures))
         setStudents(cloneFixture(fixtureSet?.students ?? studentFixtures))
+        setSignals(cloneFixture(fixtureSet?.signals ?? knowledgeSignalFixtures))
+        setLearningTopics(cloneFixture(fixtureSet?.learningTopics ?? learningTopicFixtures))
         setPlans(cloneFixture(fixtureSet?.plans ?? planFixtures))
         setQuizzes(cloneFixture(fixtureSet?.quizzes ?? quizFixtures))
         setTasks(cloneFixture(fixtureSet?.tasks ?? taskFixtures))
@@ -695,6 +784,7 @@ export function PrototypeProvider({
       recapJobs,
       safetyCases,
       signals,
+      learningTopics,
       students,
       tasks,
     ],

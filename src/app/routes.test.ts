@@ -49,6 +49,10 @@ describe("typed hash routes", () => {
       lessonId: "unit 1",
     })
     expect(parseHash("#/teacher/not-a-page")).toEqual({ page: "welcome" })
+    expect(parseHash("#/teacher/recap-agent")).toEqual({
+      role: "teacher",
+      page: "classroom",
+    })
     expect(parseHash("#/teacher/classroom/%E0%A4%A")).toEqual({
       page: "welcome",
     })
@@ -113,5 +117,14 @@ describe("typed hash routes", () => {
 
     expect(window.location.hash).toBe("#/welcome")
     expect(result.current).toEqual({ page: "welcome" })
+  })
+
+  it("replaces the removed recap-agent address with the classroom route", () => {
+    window.history.replaceState(null, "", "#/teacher/recap-agent")
+
+    const { result } = renderHook(() => useHashRoute())
+
+    expect(window.location.hash).toBe("#/teacher/classroom")
+    expect(result.current).toEqual({ role: "teacher", page: "classroom" })
   })
 })

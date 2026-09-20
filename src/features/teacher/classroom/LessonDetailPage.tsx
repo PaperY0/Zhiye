@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { BookOpenCheck, Eye, EyeOff, Flag, Save } from "lucide-react"
+import { BookOpenCheck, CheckCircle2, Eye, EyeOff, Flag, Save, Send } from "lucide-react"
 import {
   hasCompleteLessonAnalysis,
   hasCompleteAiDraft,
@@ -7,10 +7,12 @@ import {
 } from "../../../app/prototype/PrototypeContext"
 import type { TranscriptSegment } from "../../../app/prototype/types"
 import { EmptyState } from "../../../components/shared/EmptyState"
+import { Dialog } from "../../../components/shared/Dialog"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { StatusChip } from "../../../components/shared/StatusChip"
 
 type LessonTab = "transcript" | "recap" | "report" | "progress"
+type SaveResult = { title: string; description: string } | null
 
 type LessonTabOption = {
   value: LessonTab
@@ -69,13 +71,16 @@ export interface LessonDetailPageProps {
 export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
   const {
     lessons,
-  updateLessonRecap,
-  updateLessonProgress,
-} = usePrototype()
+    publishLesson,
+    updateLessonRecap,
+    updateLessonProgress,
+  } = usePrototype()
   const lesson = lessons.find((item) => item.id === lessonId)
   const [tab, setTab] = useState<LessonTab>("transcript")
   const [recapDraft, setRecapDraft] = useState(lesson?.recap ?? "")
   const [notice, setNotice] = useState("")
+  const [saveResult, setSaveResult] = useState<SaveResult>(null)
+  const [publishConfirmOpen, setPublishConfirmOpen] = useState(false)
   const [progress, setProgress] = useState(
     lesson?.progress.completedPercent ?? 0,
   )
@@ -90,6 +95,8 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
   useEffect(() => {
     setTab("transcript")
     setNotice("")
+    setSaveResult(null)
+    setPublishConfirmOpen(false)
   }, [lessonId])
 
   if (!lesson) {
@@ -151,12 +158,13 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
             <button
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[#142219] px-5 py-3 font-black text-white shadow-[0_12px_25px_rgba(20,34,25,.18)]"
               onClick={() => {
-                window.location.hash = "#/teacher/recap-agent"
+                setTab("recap")
+                setNotice("请检查复习卡内容，确认无误后发布。")
               }}
               type="button"
             >
               <BookOpenCheck aria-hidden="true" size={18} />
-              进入复盘审核
+              审核学生复习卡
             </button>
           ) : lesson.status !== "published" ? (
             <p className="text-sm font-bold text-[#69776d]">
@@ -244,18 +252,31 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
                   </span>
                 ))}
               </div>
-              <div className="flex justify-center">
+              <div className="flex flex-wrap justify-center gap-3">
                 <button
-                  className="inline-flex items-center gap-2 rounded-full bg-[#24462f] px-5 py-3 font-black text-white"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#24462f]/15 bg-white px-5 py-3 font-black text-[#24462f]"
                   onClick={() => {
                     updateLessonRecap(lesson.id, recapDraft)
-                    setNotice("复习卡已保存")
+                    setSaveResult({
+                      title: "复习卡已保存",
+                      description: "修改已保存到这节课堂。复习卡仍是教师草稿，发布前学生不可见。",
+                    })
                   }}
                   type="button"
                 >
                   <Save aria-hidden="true" size={17} />
                   保存复习卡
                 </button>
+                {lesson.status !== "published" && canPublish ? (
+                  <button
+                    className="inline-flex items-center gap-2 rounded-full bg-[#142219] px-5 py-3 font-black text-white shadow-[0_10px_22px_rgba(20,34,25,.16)]"
+                    onClick={() => setPublishConfirmOpen(true)}
+                    type="button"
+                  >
+                    <Send aria-hidden="true" size={17} />
+                    确认并发布
+                  </button>
+                ) : null}
               </div>
             </div> : <EmptyState
               description="本次课堂成功生成完整分析后，学生复习卡会显示在这里。"
@@ -342,7 +363,10 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
                   className="inline-flex items-center gap-2 rounded-full bg-[#24462f] px-5 py-3 font-black text-white"
                   onClick={() => {
                     updateLessonProgress(lesson.id, progress, nextStep)
-                    setNotice("课程进度保存成功 · 已同步到课堂记录")
+                    setSaveResult({
+                      title: "课程进度已保存",
+                      description: `已将 ${Math.min(100, Math.max(0, progress))}% 的进度和下一步教学内容保存到课堂记录。`,
+                    })
                   }}
                   type="button"
                 >
@@ -357,6 +381,64 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
           ) : null}
         </section>
       </GlassSurface>
+
+      <Dialog
+        description={`发布后，${lesson.className}的学生将立即看到这张复习卡。课堂转写与教师报告不会公开。`}
+        footer={
+          <>
+            <button
+              className="classroom-dialog-cancel"
+              onClick={() => setPublishConfirmOpen(false)}
+              type="button"
+            >
+              继续检查
+            </button>
+            <button
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#24462f] px-5 text-sm font-black text-white"
+              onClick={() => {
+                updateLessonRecap(lesson.id, recapDraft)
+                publishLesson(lesson.id, recapDraft)
+                setPublishConfirmOpen(false)
+                setNotice("复习卡已发布，学生现在可以查看。")
+              }}
+              type="button"
+            >
+              <Send aria-hidden="true" size={16} />
+              确认发布
+            </button>
+          </>
+        }
+        onClose={() => setPublishConfirmOpen(false)}
+        open={publishConfirmOpen}
+        title={`发布“${lesson.title}”复习卡？`}
+      >
+        <div className="rounded-2xl bg-[#eef5ec] px-4 py-3 text-sm font-bold leading-6 text-[#3c5b43]">
+          发布内容：{recapDraft}
+        </div>
+      </Dialog>
+
+      <Dialog
+        description={saveResult?.description}
+        footer={
+          <button
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#24462f] px-6 text-sm font-black text-white"
+            onClick={() => setSaveResult(null)}
+            type="button"
+          >
+            完成
+          </button>
+        }
+        onClose={() => setSaveResult(null)}
+        open={saveResult !== null}
+        title={saveResult?.title ?? "保存完成"}
+      >
+        <div className="flex items-center gap-3 rounded-2xl bg-[#eef5ec] px-4 py-4 text-sm font-bold text-[#3c5b43]">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-[#4d7756]">
+            <CheckCircle2 aria-hidden="true" size={21} />
+          </span>
+          保存成功，你可以继续编辑或返回课堂列表。
+        </div>
+      </Dialog>
 
     </div>
   )

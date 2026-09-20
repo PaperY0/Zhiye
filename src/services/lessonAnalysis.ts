@@ -1,5 +1,6 @@
 import type { TranscriptSegment } from "../app/prototype/types"
 import { requestJson } from "./localAi"
+import { teacherSettingsForAi } from "../features/teacher/settings/teacherSettings"
 
 export type LessonAnalysisResult = {
   title: string
@@ -63,6 +64,7 @@ export async function analyzeLessonAudio(
 ): Promise<LessonAnalysisResult> {
   const body = new FormData()
   body.append("audio", audio, "lesson-recording.webm")
+  body.append("teacher_settings", JSON.stringify(teacherSettingsForAi()))
 
   const payload = await requestJson<LessonAnalysisResult>(localAiUrl, {
     body,

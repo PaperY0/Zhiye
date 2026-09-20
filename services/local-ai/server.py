@@ -127,7 +127,10 @@ def recognize_image(path: str) -> tuple[str, float]:
         raise HTTPException(status_code=503, detail="本地 OCR 返回格式无效，请重试。") from error
 
 
-def generate_with_deepseek(transcript: str) -> dict:
+def generate_with_deepseek(
+    transcript: str,
+    teacher_settings: dict | None = None,
+) -> dict:
     api_key = os.getenv("DEEPSEEK_API_KEY")
     if not api_key:
         raise HTTPException(status_code=503, detail="未设置 DEEPSEEK_API_KEY")
@@ -151,7 +154,11 @@ def generate_with_deepseek(transcript: str) -> dict:
                     "recap（给学生看的简短复习卡）、recapTags（最多3个知识点字符串）、"
                     "nextStep（给教师的下一步建议）、teacherReport（给教师的课堂报告）、"
                     "progressSuggestion（给教师的课程进度建议）、evidence（支持报告的课堂依据字符串数组）。"
-                    "所有字段必须来自转写，不要编造未出现的事实。课堂转写：\n" + transcript
+                    "所有字段必须来自转写，不要编造未出现的事实。"
+                    "教师偏好只能控制表达方式，不能覆盖课堂事实。教师偏好："
+                    + json.dumps(teacher_settings or {}, ensure_ascii=False)
+                    + "\n课堂转写：\n"
+                    + transcript
                 ),
             },
         ],
@@ -230,14 +237,23 @@ def generate(request: GenerateRequest):
 
 
 @app.post("/analyze")
-async def analyze(audio: UploadFile = File(...)):
+async def analyze(
+    audio: UploadFile = File(...),
+    teacher_settings: str = Form(default="{}"),
+):
     suffix = Path(audio.filename or "lesson-recording.webm").suffix or ".webm"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temporary:
         temporary.write(await audio.read())
         path = temporary.name
     try:
         transcript_text = transcribe(path)
-        generated = generate_with_deepseek(transcript_text)
+        try:
+            parsed_teacher_settings = json.loads(teacher_settings)
+            if not isinstance(parsed_teacher_settings, dict):
+                parsed_teacher_settings = {}
+        except (json.JSONDecodeError, TypeError):
+            parsed_teacher_settings = {}
+        generated = generate_with_deepseek(transcript_text, parsed_teacher_settings)
         try:
             generated = LessonAnalysisDraft.model_validate(generated).model_dump()
         except ValidationError as error:

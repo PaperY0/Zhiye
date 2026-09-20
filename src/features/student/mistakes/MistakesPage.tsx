@@ -32,8 +32,6 @@ type SubjectFilter = "all" | Subject
 
 type ReminderChoice = "tomorrow" | "3-days" | "7-days"
 
-const prototypeToday = new Date("2026-07-25T12:00:00+08:00")
-
 const masteryMeta: Record<MistakeMastery, {
   label: string
 
@@ -59,15 +57,15 @@ const sourceLabels = {
 } as const
 
 const reminderDates: Record<ReminderChoice, string> = {
-  tomorrow: "2026-07-26T19:00:00+08:00",
-  "3-days": "2026-07-28T19:00:00+08:00",
-  "7-days": "2026-08-01T19:00:00+08:00",
+  tomorrow: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  "3-days": new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+  "7-days": new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
 }
 
-function isWithinDays(createdAt: string, days: number) {
+function isWithinDays(createdAt: string, days: number, referenceToday: Date) {
   const created = new Date(createdAt)
 
-  const elapsed = prototypeToday.getTime() - created.getTime()
+  const elapsed = referenceToday.getTime() - created.getTime()
 
   return elapsed >= 0 && elapsed <= days * 24 * 60 * 60 * 1000
 }
@@ -98,6 +96,7 @@ export function MistakesPage() {
   const [mastery, setMastery] = useState<MasteryFilter>("all")
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const referenceToday = useMemo(() => new Date(records.map((record) => record.createdAt).sort().at(-1) ?? Date.now()), [records])
 
   const knowledgePoints = useMemo(
     () => Array.from(new Set(records.map((mistake) => mistake.knowledgePoint))),
@@ -113,9 +112,9 @@ export function MistakesPage() {
 
     if (mastery !== "all" && mistake.mastery !== mastery) return false
 
-    if (date === "7-days" && !isWithinDays(mistake.createdAt, 7)) return false
+    if (date === "7-days" && !isWithinDays(mistake.createdAt, 7, referenceToday)) return false
 
-    if (date === "30-days" && !isWithinDays(mistake.createdAt, 30)) return false
+    if (date === "30-days" && !isWithinDays(mistake.createdAt, 30, referenceToday)) return false
 
     return true
   })
@@ -167,18 +166,18 @@ export function MistakesPage() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-[1280px] space-y-4 pb-10 text-[#19271e] px-2 sm:px-4">
+    <section className="role-page role-page-flow text-[#19271e]">
       <GlassSurface className="p-5 sm:p-7" weight="light">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-2 text-xs font-black tracking-[0.14em] text-[#5d7563]">
+            <span className="role-page-kicker inline-flex items-center gap-2">
               <Sparkles aria-hidden="true" size={16} />
               回头看，是为了下次更轻松
             </span>
-            <h1 className="mt-3 text-3xl font-black tracking-[-0.04em] sm:text-4xl">
+            <h1 className="role-page-title">
               错题本
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#66766b] sm:text-base">
+            <p className="role-page-description">
               这里记录林晓雨在课堂、答疑和任务中主动保存的题目。掌握状态和提醒只在当前原型页面中更新。
             </p>
           </div>

@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
 import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
+import { StudentMessagesPage } from "../../student/messages/StudentMessagesPage"
 import { MessagesPage } from "./MessagesPage"
 
 function renderMessages() {
@@ -39,6 +40,40 @@ describe("MessagesPage", () => {
       ).getByText("建议先复述分数基本性质，再完成一道自检题。"),
     ).toBeInTheDocument()
     expect(screen.getByRole("textbox", { name: "输入消息" })).toHaveValue("")
+  })
+
+  it("sends with Enter, keeps Shift+Enter as a line break, and preserves the teacher author", async () => {
+    const user = userEvent.setup()
+    renderMessages()
+
+    const composer = screen.getByRole("textbox", { name: "输入消息" })
+    await user.type(composer, "第一行{shift>}{enter}{/shift}第二行")
+    expect(composer).toHaveValue("第一行\n第二行")
+
+    await user.keyboard("{Enter}")
+
+    const log = screen.getByRole("log", { name: "林晓雨的消息记录" })
+    const sentMessage = within(log).getByText(/第一行\s+第二行/)
+    expect(sentMessage.closest("article")).toHaveTextContent("李老师")
+    expect(composer).toHaveValue("")
+  })
+
+  it("shows a student message under the student's name in the teacher conversation", async () => {
+    const user = userEvent.setup()
+    render(
+      <PrototypeProvider>
+        <StudentMessagesPage />
+        <MessagesPage />
+      </PrototypeProvider>,
+    )
+
+    const studentComposer = screen.getByRole("textbox", { name: "给李老师留言" })
+    await user.type(studentComposer, "老师你好，这是学生发出的消息{enter}")
+
+    const teacherLog = screen.getByRole("log", { name: "林晓雨的消息记录" })
+    const message = within(teacherLog).getByText("老师你好，这是学生发出的消息")
+    expect(message.closest("article")).toHaveTextContent("林晓雨")
+    expect(message.closest("article")).not.toHaveTextContent("李老师")
   })
 
   it("filters to class groups and can return to all conversations", async () => {

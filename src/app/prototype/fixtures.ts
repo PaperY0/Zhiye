@@ -2,6 +2,7 @@ import type {
   AuditEvent,
   Conversation,
   KnowledgeSignal,
+  LearningTopic,
   Lesson,
   ParentSummary,
   PlanDraft,
@@ -10,6 +11,33 @@ import type {
   Student,
   Task,
 } from "./types"
+
+export const learningTopicFixtures: LearningTopic[] = [
+  {
+    id: "fractions",
+    title: "分数的基本性质",
+    subject: "数学",
+    summary: "同时、相同、非零，是保持分数大小不变的三个关键。",
+    lastStudied: "今天 16:20",
+    prompts: ["我怎么判断分子和分母要怎样变化？", "为什么不能只改变分子？", "给我一个生活里的例子"],
+  },
+  {
+    id: "units",
+    title: "单位换算",
+    subject: "数学",
+    summary: "先判断单位方向，再根据进率决定乘或除。",
+    lastStudied: "昨天 19:10",
+    prompts: ["为什么换算时有时乘、有时除？", "千米和米之间怎样换算？", "怎样检查换算结果？"],
+  },
+  {
+    id: "decimals",
+    title: "小数乘法估算",
+    subject: "数学",
+    summary: "先取接近且好算的数，再判断估算结果是否合理。",
+    lastStudied: "7 月 23 日",
+    prompts: ["估算时应该把数看成多少？", "怎样判断估算结果合理？", "给我一道简单的估算题"],
+  },
+]
 
 const studentIds = [
   "student-lin-xiaoyu",

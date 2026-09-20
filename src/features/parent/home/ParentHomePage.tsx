@@ -48,29 +48,33 @@ export function ParentHomePage({ onNavigate }: ParentHomePageProps) {
   const [audioNotice, setAudioNotice] = useState("")
   if (students.length === 0) {
     return (
-      <GlassSurface className="mx-auto mt-8 max-w-xl p-8 text-center" weight="sheet">
-        <h1 className="text-2xl font-black text-[#203427]"><PinyinText text="还没有绑定学生" /></h1>
-        <p className="mt-3 text-sm leading-6 text-[#718078]">
+      <div className="role-page role-page-narrow">
+      <GlassSurface className="p-8 text-center" weight="sheet">
+        <h1 className="role-page-title"><PinyinText text="还没有绑定学生" /></h1>
+        <p className="role-page-description mx-auto">
           先联系老师完成孩子绑定，之后这里会显示学习摘要和课堂回响。
         </p>
         <button
-          className="mt-5 rounded-full border border-[#c9e2c8] bg-[#dcefd9] px-5 py-3 text-sm font-black text-[#355a3d]"
+          className="role-action-primary mt-5"
           onClick={() => onNavigate({ role: "parent", page: "messages" })}
           type="button"
         >
           <PinyinText text="联系老师完成绑定" />
         </button>
       </GlassSurface>
+      </div>
     )
   }
   if (!isPublishedParentSummary(parentSummary)) {
     return (
-      <GlassSurface className="mx-auto mt-8 max-w-xl p-8 text-center" weight="sheet">
-        <h1 className="text-2xl font-black text-[#203427]"><PinyinText text="本周摘要尚未发布" /></h1>
-        <p className="mt-3 text-sm leading-6 text-[#718078]">
+      <div className="role-page role-page-narrow">
+      <GlassSurface className="p-8 text-center" weight="sheet">
+        <h1 className="role-page-title"><PinyinText text="本周摘要尚未发布" /></h1>
+        <p className="role-page-description mx-auto">
           教师确认并发布后，这里才会显示可追溯的学习摘要。
         </p>
       </GlassSurface>
+      </div>
     )
   }
   const publishedSummary = parentSummary
@@ -88,13 +92,13 @@ export function ParentHomePage({ onNavigate }: ParentHomePageProps) {
   }
 
   return (
-    <section className="mx-auto w-full max-w-7xl space-y-5 px-4 py-5 sm:px-6 lg:px-8">
-      <header className="flex flex-col gap-4 rounded-[2rem] border border-white/75 bg-white/45 p-5 shadow-[0_24px_70px_rgba(51,78,59,0.09)] backdrop-blur-2xl sm:p-7 lg:flex-row lg:items-end lg:justify-between">
+    <section className="role-page role-page-flow">
+      <header className="role-page-header rounded-[24px] border border-white/75 bg-white/72 p-5 shadow-[0_16px_40px_rgba(51,78,59,0.07)] sm:p-7">
         <div>
-          <p className="text-sm font-black tracking-[0.08em] text-[#62806a]">
+          <p className="role-page-kicker">
             <PinyinText text="家庭学习陪伴" />
           </p>
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-[#142319] sm:text-4xl">
+          <h1 className="role-page-title">
             {parentSummary.studentName}的本周学习摘要
           </h1>
           <p className="mt-3 text-sm font-bold text-[#5f7064]">
@@ -114,8 +118,8 @@ export function ParentHomePage({ onNavigate }: ParentHomePageProps) {
         <p className="mt-1 text-xs leading-5 text-[#65766b]">依据：{parentSummary.evidence.join("；")}</p>
       </GlassSurface>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
-        <div className="space-y-5">
+      <div className="app-split-layout">
+        <div className="app-split-primary space-y-5">
           <GlassSurface
             aria-label="本周学习主题"
             className="p-5 sm:p-7"
@@ -238,7 +242,7 @@ export function ParentHomePage({ onNavigate }: ParentHomePageProps) {
           </GlassSurface>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="app-split-rail app-split-rail-scroll space-y-5">
           <GlassSurface
             aria-label="李老师留言"
             className="p-5 sm:p-6"

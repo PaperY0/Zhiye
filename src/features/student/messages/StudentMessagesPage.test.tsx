@@ -32,13 +32,16 @@ describe("StudentMessagesPage", () => {
     await user.click(
       screen.getByRole("button", { name: "普通反馈：我有一点没听懂" }),
     )
-    expect(screen.getByRole("textbox", { name: "给李老师留言" })).toHaveValue(
+    const composer = screen.getByRole("textbox", { name: "给李老师留言" })
+    expect(composer).toHaveValue(
       "我有一点没听懂",
     )
-    await user.click(screen.getByRole("button", { name: "发送给李老师" }))
+    await user.click(composer)
+    await user.keyboard("{Enter}")
 
     const log = screen.getByRole("log", { name: "与李老师的消息记录" })
     expect(within(log).getByText("我有一点没听懂")).toBeInTheDocument()
+    expect(within(log).getAllByText("我").length).toBeGreaterThan(0)
     expect(screen.getByRole("status")).toHaveTextContent("普通反馈已发送")
   })
 

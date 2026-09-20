@@ -8,15 +8,10 @@ const PARENT_CONVERSATION_ID = "conversation-parent-li"
 const BOUND_STUDENT_ID = "student-lin-xiaoyu"
 
 function senderLabel(message: {
-  id: string
   senderName: string
   senderRole: string
 }) {
-  if (
-    message.id.startsWith("message-local-") ||
-    message.senderRole === "parent"
-  )
-    return "我"
+  if (message.senderRole === "parent") return "我"
   return message.senderName
 }
 
@@ -51,19 +46,23 @@ export function ParentMessagesPage() {
   function submitMessage() {
     const body = draft.trim()
     if (!conversation || !body) return
-    sendMessage(conversation.id, body)
+    sendMessage(conversation.id, body, {
+      senderId: "parent-lin-xiaoyu",
+      senderName: "林妈妈",
+      senderRole: "parent",
+    })
     setDraft("")
     setNotice("消息已保存到本地原型，不会真实发送给老师")
   }
 
   if (!conversation || !parentSummary) {
     return (
-      <section className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      <section className="role-page role-page-narrow">
         <GlassSurface className="p-8 text-center">
-          <h1 className="text-2xl font-black text-[#1c3022]">
+          <h1 className="role-page-title">
             还没有家校消息
           </h1>
-          <p className="mt-3 text-sm leading-6 text-[#69796e]">
+          <p className="role-page-description mx-auto">
             先完成学生绑定，之后这里会出现与老师的沟通记录。
           </p>
         </GlassSurface>
@@ -72,13 +71,13 @@ export function ParentMessagesPage() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-6xl space-y-5 px-4 py-5 sm:px-6 lg:px-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <section className="role-page role-page-flow role-page-fixed app-fixed-page role-page-medium">
+      <header className="role-page-header">
         <div>
-          <p className="text-sm font-black tracking-[0.08em] text-[#62806a]">
+          <p className="role-page-kicker">
             家校沟通
           </p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight text-[#142319]">
+          <h1 className="role-page-title">
             联系李老师
           </h1>
           <p className="mt-2 text-sm font-bold text-[#5f7064]">
@@ -89,7 +88,7 @@ export function ParentMessagesPage() {
       </header>
 
       <GlassSurface
-        className="flex min-h-[650px] flex-col overflow-hidden p-0"
+        className="app-fixed-body flex min-h-[650px] flex-col overflow-hidden p-0 lg:min-h-0"
         weight="sheet"
       >
         <div className="border-b border-white/70 bg-white/30 p-5 sm:p-6">
@@ -130,9 +129,7 @@ export function ParentMessagesPage() {
           role="log"
         >
           {conversation.messages.map((message) => {
-            const mine =
-              message.senderRole === "parent" ||
-              message.id.startsWith("message-local-")
+            const mine = message.senderRole === "parent"
             return (
               <li
                 className={`max-w-[88%] rounded-[1.6rem] px-4 py-3 text-sm leading-6 shadow-sm sm:max-w-[72%] ${
@@ -177,6 +174,15 @@ export function ParentMessagesPage() {
                   setDraft(event.target.value)
                   setNotice("")
                 }}
+                onKeyDown={(event) => {
+                  if (
+                    event.key !== "Enter" ||
+                    event.shiftKey ||
+                    event.nativeEvent.isComposing
+                  ) return
+                  event.preventDefault()
+                  submitMessage()
+                }}
                 placeholder="写下与学习陪伴有关的问题或反馈…"
                 value={draft}
               />
@@ -193,7 +199,7 @@ export function ParentMessagesPage() {
           </div>
           <p className="mt-3 flex items-center gap-2 text-xs leading-5 text-[#78867d]">
             <MessageCircle aria-hidden="true" size={15} />
-            本页面为本地高保真原型，消息不会上传，也不会发送到真实学校系统。
+            Enter 发送 · Shift+Enter 换行。本页面消息不会上传，也不会发送到真实学校系统。
           </p>
         </div>
       </GlassSurface>

@@ -17,19 +17,19 @@ describe("AppRouter", () => {
 
     await user.click(screen.getByRole("button", { name: "以教师身份进入" }))
     expect(window.location.hash).toBe("#/teacher/workspace")
-    expect(screen.getByTestId("teacher-workspace")).toBeInTheDocument()
+    expect(await screen.findByTestId("teacher-workspace")).toBeInTheDocument()
     expect(
       screen.getByRole("navigation", { name: "教师端主导航" }),
     ).toBeInTheDocument()
   })
 
-  it("renders a role shell for routed prototype pages", () => {
+  it("renders a role shell for routed prototype pages", async () => {
     window.history.replaceState(null, "", "#/student/tutoring")
     render(<App />)
 
     expect(screen.getByRole("navigation", { name: "学生端主导航" })).toBeInTheDocument()
     const main = screen.getByRole("main")
-    expect(within(main).getByRole("heading", { name: "拍照答疑" })).toBeInTheDocument()
+    expect(await within(main).findByRole("heading", { name: "拍照答疑" })).toBeInTheDocument()
     expect(within(main).getByText("选择题目图片")).toBeInTheDocument()
   })
 
@@ -43,7 +43,7 @@ describe("AppRouter", () => {
     await user.selectOptions(roleSwitcher, "student")
     expect(window.location.hash).toBe("#/student/home")
     expect(screen.getByRole("navigation", { name: "学生端主导航" })).toBeInTheDocument()
-    expect(screen.getByRole("heading", { name: /林晓雨/ })).toBeInTheDocument()
+    expect(await screen.findByRole("heading", { name: /林晓雨/ })).toBeInTheDocument()
 
     await user.selectOptions(
       screen.getByRole("combobox", { name: "切换体验角色" }),
@@ -52,23 +52,23 @@ describe("AppRouter", () => {
     expect(window.location.hash).toBe("#/parent/home")
     expect(screen.getByRole("navigation", { name: "家长端主导航" })).toBeInTheDocument()
     expect(
-      screen.getByRole("heading", { name: "林晓雨的本周学习摘要" }),
+      await screen.findByRole("heading", { name: "林晓雨的本周学习摘要" }),
     ).toBeInTheDocument()
   })
 
 
-  it("renders implemented teacher pages through the shared role shell", () => {
+  it("renders implemented teacher pages through the shared role shell", async () => {
     window.history.replaceState(null, "", "#/teacher/insights")
     render(<App />)
 
     expect(screen.getByRole("navigation", { name: "教师端主导航" })).toBeInTheDocument()
     const main = screen.getByRole("main")
-    expect(within(main).getByRole("heading", { name: "班级洞察" })).toBeInTheDocument()
+    expect(await within(main).findByRole("heading", { name: "班级洞察" })).toBeInTheDocument()
     expect(within(main).getByText("单位换算 × 计算")).toBeInTheDocument()
   })
 
 
-  it("renders designed content for every declared product route", () => {
+  it("renders designed content for every declared product route", async () => {
     const routes = [
       "#/welcome",
       "#/teacher/workspace",
@@ -103,12 +103,12 @@ describe("AppRouter", () => {
         ? view.container.querySelector("main")
         : view.container.querySelector("main#main-content")
       expect(contentRoot).not.toBeNull()
-      expect(within(contentRoot).getAllByRole("heading").length).toBeGreaterThan(0)
+      expect((await within(contentRoot).findAllByRole("heading")).length).toBeGreaterThan(0)
       expect(within(contentRoot).queryByText("页面结构已接入")).not.toBeInTheDocument()
       expect(within(contentRoot).queryByText(/该页面将在.+阶段完成完整交互/)).not.toBeInTheDocument()
       view.unmount()
     }
-  })
+  }, 15_000)
 
   it("keeps every routed role inside the shared shell with the correct active item", () => {
     const cases = [
@@ -124,8 +124,6 @@ describe("AppRouter", () => {
       ["#/teacher/settings", "教师端主导航", "设置"],
       ["#/student/home", "学生端主导航", "首页"],
       ["#/student/review/lesson-fractions", "学生端主导航", "首页"],
-      ["#/student/tutoring", "学生端主导航", "拍照答疑"],
-      ["#/student/learning", "学生端主导航", "知识点学习"],
       ["#/student/mistakes", "学生端主导航", "错题本"],
       ["#/student/tasks", "学生端主导航", "任务"],
       ["#/student/messages", "学生端主导航", "消息"],

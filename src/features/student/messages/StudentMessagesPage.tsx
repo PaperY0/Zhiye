@@ -14,13 +14,8 @@ function studentConversationTitle(conversation: Conversation) {
   return conversation.kind === "group" ? conversation.title : "李老师"
 }
 
-function displaySender(
-  messageId: string,
-  senderName: string,
-  senderId: string,
-) {
-  if (messageId.startsWith("message-local-") || senderId === STUDENT_ID)
-    return "我"
+function displaySender(senderName: string, senderId: string) {
+  if (senderId === STUDENT_ID) return "我"
   return senderName
 }
 
@@ -58,7 +53,11 @@ export function StudentMessagesPage() {
   function submitMessage() {
     const body = draft.trim()
     if (!selected || !body) return
-    sendMessage(selected.id, body)
+    sendMessage(selected.id, body, {
+      senderId: STUDENT_ID,
+      senderName: "林晓雨",
+      senderRole: "student",
+    })
     setDraft("")
     setNotice(
       isTeacherConversation ? "普通反馈已发送" : "消息已发送到老师管理的班级群",
@@ -71,14 +70,14 @@ export function StudentMessagesPage() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-7xl space-y-5 px-4 py-5 sm:px-6 lg:px-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <section className="role-page role-page-flow role-page-fixed app-fixed-page">
+      <header className="role-page-header">
         <div>
-          <p className="text-sm font-bold text-[#5f765f]">和老师保持联系</p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight text-[#142319]">
+          <p className="role-page-kicker">和老师保持联系</p>
+          <h1 className="role-page-title">
             消息
           </h1>
-          <p className="mt-2 text-sm leading-6 text-[#65736a]">
+          <p className="role-page-description">
             只可联系李老师和由老师管理的班级群。普通反馈会写入当前原型消息记录。
           </p>
         </div>
@@ -104,8 +103,8 @@ export function StudentMessagesPage() {
         </p>
       ) : null}
 
-      <div className="grid min-h-[650px] gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <GlassSurface className="p-3 sm:p-4">
+      <div className="app-fixed-body grid min-h-[650px] gap-4 lg:min-h-0 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <GlassSurface className="min-h-0 overflow-y-auto p-3 sm:p-4">
           <h2 className="px-2 py-2 text-sm font-black text-[#506456]">
             可以联系
           </h2>
@@ -183,9 +182,7 @@ export function StudentMessagesPage() {
               role="log"
             >
               {selected.messages.map((message) => {
-                const mine =
-                  message.senderId === STUDENT_ID ||
-                  message.id.startsWith("message-local-")
+                const mine = message.senderId === STUDENT_ID
                 return (
                   <li
                     className={`max-w-[86%] rounded-3xl px-4 py-3 text-sm leading-6 shadow-sm ${
@@ -200,11 +197,7 @@ export function StudentMessagesPage() {
                         mine ? "text-white/70" : "text-[#6d7d72]"
                       }`}
                     >
-                      {displaySender(
-                        message.id,
-                        message.senderName,
-                        message.senderId,
-                      )}
+                      {displaySender(message.senderName, message.senderId)}
                     </span>
                     <p className="mt-1">{message.body}</p>
                   </li>
@@ -243,6 +236,15 @@ export function StudentMessagesPage() {
                     }
                     className="min-h-24 w-full resize-none rounded-3xl border border-white/85 bg-white/70 px-4 py-3 text-sm text-[#203126] outline-none focus:border-[#5f8067] focus:ring-4 focus:ring-[#6e9276]/15 sm:min-h-14"
                     onChange={(event) => setDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key !== "Enter" ||
+                        event.shiftKey ||
+                        event.nativeEvent.isComposing
+                      ) return
+                      event.preventDefault()
+                      submitMessage()
+                    }}
                     placeholder="写下你的普通学习反馈…"
                     value={draft}
                   />
@@ -258,7 +260,7 @@ export function StudentMessagesPage() {
                 </button>
               </div>
               <p className="mt-2 text-xs text-[#78857d]">
-                这是本地交互原型，不会向真实教师或班级群发送。
+                Enter 发送 · Shift+Enter 换行。本地原型不会向真实教师或班级群发送。
               </p>
             </div>
           </GlassSurface>

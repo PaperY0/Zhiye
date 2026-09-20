@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import WelcomeRoute from "../features/welcome/WelcomeRoute"
 import TeacherRoutes from "../features/teacher/TeacherRoutes"
 import StudentRoutes from "../features/student/StudentRoutes"
@@ -13,6 +14,7 @@ export default function AppRouter() {
 
   return (
     <RoleShell route={route} onNavigate={navigate}>
+      <Suspense fallback={<div className="grid min-h-[45dvh] place-items-center text-sm font-black text-[#607166]" role="status">正在打开页面…</div>}>
       {route.role === "teacher" ? (
         <TeacherRoutes route={route} onNavigate={navigate} />
       ) : route.role === "student" ? (
@@ -22,6 +24,7 @@ export default function AppRouter() {
       ) : (
         <AdminRoutes route={route} onNavigate={navigate} />
       )}
+      </Suspense>
     </RoleShell>
   )
 }

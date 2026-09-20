@@ -47,12 +47,13 @@ describe("ParentMessagesPage", () => {
     expect(send).toBeDisabled()
 
     await user.type(textbox, "谢谢老师，我们今晚会一起复述。")
-    await user.click(send)
+    await user.keyboard("{Enter}")
 
     const log = screen.getByRole("log", { name: "与李老师的家校消息记录" })
     expect(
       within(log).getByText("谢谢老师，我们今晚会一起复述。"),
     ).toBeInTheDocument()
+    expect(within(log).getAllByText("我").length).toBeGreaterThan(0)
     expect(screen.getByRole("status")).toHaveTextContent("消息已保存到本地原型")
     expect(textbox).toHaveValue("")
     expect(send).toBeDisabled()

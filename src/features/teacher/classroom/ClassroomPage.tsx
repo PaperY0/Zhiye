@@ -1,15 +1,26 @@
 import { useMemo, useState } from "react"
-import { CalendarDays, Clock3, Eye, EyeOff, Mic, RefreshCw } from "lucide-react"
+import {
+  CalendarDays,
+  Clock3,
+  Eye,
+  EyeOff,
+  Mic,
+  RefreshCw,
+  Trash2,
+} from "lucide-react"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
 import type { Lesson, LessonStatus } from "../../../app/prototype/types"
 import type { AppRoute } from "../../../app/routes"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
+import { Dialog } from "../../../components/shared/Dialog"
+import { ToastRegion, type ToastMessage } from "../../../components/shared/ToastRegion"
 import {
   StatusChip,
   type StatusTone,
 } from "../../../components/shared/StatusChip"
 import { RecordingPanel } from "./RecordingPanel"
 import type { LessonAnalysisResult } from "../../../services/lessonAnalysis"
+import { useTeacherSettings } from "../settings/teacherSettings"
 
 type LessonFilter =
   | "all"
@@ -55,30 +66,29 @@ const statusMeta: Record<LessonStatus, LessonStatusMeta> = {
 function LessonCard({
   lesson,
   onOpen,
+  onDelete,
 }: {
   lesson: Lesson
   onOpen: (lessonId: string) => void
+  onDelete: (lesson: Lesson) => void
 }) {
   const status = statusMeta[lesson.status]
   return (
-    <GlassSurface
-      className="grid gap-5 rounded-[28px] p-5 sm:grid-cols-[1fr_auto] sm:items-center"
-      weight="card"
-    >
-      <div className="min-w-0">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+    <article className="classroom-lesson-row">
+      <div className="classroom-lesson-content">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <StatusChip tone={status.tone}>{status.label}</StatusChip>
           <span className="text-xs font-bold tracking-wide text-[#718075]">
             {lesson.subject} · {lesson.grade}
           </span>
         </div>
-        <h2 className="text-xl font-black tracking-[-0.03em] text-[#17231b]">
+        <h2 className="mt-3 text-lg font-black tracking-[-0.025em] text-[#17231b] sm:text-xl">
           {lesson.title}
         </h2>
-        <p className="mt-1 text-sm text-[#69776c]">
+        <p className="mt-1 text-sm font-medium text-[#69776c]">
           {lesson.className} · {lesson.date}
         </p>
-        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#536459]">
+        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#536459]">
           <span className="inline-flex items-center gap-1.5">
             <Clock3 aria-hidden="true" size={15} />
             {lesson.durationMinutes} 分钟
@@ -101,15 +111,26 @@ function LessonCard({
           </span>
         </div>
       </div>
-      <button
-        aria-label={`查看${lesson.title}`}
-        className="rounded-full border border-white/90 bg-white/70 px-5 py-3 text-sm font-black text-[#24462f] shadow-sm transition hover:bg-white"
-        onClick={() => onOpen(lesson.id)}
-        type="button"
-      >
-        查看课堂
-      </button>
-    </GlassSurface>
+      <div className="classroom-lesson-actions">
+        <button
+          aria-label={`删除${lesson.title}`}
+          className="classroom-delete-button"
+          onClick={() => onDelete(lesson)}
+          type="button"
+        >
+          <Trash2 aria-hidden="true" size={16} />
+          <span>删除</span>
+        </button>
+        <button
+          aria-label={`查看${lesson.title}`}
+          className="classroom-open-button"
+          onClick={() => onOpen(lesson.id)}
+          type="button"
+        >
+          查看课堂
+        </button>
+      </div>
+    </article>
   )
 }
 
@@ -118,8 +139,11 @@ export interface ClassroomPageProps {
 }
 
 export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
+  const teacherSettings = useTeacherSettings()
   const {
     createLesson,
+    deleteLesson,
+    restoreLesson,
     lessons,
     updateLessonAnalysis,
     updateLessonStatus,
@@ -128,6 +152,25 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
   const [filter, setFilter] = useState<LessonFilter>("all")
   const [recordingOpen, setRecordingOpen] = useState(false)
   const [recordingLessonId, setRecordingLessonId] = useState<string | null>(null)
+  const [lessonToDelete, setLessonToDelete] = useState<Lesson | null>(null)
+  const [toasts, setToasts] = useState<ToastMessage[]>([])
+
+  const filterCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        filters.map((item) => [
+          item.value,
+          item.value === "all"
+            ? lessons.length
+            : lessons.filter((lesson) =>
+                item.value === "in-progress"
+                  ? lesson.status === "recording" || lesson.status === "paused"
+                  : lesson.status === item.value,
+              ).length,
+        ]),
+      ) as Record<LessonFilter, number>,
+    [lessons],
+  )
 
   const filteredLessons = useMemo(
     () =>
@@ -145,24 +188,27 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
     onNavigate({ role: "teacher", page: "lesson-detail", lessonId })
 
   return (
-    <div className="mx-auto grid w-full max-w-[1500px] gap-6 p-4 sm:p-6 xl:p-8">
+    <div className="classroom-page mx-auto grid w-full max-w-[1180px] gap-5 p-4 sm:p-6 xl:gap-6 xl:px-8 xl:py-10">
       <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="mb-2 inline-flex items-center gap-2 text-sm font-black text-[#55705b]">
+          <p className="mb-2 inline-flex items-center gap-2 text-sm font-extrabold text-[#55705b]">
             <CalendarDays aria-hidden="true" size={17} />
             课堂记录与发布
           </p>
-          <h1 className="text-3xl font-black tracking-[-0.045em] text-[#142018] sm:text-4xl">
+          <h1 className="text-4xl font-black tracking-[-0.05em] text-[#142018] sm:text-[2.75rem]">
             课堂
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#68766c]">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#68766c] sm:text-[0.95rem]">
             管理录音、查看 AI 初稿，并在教师确认后向学生发布复习卡。
           </p>
         </div>
         <button
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-[#142219] px-5 py-3 font-black text-white shadow-[0_12px_25px_rgba(20,34,25,.18)]"
+          className="classroom-record-button"
           onClick={() => {
-            setRecordingLessonId(createLesson())
+            setRecordingLessonId(createLesson({
+              className: teacherSettings.currentClass,
+              chapter: teacherSettings.chapter,
+            }))
             setRecordingOpen(true)
           }}
           type="button"
@@ -174,36 +220,51 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
 
       <GlassSurface
         aria-label="课堂状态筛选"
-        className="flex flex-wrap gap-2 rounded-[24px] p-2"
+        className="classroom-filter-bar"
         role="group"
         weight="light"
       >
         {filters.map((item) => (
           <button
             aria-pressed={filter === item.value}
-            className={`rounded-full px-4 py-2 text-sm font-black transition ${
+            className={`classroom-filter-button ${
               filter === item.value
-                ? "bg-[#24462f] text-white shadow-sm"
-                : "text-[#506157] hover:bg-white/60"
+                ? "classroom-filter-button--active"
+                : ""
             }`}
             key={item.value}
             onClick={() => setFilter(item.value)}
             type="button"
           >
-            {item.label}
+            <span>{item.label}</span>
+            <span aria-hidden="true" className="classroom-filter-count">
+              {filterCounts[item.value]}
+            </span>
           </button>
         ))}
       </GlassSurface>
 
-      <section aria-label="课堂列表" className="grid gap-4">
-        {filteredLessons.map((lesson) => (
-          <LessonCard key={lesson.id} lesson={lesson} onOpen={openLesson} />
-        ))}
+      <section aria-label="课堂列表" className="classroom-list-panel">
+        {filteredLessons.length > 0 ? (
+          <div className="classroom-list-heading">
+            <div>
+              <h2>课堂记录</h2>
+              <p>{filter === "all" ? `共 ${filteredLessons.length} 节课堂` : `${filters.find((item) => item.value === filter)?.label} · ${filteredLessons.length} 节`}</p>
+            </div>
+          </div>
+        ) : null}
+        <div className="classroom-list-items">
+          {filteredLessons.map((lesson) => (
+            <LessonCard
+              key={lesson.id}
+              lesson={lesson}
+              onDelete={setLessonToDelete}
+              onOpen={openLesson}
+            />
+          ))}
+        </div>
         {filteredLessons.length === 0 ? (
-          <GlassSurface
-            className="rounded-[28px] p-10 text-center"
-            weight="card"
-          >
+          <div className="p-10 text-center sm:p-14">
             <p className="text-xl font-black text-[#243a2a]">
               {lessons.length === 0 ? "还没有课堂" : "当前筛选下暂无课堂"}
             </p>
@@ -216,7 +277,10 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
               <button
                 className="mt-5 rounded-full bg-[#173022] px-5 py-3 text-sm font-black text-white"
                 onClick={() => {
-                  setRecordingLessonId(createLesson())
+                  setRecordingLessonId(createLesson({
+                    className: teacherSettings.currentClass,
+                    chapter: teacherSettings.chapter,
+                  }))
                   setRecordingOpen(true)
                 }}
                 type="button"
@@ -224,9 +288,65 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
                 开始新课堂录音
               </button>
             ) : null}
-          </GlassSurface>
+          </div>
         ) : null}
       </section>
+
+      <Dialog
+        description={
+          lessonToDelete?.status === "published"
+            ? "这节课堂已向学生发布。删除后，学生将无法继续查看对应复习卡。"
+            : "课堂记录及其 AI 初稿会被一并删除。"
+        }
+        footer={
+          <>
+            <button
+              className="classroom-dialog-cancel"
+              onClick={() => setLessonToDelete(null)}
+              type="button"
+            >
+              取消
+            </button>
+            <button
+              className="classroom-dialog-delete"
+              onClick={() => {
+                if (!lessonToDelete) return
+                const deletedLesson = lessonToDelete
+                deleteLesson(deletedLesson.id)
+                setToasts([{
+                  id: `lesson-deleted-${deletedLesson.id}`,
+                  title: `已删除“${deletedLesson.title}”`,
+                  description: "可在离开本页前撤销这次操作。",
+                  tone: "warning",
+                  actionLabel: "撤销删除",
+                  onAction: () => {
+                    restoreLesson(deletedLesson)
+                    setToasts([])
+                  },
+                }])
+                setLessonToDelete(null)
+              }}
+              type="button"
+            >
+              删除课堂
+            </button>
+          </>
+        }
+        onClose={() => setLessonToDelete(null)}
+        open={lessonToDelete !== null}
+        title={`删除“${lessonToDelete?.title ?? "课堂"}”？`}
+      >
+        <div className="classroom-delete-notice">
+          <Trash2 aria-hidden="true" size={20} />
+          <p>删除后可从页面通知中立即撤销。</p>
+        </div>
+      </Dialog>
+
+      <ToastRegion
+        label="课堂操作通知"
+        onDismiss={(id) => setToasts((current) => current.filter((toast) => toast.id !== id))}
+        toasts={toasts}
+      />
 
       <RecordingPanel
         lessonTitle={
@@ -258,6 +378,14 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
             result.evidence,
             result.title,
           )
+          if (teacherSettings.lessonReadyNotification) {
+            setToasts([{
+              id: `lesson-ready-${recordingLessonId}`,
+              title: "课堂 AI 初稿已完成",
+              description: `“${result.title}”已按当前教师设置生成。`,
+              tone: "success",
+            }])
+          }
         }}
         open={recordingOpen}
       />

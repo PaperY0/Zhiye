@@ -1,16 +1,16 @@
+import { lazy } from "react"
 import type { AppRoute } from "../../app/routes"
-import ClassroomPage from "./classroom/ClassroomPage"
-import LessonDetailPage from "./classroom/LessonDetailPage"
-import InsightsPage from "./insights/InsightsPage"
-import PlanningPage from "./planning/PlanningPage"
-import StudentDetailPage from "./students/StudentDetailPage"
-import StudentsPage from "./students/StudentsPage"
-import TasksPage from "./tasks/TasksPage"
-import MessagesPage from "./messages/MessagesPage"
-import TeacherSettingsPage from "./settings/TeacherSettingsPage"
-import HistoryPage from "../shared/HistoryPage"
-import TeacherWorkspacePage from "./workspace/TeacherWorkspacePage"
-import RecapAgentPage from "./recap-agent/RecapAgentPage"
+const ClassroomPage = lazy(() => import("./classroom/ClassroomPage"))
+const LessonDetailPage = lazy(() => import("./classroom/LessonDetailPage"))
+const InsightsPage = lazy(() => import("./insights/InsightsPage"))
+const PlanningPage = lazy(() => import("./planning/PlanningPage"))
+const StudentDetailPage = lazy(() => import("./students/StudentDetailPage"))
+const StudentsPage = lazy(() => import("./students/StudentsPage"))
+const TasksPage = lazy(() => import("./tasks/TasksPage"))
+const MessagesPage = lazy(() => import("./messages/MessagesPage"))
+const TeacherSettingsPage = lazy(() => import("./settings/TeacherSettingsPage"))
+const HistoryPage = lazy(() => import("../shared/HistoryPage"))
+const TeacherWorkspacePage = lazy(() => import("./workspace/TeacherWorkspacePage"))
 
 type TeacherRoute = Extract<AppRoute, { role: "teacher" }>
 
@@ -41,10 +41,8 @@ export default function TeacherRoutes({
     case "settings":
       return <TeacherSettingsPage />
     case "history":
-      return <HistoryPage role="teacher" />
+      return <HistoryPage role="teacher" onNavigate={onNavigate} />
     case "workspace":
       return <TeacherWorkspacePage onNavigate={onNavigate} />
-    case "recap-agent":
-      return <RecapAgentPage onNavigate={onNavigate} />
   }
 }

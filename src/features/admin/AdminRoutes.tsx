@@ -1,9 +1,10 @@
+import { lazy } from "react"
 import type { AppRoute } from "../../app/routes"
-import AdminHomePage from "./home/AdminHomePage"
-import SafetyPage from "./safety/SafetyPage"
-import AuditPage from "./audit/AuditPage"
-import AdminSettingsPage from "./settings/AdminSettingsPage"
-import HistoryPage from "../shared/HistoryPage"
+const AdminHomePage = lazy(() => import("./home/AdminHomePage"))
+const SafetyPage = lazy(() => import("./safety/SafetyPage"))
+const AuditPage = lazy(() => import("./audit/AuditPage"))
+const AdminSettingsPage = lazy(() => import("./settings/AdminSettingsPage"))
+const HistoryPage = lazy(() => import("../shared/HistoryPage"))
 
 type AdminRoute = Extract<AppRoute, { role: "admin" }>
 
@@ -13,6 +14,6 @@ export default function AdminRoutes({ route, onNavigate }: { route: AdminRoute; 
     case "safety": return <SafetyPage />
     case "audit": return <AuditPage />
     case "settings": return <AdminSettingsPage />
-    case "history": return <HistoryPage role="admin" />
+    case "history": return <HistoryPage role="admin" onNavigate={onNavigate} />
   }
 }

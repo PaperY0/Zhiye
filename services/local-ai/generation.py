@@ -68,6 +68,7 @@ def build_request_body(request: GenerateRequest) -> dict[str, Any]:
                     {
                         "task": request.kind,
                         "context": request.context,
+                        "teacher_preferences": request.teacherSettings,
                         "required_json_schema": schema,
                     },
                     ensure_ascii=False,

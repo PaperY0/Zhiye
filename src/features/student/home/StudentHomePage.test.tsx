@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
@@ -16,38 +16,31 @@ function renderHome() {
 }
 
 describe("StudentHomePage", () => {
-  it("shows the student's recap, tutoring, tasks, mistakes, and personal progress without rankings", () => {
+  it("shows only the published recap and the student's real next actions", () => {
     renderHome()
 
     expect(screen.getByRole("heading", { name: /林晓雨/ })).toBeInTheDocument()
     expect(
-      screen.getByRole("region", { name: "今日复习卡" }),
+      screen.getByRole("region", { name: "继续学习" }),
     ).toHaveTextContent("单位换算中的乘除步骤")
     expect(
-      screen.getByRole("button", { name: /拍照问一道题/ }),
+      screen.getByRole("button", { name: "开始复习" }),
     ).toBeInTheDocument()
-    expect(screen.getByRole("region", { name: "我的待办" })).toHaveTextContent(
-      "分数基本性质自检",
-    )
-    expect(screen.getByRole("region", { name: "我的错题" })).toHaveTextContent(
-      "分数的基本性质",
-    )
-    expect(screen.getByRole("region", { name: "我的进度" })).toHaveTextContent(
-      "任务完成率",
-    )
-    expect(screen.getByText("100%", { selector: "strong" })).toBeInTheDocument()
-    expect(screen.getByRole("region", { name: "最近学习记录" })).toHaveTextContent(
-      "完成教师任务",
-    )
+    expect(screen.getByText("下一项任务").closest("div")).toHaveTextContent("今天的任务已完成")
+    expect(screen.getByText("0 项待办")).toBeInTheDocument()
+    expect(screen.getByText("最近错题").closest("div")).toHaveTextContent("分数的基本性质")
+    expect(screen.getByRole("button", { name: "联系老师" })).toBeInTheDocument()
+    expect(screen.queryByText("任务完成率")).not.toBeInTheDocument()
+    expect(screen.queryByText("今天的小目标")).not.toBeInTheDocument()
     expect(screen.queryByText(/排名|第\s*\d+\s*名/)).not.toBeInTheDocument()
   })
 
-  it("opens the recap and the other student learning entries", async () => {
+  it("opens the recap, tasks, mistakes, and teacher conversation", async () => {
     const user = userEvent.setup()
     const { onNavigate } = renderHome()
 
     await user.click(
-      screen.getByRole("button", { name: "打开单位换算中的乘除步骤复习卡" }),
+      screen.getByRole("button", { name: "开始复习" }),
     )
     expect(onNavigate).toHaveBeenCalledWith({
       role: "student",
@@ -55,23 +48,14 @@ describe("StudentHomePage", () => {
       lessonId: "lesson-units",
     })
 
-    await user.click(screen.getByRole("button", { name: /拍照问一道题/ }))
-    expect(onNavigate).toHaveBeenCalledWith({
-      role: "student",
-      page: "tutoring",
-    })
-
-    const todo = screen.getByRole("region", { name: "我的待办" })
-    await user.click(within(todo).getByRole("button", { name: "查看全部任务" }))
+    await user.click(screen.getByRole("button", { name: "查看任务" }))
     expect(onNavigate).toHaveBeenCalledWith({ role: "student", page: "tasks" })
-
-    const mistakes = screen.getByRole("region", { name: "我的错题" })
-    await user.click(
-      within(mistakes).getByRole("button", { name: "打开错题本" }),
-    )
+    await user.click(screen.getByRole("button", { name: "打开错题本" }))
     expect(onNavigate).toHaveBeenCalledWith({
       role: "student",
       page: "mistakes",
     })
+    await user.click(screen.getByRole("button", { name: "联系老师" }))
+    expect(onNavigate).toHaveBeenCalledWith({ role: "student", page: "messages" })
   })
 })

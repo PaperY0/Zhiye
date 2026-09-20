@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { useEffect } from "react"
 import { vi } from "vitest"
 import { PrototypeProvider, usePrototype } from "../app/prototype/PrototypeContext"
@@ -16,95 +17,149 @@ function PublishLessonOnMount() {
   return null
 }
 
+function DeleteDraftLessonOnMount() {
+  const { deleteLesson } = usePrototype()
+
+  useEffect(() => {
+    deleteLesson("lesson-fractions")
+    // The fixture action is intentionally fired once to model deletion on the classroom page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return null
+}
+
 describe("WorkspaceScreen", () => {
   it("presents the classroom recap as the primary task", () => {
-    render(<WorkspaceScreen onNavigate={vi.fn()} />)
+    render(
+      <PrototypeProvider persist={false}>
+        <WorkspaceScreen onNavigate={vi.fn()} />
+      </PrototypeProvider>,
+    )
 
     expect(screen.getByText("五年级（2）班")).toBeInTheDocument()
     expect(
       screen.getByRole("searchbox", { name: "搜索课堂、学生或知识点" }),
     ).toBeInTheDocument()
-    expect(screen.getByText("今日最重要")).toBeInTheDocument()
+    expect(screen.getByText("现在要做")).toBeInTheDocument()
     expect(
-      screen.getByRole("heading", { name: "完成这一节课堂复盘" }),
+      screen.getByRole("heading", { name: "审核课堂复盘" }),
     ).toBeInTheDocument()
-    for (const label of ["课堂录音", "已转写", "复习卡草稿", "学生困难"]) {
-      expect(screen.getByText(label)).toBeInTheDocument()
-    }
     expect(
-      screen.getByRole("button", { name: "进入复盘审核" }),
+      screen.getByRole("button", { name: "审核并发布" }),
     ).toBeInTheDocument()
+    expect(screen.queryByLabelText("课堂回响处理进度")).not.toBeInTheDocument()
   })
-  it("anchors lesson feedback at the bottom and stretches the centered review card", () => {
-    render(<WorkspaceScreen onNavigate={vi.fn()} />)
+  it("keeps the primary decision compact and removes the repeated summary strip", () => {
+    render(
+      <PrototypeProvider persist={false}>
+        <WorkspaceScreen onNavigate={vi.fn()} />
+      </PrototypeProvider>,
+    )
 
     const stage = screen.getByTestId("current-lesson-stage")
     const reviewCard = screen.getByTestId("current-lesson-review-card")
     const reviewContent = within(reviewCard).getByTestId(
       "current-lesson-review-content",
     )
-    const feedback = screen.getByTestId("current-lesson-feedback")
-
-    expect(stage).toHaveClass(
-      "flex",
-      "h-auto",
-      "min-h-0",
-      "flex-col",
-      "xl:h-full",
-    )
-    expect(stage).not.toHaveClass("h-full")
+    expect(stage).toHaveClass("flex", "flex-col")
     expect(reviewCard).toHaveClass(
       "flex",
-      "min-h-0",
-      "flex-1",
       "flex-col",
     )
     expect(reviewContent).toHaveClass(
       "flex",
-      "flex-1",
       "flex-col",
-      "items-center",
-      "justify-center",
-      "text-center",
     )
     expect(
       within(reviewContent).getByText(
         "分子和分母同时乘或除以相同的数，分数的大小不变。",
       ),
     ).toBeInTheDocument()
-    expect(feedback).toHaveClass("mt-auto", "shrink-0")
-    expect(stage.lastElementChild).toBe(feedback)
+    expect(screen.queryByTestId("current-lesson-feedback")).not.toBeInTheDocument()
   })
 
-  it("shows the teacher action queue and aggregated class pulse", () => {
-    render(<WorkspaceScreen onNavigate={vi.fn()} />)
+  it("shows only real pending work and one evidence-backed class signal", () => {
+    render(
+      <PrototypeProvider persist={false}>
+        <WorkspaceScreen onNavigate={vi.fn()} />
+      </PrototypeProvider>,
+    )
 
     expect(
-      screen.getByRole("complementary", { name: "今日行动与班级脉搏" }),
+      screen.getByRole("complementary", { name: "待办与班级动态" }),
     ).toBeInTheDocument()
-    expect(screen.getByText("今日队列")).toBeInTheDocument()
+    expect(screen.getByText("待处理")).toBeInTheDocument()
     expect(screen.getByText("批改随堂练习")).toBeInTheDocument()
-    expect(screen.getByText("回复家长消息")).toBeInTheDocument()
-    expect(screen.getByText("班级脉搏")).toBeInTheDocument()
-    expect(screen.getByText("单位换算 × 计算")).toBeInTheDocument()
+    expect(screen.getByText("回复新消息")).toBeInTheDocument()
+    expect(screen.queryByText("继续备课")).not.toBeInTheDocument()
+    expect(screen.getByText("班级动态")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "查看班级动态" })).toHaveTextContent("单位换算")
     expect(screen.getByTestId("workspace-content-row")).toHaveClass(
-      "items-stretch",
-      "workspace-content-row-fill",
+      "app-split-layout-fill",
     )
     expect(
-      screen.getByRole("complementary", { name: "今日行动与班级脉搏" }),
-    ).toHaveClass("h-full")
-    expect(screen.getByRole("heading", { name: "今日队列" }).closest("section")).toHaveClass(
-      "workspace-side-surface-centered",
-      "workspace-apple-glass-surface",
-    )
-    expect(screen.getByRole("button", { name: "打开班级脉搏" })).toHaveClass(
-      "workspace-side-surface-centered",
-      "workspace-apple-glass-surface",
+      screen.getByRole("complementary", { name: "待办与班级动态" }),
+    ).toHaveClass("app-split-rail")
+    expect(screen.getByRole("heading", { name: "待处理" }).closest("section")).toHaveClass(
+      "workspace-queue-surface",
     )
   })
 
-  it("removes the publish action after the lesson is published", async () => {
+  it("does not invent a review card after its lesson has been deleted", () => {
+    render(
+      <PrototypeProvider persist={false}>
+        <DeleteDraftLessonOnMount />
+        <WorkspaceScreen onNavigate={vi.fn()} />
+      </PrototypeProvider>,
+    )
+
+    expect(screen.queryByTestId("current-lesson-review-card")).not.toBeInTheDocument()
+    expect(screen.queryByText("分子和分母同时乘或除以相同的数，分数的大小不变。")).not.toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "开始下一节课堂" })).toBeInTheDocument()
+    expect(screen.getByText("小数乘法估算")).toBeInTheDocument()
+  })
+
+  it("searches real workspace data and opens the selected source", async () => {
+    const user = userEvent.setup()
+    const onNavigate = vi.fn()
+    render(
+      <PrototypeProvider persist={false}>
+        <WorkspaceScreen onNavigate={onNavigate} />
+      </PrototypeProvider>,
+    )
+
+    await user.type(
+      screen.getByRole("searchbox", { name: "搜索课堂、学生或知识点" }),
+      "分数",
+    )
+    await user.click(screen.getByRole("button", { name: "打开分数的基本性质" }))
+
+    expect(onNavigate).toHaveBeenCalledWith({
+      role: "teacher",
+      page: "lesson-detail",
+      lessonId: "lesson-fractions",
+    })
+  })
+
+  it("connects classroom evidence to the lesson detail", async () => {
+    const user = userEvent.setup()
+    const onNavigate = vi.fn()
+    render(
+      <PrototypeProvider persist={false}>
+        <WorkspaceScreen onNavigate={onNavigate} />
+      </PrototypeProvider>,
+    )
+
+    await user.click(screen.getByRole("button", { name: "查看课堂依据" }))
+    expect(onNavigate).toHaveBeenCalledWith({
+      role: "teacher",
+      page: "lesson-detail",
+      lessonId: "lesson-fractions",
+    })
+  })
+
+  it("moves on to the next useful action after the lesson is published", async () => {
     render(
       <PrototypeProvider persist={false} dataset="acceptance">
         <PublishLessonOnMount />
@@ -112,10 +167,10 @@ describe("WorkspaceScreen", () => {
       </PrototypeProvider>,
     )
 
-    expect(screen.queryByRole("button", { name: "进入复盘审核" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "审核并发布" })).not.toBeInTheDocument()
     expect(
-      screen.getByRole("button", { name: "查看已发布复盘" }),
+      screen.getByRole("button", { name: "开始课堂录音" }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/复习卡已发布给 \d+ 名学生/)).toBeInTheDocument()
+    expect(screen.queryByTestId("current-lesson-review-card")).not.toBeInTheDocument()
   })
 })

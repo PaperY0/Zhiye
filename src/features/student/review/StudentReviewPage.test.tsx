@@ -5,7 +5,7 @@ import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
 import type { AppRoute } from "../../../app/routes"
 import { StudentReviewPage } from "./StudentReviewPage"
 
-function renderReview(lessonId = "lesson-fractions") {
+function renderReview(lessonId = "lesson-units") {
   const onNavigate = vi.fn<(route: AppRoute) => void>()
   render(
     <PrototypeProvider>
@@ -16,61 +16,41 @@ function renderReview(lessonId = "lesson-fractions") {
 }
 
 describe("StudentReviewPage", () => {
-  it("shows a complete student recap with key point, reminder, example, self-check, and practice", () => {
+  it("shows only the teacher-published recap and real next-step controls", () => {
     renderReview()
 
     expect(
-      screen.getByRole("heading", { name: "分数的基本性质" }),
+      screen.getByRole("heading", { name: "单位换算中的乘除步骤" }),
     ).toBeInTheDocument()
-    expect(screen.getByRole("region", { name: "关键知识" })).toHaveTextContent(
-      "分子和分母同时乘或除以相同的数",
+    expect(screen.getByRole("region", { name: "课堂关键知识" })).toHaveTextContent(
+      "先判断单位变大还是变小",
     )
-    expect(screen.getByRole("region", { name: "易错提醒" })).toHaveTextContent(
-      "不为零",
-    )
-    expect(
-      screen.getByRole("region", { name: "生活中的例子" }),
-    ).toHaveTextContent("果汁")
-    expect(screen.getByRole("region", { name: "自检问题" })).toHaveTextContent(
-      "3/5",
-    )
-    expect(screen.getByRole("region", { name: "再练一道" })).toHaveTextContent(
-      "4/7",
-    )
+    expect(screen.getByRole("region", { name: "复习反馈" })).toBeInTheDocument()
+    expect(screen.queryByText("生活中的例子")).not.toBeInTheDocument()
+    expect(screen.queryByText("自检问题")).not.toBeInTheDocument()
   })
 
-  it("runs simulated read-aloud and records a self-assessment", async () => {
+  it("records a self-assessment", async () => {
     const user = userEvent.setup()
     renderReview()
 
-    await user.click(screen.getByRole("button", { name: "朗读复习卡" }))
-    expect(screen.getByRole("status")).toHaveTextContent("正在模拟朗读")
-    expect(screen.getByRole("button", { name: "停止朗读" })).toBeInTheDocument()
-
-    await user.click(screen.getByRole("button", { name: "停止朗读" }))
-    expect(screen.getByRole("status")).toHaveTextContent("模拟朗读已停止")
-
-    await user.click(screen.getByRole("button", { name: "我能讲出来" }))
-    expect(screen.getByRole("button", { name: "我能讲出来" })).toHaveAttribute(
+    await user.click(screen.getByRole("button", { name: "我已理解" }))
+    expect(screen.getByRole("button", { name: "我已理解" })).toHaveAttribute(
       "aria-pressed",
       "true",
     )
-    expect(screen.getByText("已记录：我能讲出来")).toBeInTheDocument()
+    expect(screen.getByText("已记录：我已理解")).toBeInTheDocument()
   })
 
-  it("checks an answer and opens knowledge learning for the current topic", async () => {
+  it("opens the teacher conversation when the student needs help", async () => {
     const user = userEvent.setup()
     const { onNavigate } = renderReview()
 
-    await user.click(screen.getByRole("button", { name: "6/10" }))
-    expect(
-      screen.getByText("答对了，你同时改变了分子和分母。"),
-    ).toBeInTheDocument()
-
-    await user.click(screen.getByRole("button", { name: "学习分数的基本性质" }))
+    await user.click(screen.getByRole("button", { name: "我想问老师" }))
+    await user.click(screen.getByRole("button", { name: "联系老师" }))
     expect(onNavigate).toHaveBeenCalledWith({
       role: "student",
-      page: "learning",
+      page: "messages",
     })
   })
 
@@ -78,7 +58,7 @@ describe("StudentReviewPage", () => {
     const { onNavigate } = renderReview("missing-lesson")
 
     expect(
-      screen.getByRole("heading", { name: "还没有找到这张复习卡" }),
+      screen.getByRole("heading", { name: "这张复习卡暂不可查看" }),
     ).toBeInTheDocument()
     screen.getByRole("button", { name: "返回学生首页" }).click()
     expect(onNavigate).toHaveBeenCalledWith({ role: "student", page: "home" })

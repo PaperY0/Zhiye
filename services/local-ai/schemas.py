@@ -202,6 +202,7 @@ CONTEXT_MODELS: dict[GenerationKind, type[ContextModel]] = {
 class GenerateRequest(BaseModel):
     kind: GenerationKind
     context: dict[str, Any]
+    teacherSettings: dict[str, Any] | None = None
 
     @model_validator(mode="after")
     def context_must_match_generation_kind(self):

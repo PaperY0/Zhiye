@@ -1,14 +1,27 @@
 $ErrorActionPreference = "Stop"
 
+# Load .env.local because Python does not read Vite env files automatically.
+$projectDir = Resolve-Path (Join-Path $PSScriptRoot "..")
+$envFile = Join-Path $projectDir ".env.local"
+if (Test-Path -LiteralPath $envFile) {
+  Get-Content -LiteralPath $envFile | ForEach-Object {
+    if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$' -and -not $_.TrimStart().StartsWith('#')) {
+      $name = $matches[1]
+      $value = $matches[2].Trim().Trim('"').Trim("'")
+      [Environment]::SetEnvironmentVariable($name, $value, 'Process')
+    }
+  }
+}
+
 if (-not $env:DEEPSEEK_API_KEY) {
-  Write-Warning "未设置 DEEPSEEK_API_KEY：本地题图 OCR 可以使用，但课堂 AI 初稿不可用。"
+  Write-Warning "DEEPSEEK_API_KEY is not set. Local OCR may work, but lesson AI generation will not."
 }
 
 if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
-  Write-Warning "未检测到 ffmpeg：题图 OCR 可以使用，但浏览器音频转写需要安装 ffmpeg 并加入 PATH。"
+  Write-Warning "ffmpeg was not found. Browser audio transcription requires ffmpeg in PATH."
 }
 
 $serviceDir = Join-Path $PSScriptRoot "..\services\local-ai"
 python -m pip install -r (Join-Path $serviceDir "requirements.txt")
-Write-Host "首次题图 OCR 识别会下载 PaddleOCR 本地模型；题图不会上传到 DeepSeek。"
+Write-Host "The first OCR run downloads a local PaddleOCR model. Images are not uploaded to DeepSeek."
 python -m uvicorn server:app --app-dir $serviceDir --host 127.0.0.1 --port 8787

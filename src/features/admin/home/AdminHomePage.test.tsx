@@ -23,8 +23,7 @@ describe("AdminHomePage", () => {
       screen.getByRole("heading", { name: "学校管理概览" }),
     ).toBeInTheDocument()
     expect(screen.getByText("知野实验学校")).toBeInTheDocument()
-    expect(screen.getByText("1", { selector: "strong" })).toBeInTheDocument()
-    expect(screen.getByText("6", { selector: "strong" })).toBeInTheDocument()
+    expect(screen.getAllByText("1", { selector: "strong" })).toHaveLength(2)
     expect(screen.getByText("18", { selector: "strong" })).toBeInTheDocument()
     expect(
       screen.getByRole("region", { name: "邀请码与绑定码" }),

@@ -51,9 +51,8 @@ describe("TasksPage", () => {
     await user.click(screen.getByRole("button", { name: "新建任务" }))
     const dialog = screen.getByRole("dialog", { name: "新建任务" })
 
-    await user.selectOptions(
-      within(dialog).getByLabelText("任务类型"),
-      "practice",
+    await user.click(
+      within(dialog).getByRole("radio", { name: /巩固练习/ }),
     )
     await user.clear(within(dialog).getByLabelText("任务标题"))
     await user.type(
@@ -61,31 +60,41 @@ describe("TasksPage", () => {
       "单位换算巩固练习",
     )
     await user.type(
+      within(dialog).getByLabelText("学习目标"),
+      "能够判断单位换算时应该乘还是除",
+    )
+    await user.type(
+      within(dialog).getByLabelText("达成标准"),
+      "正确完成 5 道题并解释每一步依据",
+    )
+    await user.type(
       within(dialog).getByLabelText("任务内容"),
       "完成 5 道单位换算题，并写出每一步为什么乘或除。",
     )
-    await user.selectOptions(within(dialog).getByLabelText("发布对象"), "class")
+    await user.click(within(dialog).getByRole("radio", { name: /全班/ }))
     await user.clear(within(dialog).getByLabelText("截止时间"))
     await user.type(
       within(dialog).getByLabelText("截止时间"),
-      "2026-07-27T20:00",
+      "2026-09-27T20:00",
     )
-    await user.selectOptions(
-      within(dialog).getByLabelText("提醒设置"),
-      "截止前 2 小时",
+    await user.click(
+      within(dialog).getByRole("radio", { name: "截止前 2 小时" }),
     )
-    await user.click(within(dialog).getByRole("button", { name: "保存草稿" }))
+    await user.click(
+      within(dialog).getByRole("button", { name: "保存并预览" }),
+    )
 
     expect(
       screen.queryByRole("dialog", { name: "新建任务" }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole("status")).toHaveTextContent("任务草稿已保存")
-    expect(screen.getByText("单位换算巩固练习")).toBeInTheDocument()
-
-    await user.click(
-      screen.getByRole("button", { name: "查看单位换算巩固练习" }),
-    )
     const drawer = screen.getByRole("dialog", { name: "单位换算巩固练习" })
+    expect(
+      within(drawer).getByText("能够判断单位换算时应该乘还是除"),
+    ).toBeInTheDocument()
+    expect(
+      within(drawer).getByText("正确完成 5 道题并解释每一步依据"),
+    ).toBeInTheDocument()
     expect(
       within(drawer).getByText(
         "完成 5 道单位换算题，并写出每一步为什么乘或除。",

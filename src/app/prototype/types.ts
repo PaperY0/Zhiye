@@ -183,7 +183,12 @@ export type Task = {
   id: string
   title: string
   type: "review" | "practice" | "quiz" | "reading"
+  objective?: string
+  successCriteria?: string
   content: string
+  submissionMode?: "online" | "photo" | "text" | "no-submit"
+  estimatedMinutes?: number
+  supportNote?: string
   audience: {
     kind: "class" | "students"
     label: string
@@ -228,6 +233,7 @@ export type Conversation = {
   participantNames: string[]
   boundStudentId?: string
   unreadCount: number
+  unreadByRole?: Partial<Record<"teacher" | "student" | "parent", number>>
   messages: Message[]
 }
 

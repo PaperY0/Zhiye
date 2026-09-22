@@ -418,6 +418,7 @@ export const conversationFixtures: Conversation[] = [
     participantNames: ["李老师", "林晓雨"],
     boundStudentId: "student-lin-xiaoyu",
     unreadCount: 1,
+    unreadByRole: { teacher: 1, student: 0 },
     messages: [
       {
         id: "message-student-01",
@@ -436,7 +437,8 @@ export const conversationFixtures: Conversation[] = [
     participantIds: ["teacher-li", "parent-lin-xiaoyu"],
     participantNames: ["李老师", "林妈妈"],
     boundStudentId: "student-lin-xiaoyu",
-    unreadCount: 2,
+    unreadCount: 0,
+    unreadByRole: { teacher: 0, parent: 1 },
     messages: [
       {
         id: "message-parent-01",
@@ -463,6 +465,7 @@ export const conversationFixtures: Conversation[] = [
     participantIds: ["teacher-li", ...studentIds],
     participantNames: ["李老师", "五年级（2）班学生"],
     unreadCount: 0,
+    unreadByRole: { teacher: 0, student: 1 },
     messages: [
       {
         id: "message-group-01",

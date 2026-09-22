@@ -10,6 +10,7 @@ import { usePrototype } from "../../../app/prototype/PrototypeContext"
 import type { Task } from "../../../app/prototype/types"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { StatusChip } from "../../../components/shared/StatusChip"
+import { PinyinText } from "../../../components/pinyin/PinyinText"
 
 const STUDENT_ID = "student-lin-xiaoyu"
 
@@ -21,6 +22,13 @@ const taskTypeLabels: Record<Task["type"], string> = {
   practice: "练习",
   quiz: "自检",
   reading: "阅读",
+}
+
+const submissionLabels: Record<NonNullable<Task["submissionMode"]>, string> = {
+  online: "在线作答",
+  photo: "拍照提交",
+  text: "文字说明",
+  "no-submit": "无需提交",
 }
 
 function initialStudentState(task: Task): StudentTaskState {
@@ -99,7 +107,7 @@ export function StudentTasksPage() {
             李老师发布给你的学习安排
           </p>
           <h1 className="role-page-title">
-            我的任务
+            <PinyinText text="我的任务" />
           </h1>
           <p className="role-page-description">
             按自己的节奏完成，状态会同步到当前原型中的任务记录。
@@ -155,7 +163,7 @@ export function StudentTasksPage() {
                 {task.title}
               </h2>
               <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#65736a]">
-                {task.content}
+                {task.objective ?? task.content}
               </p>
               <div className="mt-5 flex items-center gap-2 text-xs font-semibold text-[#76847b]">
                 <CalendarClock aria-hidden="true" size={16} />
@@ -232,11 +240,28 @@ export function StudentTasksPage() {
               <StatusChip>{taskTypeLabels[selectedTask.type]}</StatusChip>
             </div>
             <div className="mt-6 rounded-3xl border border-white/80 bg-white/50 p-5">
-              <p className="text-sm font-bold text-[#5e7363]">任务内容</p>
+              {selectedTask.objective ? (
+                <>
+                  <p className="text-sm font-bold text-[#5e7363]">这次要学会</p>
+                  <p className="mt-2 text-base font-black leading-7 text-[#26362b]">
+                    {selectedTask.objective}
+                  </p>
+                  <div className="my-4 h-px bg-[#dce5db]" />
+                </>
+              ) : null}
+              <p className="text-sm font-bold text-[#5e7363]">怎么完成</p>
               <p className="mt-2 text-base font-semibold leading-7 text-[#26362b]">
                 {selectedTask.content}
               </p>
             </div>
+            {selectedTask.successCriteria ? (
+              <div className="mt-4 rounded-3xl border border-[#e5ddbd] bg-[#fff9e7]/85 p-5">
+                <p className="text-sm font-bold text-[#79683b]">做到这些就算完成</p>
+                <p className="mt-2 font-semibold leading-7 text-[#51482f]">
+                  {selectedTask.successCriteria}
+                </p>
+              </div>
+            ) : null}
             <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
               <div className="rounded-2xl bg-[#eef3e9]/75 p-4">
                 <dt className="text-[#718077]">截止时间</dt>
@@ -245,12 +270,28 @@ export function StudentTasksPage() {
                 </dd>
               </div>
               <div className="rounded-2xl bg-[#eef3e9]/75 p-4">
-                <dt className="text-[#718077]">提醒</dt>
+                <dt className="text-[#718077]">预计用时</dt>
                 <dd className="mt-1 font-bold text-[#26362b]">
-                  {selectedTask.reminder}
+                  {selectedTask.estimatedMinutes
+                    ? `约 ${selectedTask.estimatedMinutes} 分钟`
+                    : selectedTask.reminder}
                 </dd>
               </div>
+              {selectedTask.submissionMode ? (
+                <div className="rounded-2xl bg-[#eef3e9]/75 p-4 sm:col-span-2">
+                  <dt className="text-[#718077]">提交方式</dt>
+                  <dd className="mt-1 font-bold text-[#26362b]">
+                    {submissionLabels[selectedTask.submissionMode]}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
+            {selectedTask.supportNote ? (
+              <div className="mt-4 rounded-2xl bg-[#edf3f6] p-4 text-sm">
+                <p className="font-bold text-[#58707b]">老师给你的支持</p>
+                <p className="mt-1 leading-6 text-[#61737c]">{selectedTask.supportNote}</p>
+              </div>
+            ) : null}
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-end">
               {(progress[selectedTask.id] ??

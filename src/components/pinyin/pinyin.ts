@@ -47,6 +47,17 @@ const PINYIN_MAP: Record<string, string> = {
   已确认的可追溯信息: "yǐ què rèn de kě zhuī sù xìn xī",
   本周陪伴重点: "běn zhōu péi bàn zhòng diǎn",
   一步一步来: "yí bù yí bù lái",
+  今天的学习: "jīn tiān de xué xí",
+  开始复习: "kāi shǐ fù xí",
+  下一项任务: "xià yí xiàng rèn wù",
+  查看任务: "chá kàn rèn wù",
+  最近错题: "zuì jìn cuò tí",
+  打开错题本: "dǎ kāi cuò tí běn",
+  需要老师帮助: "xū yào lǎo shī bāng zhù",
+  我的任务: "wǒ de rèn wù",
+  可以联系: "kě yǐ lián xì",
+  需要帮助: "xū yào bāng zhù",
+  新消息: "xīn xiāo xī",
 }
 
 export function cn(...inputs: Array<string | false | null | undefined>) {

@@ -7,6 +7,7 @@ export interface DialogProps {
   open: boolean
   title: string
   description?: string
+  size?: "default" | "wide"
   onClose: () => void
   children: ReactNode
   footer?: ReactNode
@@ -16,6 +17,7 @@ export function Dialog({
   open,
   title,
   description,
+  size = "default",
   onClose,
   children,
   footer,
@@ -47,7 +49,9 @@ export function Dialog({
         aria-describedby={description ? descriptionId : undefined}
         aria-labelledby={titleId}
         aria-modal="true"
-        className="prototype-dialog prototype-glass prototype-glass--sheet"
+        className={`prototype-dialog prototype-glass prototype-glass--sheet ${
+          size === "wide" ? "prototype-dialog--wide" : ""
+        }`}
         role="dialog"
       >
         <header className="prototype-overlay-header">

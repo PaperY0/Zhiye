@@ -1,4 +1,4 @@
-import type { CSSProperties, PropsWithChildren } from "react"
+import { useState, type CSSProperties, type PropsWithChildren } from "react"
 import type { AppRoute } from "../../app/routes"
 import { type RoleRoute } from "./navigation"
 import { RoleMobileNav } from "./RoleMobileNav"
@@ -14,12 +14,25 @@ interface RoleShellProps extends PropsWithChildren {
 
 export function RoleShell({ route, onNavigate, children }: RoleShellProps) {
   const theme = ROLE_THEME[route.role]
+  const [studentPinyin, setStudentPinyin] = useState(() => {
+    try { return window.localStorage.getItem("zhiye-student-pinyin") !== "off" }
+    catch { return true }
+  })
+  const showPinyin = route.role === "student" ? studentPinyin : theme.showPinyin
+
+  function toggleStudentPinyin() {
+    setStudentPinyin((current) => {
+      try { window.localStorage.setItem("zhiye-student-pinyin", current ? "off" : "on") }
+      catch { /* The preference still works for this session. */ }
+      return !current
+    })
+  }
 
   return (
     <div
       data-testid="role-shell"
       data-role={route.role}
-      data-show-pinyin={theme.showPinyin}
+      data-show-pinyin={showPinyin}
       className={`role-shell role-shell-${route.role} ${theme.className} relative isolate h-dvh overflow-hidden bg-cover bg-center bg-fixed bg-no-repeat text-[#142319]`}
       style={{
         "--role-background-image": `url(${theme.backgroundImage})`,
@@ -35,7 +48,7 @@ export function RoleShell({ route, onNavigate, children }: RoleShellProps) {
       </a>
 
       <div className="relative z-10 flex h-full min-h-0">
-        <RoleSidebar route={route} onNavigate={onNavigate} />
+        <RoleSidebar route={route} onNavigate={onNavigate} showPinyin={showPinyin} onTogglePinyin={toggleStudentPinyin} />
 
         <div className="role-shell-main h-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pb-24 lg:pb-0">
           <main id="main-content" tabIndex={-1} className="min-h-full min-w-0 focus:outline-none lg:h-full">
@@ -44,8 +57,11 @@ export function RoleShell({ route, onNavigate, children }: RoleShellProps) {
         </div>
       </div>
 
-      <RoleMobileNav route={route} onNavigate={onNavigate} />
-      <div className="fixed right-4 top-4 z-30 lg:hidden">
+      <RoleMobileNav route={route} onNavigate={onNavigate} showPinyin={showPinyin} />
+      <div className="fixed right-4 top-4 z-30 flex items-center gap-2 lg:hidden">
+        {route.role === "student" ? (
+          <button aria-label={showPinyin ? "关闭拼音辅助" : "开启拼音辅助"} aria-pressed={showPinyin} className="min-h-11 rounded-full border border-[#c7dac9] bg-white/90 px-3 text-xs font-black text-[#3e6347] shadow-sm" onClick={toggleStudentPinyin} type="button">拼音 {showPinyin ? "开" : "关"}</button>
+        ) : null}
         <RoleSearch iconOnly role={route.role} onNavigate={onNavigate} />
       </div>
       {route.role === "student" ? <StudentCompanionAssistant currentPage={route.page} onNavigate={onNavigate} /> : null}

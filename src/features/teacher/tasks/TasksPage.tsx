@@ -89,9 +89,10 @@ export function TasksPage() {
     addTask(task)
     setSelectedStatus("draft")
     setCreateOpen(false)
+    setSelectedTaskId(task.id)
     showToast({
       title: "任务草稿已保存",
-      description: "可以在草稿中继续检查并发布。",
+      description: "已打开教师预览，确认学习目标与安排后再发布。",
       tone: "success",
     })
   }

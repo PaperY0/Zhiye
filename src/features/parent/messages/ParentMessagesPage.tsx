@@ -27,7 +27,7 @@ function messageTime(value: string) {
 }
 
 export function ParentMessagesPage() {
-  const { conversations, parentSummary, sendMessage } = usePrototype()
+  const { conversations, markConversationRead, parentSummary, sendMessage } = usePrototype()
   const [draft, setDraft] = useState("")
   const [notice, setNotice] = useState("")
 
@@ -91,6 +91,15 @@ export function ParentMessagesPage() {
         className="app-fixed-body flex min-h-[650px] flex-col overflow-hidden p-0 lg:min-h-0"
         weight="sheet"
       >
+        {conversation.unreadByRole?.parent ? (
+          <button
+            className="border-b border-[#c8dec9] bg-[#edf6e9] px-5 py-3 text-left text-sm font-black text-[#315d3d]"
+            onClick={() => markConversationRead(conversation.id, "parent")}
+            type="button"
+          >
+            {conversation.unreadByRole.parent} 条新消息 · 标记已读
+          </button>
+        ) : null}
         <div className="border-b border-white/70 bg-white/30 p-5 sm:p-6">
           <div className="flex items-center gap-4">
             <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#dfead9] text-[#4c7055]">

@@ -2,9 +2,11 @@ import { useMemo, useState } from "react"
 import { HeartHandshake, MessageCircle, Send, ShieldCheck } from "lucide-react"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
 import type { Conversation } from "../../../app/prototype/types"
+import { orderConversations, unreadForRole } from "../../../app/prototype/conversationOrder"
 import { Dialog } from "../../../components/shared/Dialog"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { StatusChip } from "../../../components/shared/StatusChip"
+import { PinyinText } from "../../../components/pinyin/PinyinText"
 
 const STUDENT_ID = "student-lin-xiaoyu"
 
@@ -20,10 +22,10 @@ function displaySender(senderName: string, senderId: string) {
 }
 
 export function StudentMessagesPage() {
-  const { conversations, sendMessage } = usePrototype()
+  const { conversations, markConversationRead, sendMessage } = usePrototype()
   const allowedConversations = useMemo<StudentConversation[]>(
     () =>
-      conversations
+      orderConversations(conversations)
         .filter(
           (conversation) =>
             conversation.id === "conversation-student-xiaoyu" ||
@@ -75,7 +77,7 @@ export function StudentMessagesPage() {
         <div>
           <p className="role-page-kicker">和老师保持联系</p>
           <h1 className="role-page-title">
-            消息
+            <PinyinText text="消息" />
           </h1>
           <p className="role-page-description">
             只可联系李老师和由老师管理的班级群。普通反馈会写入当前原型消息记录。
@@ -90,7 +92,7 @@ export function StudentMessagesPage() {
           type="button"
         >
           <HeartHandshake aria-hidden="true" size={20} />
-          需要帮助
+          <PinyinText text="需要帮助" />
         </button>
       </header>
 
@@ -106,7 +108,7 @@ export function StudentMessagesPage() {
       <div className="app-fixed-body grid min-h-[650px] gap-4 lg:min-h-0 lg:grid-cols-[320px_minmax(0,1fr)]">
         <GlassSurface className="min-h-0 overflow-y-auto p-3 sm:p-4">
           <h2 className="px-2 py-2 text-sm font-black text-[#506456]">
-            可以联系
+            <PinyinText text="可以联系" />
           </h2>
           <div className="mt-2 grid gap-2">
             {allowedConversations.map((conversation) => (
@@ -115,12 +117,15 @@ export function StudentMessagesPage() {
                 aria-pressed={selected?.id === conversation.id}
                 className={`rounded-3xl border p-4 text-left transition ${
                   selected?.id === conversation.id
-                    ? "border-white bg-white/80 shadow-md"
-                    : "border-transparent bg-white/25 hover:bg-white/55"
+                    ? "border-[#9bbca2] bg-white/90 shadow-md"
+                    : unreadForRole(conversation, "student")
+                      ? "border-[#bdd9c1] bg-[#edf6eb] hover:bg-white/85"
+                      : "border-transparent bg-white/25 hover:bg-white/55"
                 }`}
                 key={conversation.id}
                 onClick={() => {
                   setSelectedId(conversation.id)
+                  markConversationRead(conversation.id, "student")
                   setDraft("")
                   setNotice("")
                 }}
@@ -139,6 +144,11 @@ export function StudentMessagesPage() {
                 <strong className="mt-3 block text-base text-[#1d3022]">
                   {conversation.displayTitle}
                 </strong>
+                {unreadForRole(conversation, "student") > 0 ? (
+                  <span className="mt-1 inline-flex rounded-full bg-[#416d4c] px-2.5 py-1 text-xs font-black text-white">
+                    {unreadForRole(conversation, "student")} 条新消息
+                  </span>
+                ) : null}
                 <span className="mt-1 line-clamp-2 block text-xs leading-5 text-[#718078]">
                   {conversation.messages.at(-1)?.body ?? "还没有消息"}
                 </span>
@@ -194,7 +204,7 @@ export function StudentMessagesPage() {
                   >
                     <span
                       className={`block text-xs font-bold ${
-                        mine ? "text-white/70" : "text-[#6d7d72]"
+                        mine ? "text-[#5f8067]" : "text-[#6d7d72]"
                       }`}
                     >
                       {displaySender(message.senderName, message.senderId)}

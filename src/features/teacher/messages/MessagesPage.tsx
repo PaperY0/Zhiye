@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
 import type { Conversation, Message } from "../../../app/prototype/types"
+import { orderConversations, unreadForRole } from "../../../app/prototype/conversationOrder"
 import { Dialog } from "../../../components/shared/Dialog"
 import { FilterBar } from "../../../components/shared/FilterBar"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
@@ -79,7 +80,7 @@ function previewSender(message: Message) {
 }
 
 export function MessagesPage() {
-  const { addConversation, conversations, deleteConversation, sendMessage, updateConversationTitle } = usePrototype()
+  const { addConversation, conversations, deleteConversation, markConversationRead, sendMessage, updateConversationTitle } = usePrototype()
   const [filter, setFilter] = useState<ConversationFilter>("all")
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState(() => conversations[0]?.id ?? "")
@@ -93,7 +94,7 @@ export function MessagesPage() {
 
   const filteredConversations = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("zh-CN")
-    return conversations.filter((conversation) => {
+    return orderConversations(conversations.filter((conversation) => {
       const matchesKind = filter === "all" || conversation.kind === filter
       const searchable = [
         conversation.title,
@@ -106,7 +107,7 @@ export function MessagesPage() {
         matchesKind &&
         (!normalizedQuery || searchable.includes(normalizedQuery))
       )
-    })
+    }))
   }, [conversations, filter, query])
 
   const selectedConversation =
@@ -214,6 +215,7 @@ export function MessagesPage() {
             {filteredConversations.length ? (
               filteredConversations.map((conversation) => {
                 const active = conversation.id === selectedConversation?.id
+                const unread = unreadForRole(conversation, "teacher")
                 const latestMessage = conversation.messages.at(-1)
                 return (
                   <button
@@ -221,28 +223,32 @@ export function MessagesPage() {
                     aria-pressed={active}
                     className={`w-full rounded-[22px] border p-4 text-left transition ${
                       active
-                        ? "border-white bg-white/85 shadow-[0_12px_28px_rgba(49,79,58,0.10)]"
-                        : "border-transparent bg-white/34 hover:border-white/80 hover:bg-white/62"
+                        ? "border-[#8fb29a] bg-white/92 shadow-[0_12px_28px_rgba(49,79,58,0.10)]"
+                        : unread > 0
+                          ? "message-unread-item border-[#b9d6be] bg-[#edf6ed] hover:bg-white/90"
+                          : "border-transparent bg-white/34 hover:border-white/80 hover:bg-white/62"
                     }`}
                     key={conversation.id}
                     onClick={() => {
                       setSelectedId(conversation.id)
+                      markConversationRead(conversation.id, "teacher")
                       setStatusMessage("")
                     }}
                     type="button"
                   >
                     <span className="flex items-start justify-between gap-3">
                       <span className="min-w-0">
-                        <span className="block truncate text-sm font-black text-[#1b2a20]">
+                        <span className={`block truncate text-sm text-[#1b2a20] ${unread ? "font-black" : "font-bold"}`}>
                           {conversation.title}
                         </span>
+                        {unread ? <span className="mt-1 block text-[11px] font-black text-[#416b4b]">未读</span> : null}
                         <span className="mt-1 block text-xs font-medium text-[#718077]">
                           {conversationKindLabel(conversation.kind)}
                         </span>
                       </span>
-                      {conversation.unreadCount ? (
-                        <span className="flex min-w-6 items-center justify-center rounded-full bg-[#d8aa55] px-2 py-1 text-[11px] font-black text-[#3b2a0c]">
-                          {conversation.unreadCount}
+                      {unread ? (
+                        <span aria-label={`${unread}条未读消息`} className="message-unread-badge flex min-w-6 items-center justify-center rounded-full bg-[#426e4b] px-2 py-1 text-[11px] font-black text-white">
+                          {unread}
                         </span>
                       ) : null}
                     </span>
@@ -251,6 +257,7 @@ export function MessagesPage() {
                         ? `${previewSender(latestMessage)}：${latestMessage.body}`
                         : "暂无消息"}
                     </span>
+                    {latestMessage ? <time className="mt-1 block text-[11px] text-[#87958a]" dateTime={latestMessage.sentAt}>{new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(latestMessage.sentAt))}</time> : null}
                   </button>
                 )
               })

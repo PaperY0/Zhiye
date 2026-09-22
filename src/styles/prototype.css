@@ -532,6 +532,50 @@
   backdrop-filter: blur(16px) saturate(130%);
 }
 
+.prototype-dialog--wide {
+  width: min(100%, 1040px);
+  max-height: min(90dvh, 880px);
+}
+
+/* The app shell owns page scrolling. Keep its width stable and its chrome quiet. */
+.role-shell-main,
+.role-sidebar,
+.role-shell .overflow-y-auto,
+.role-shell .overflow-auto,
+.prototype-dialog-body,
+.prototype-drawer-body,
+.workspace-queue-scroll,
+.app-split-rail-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(70, 99, 78, .24) transparent;
+}
+
+.role-shell-main {
+  scrollbar-gutter: stable;
+}
+
+.role-shell[data-show-pinyin="false"] .pinyin-text-line {
+  display: none;
+}
+
+@keyframes message-arrive {
+  from { opacity: .65; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.message-unread-item { animation: message-arrive 220ms ease-out both; }
+.message-unread-badge { transition: transform 160ms ease, background-color 160ms ease; }
+.message-unread-item:hover .message-unread-badge { transform: scale(1.08); }
+
+@media (prefers-reduced-motion: reduce) {
+  .message-unread-item { animation: none; }
+  .message-unread-badge { transition: none; }
+}
+
+@media (max-width: 767px) {
+  .role-shell-main { scrollbar-gutter: auto; }
+}
+
 .classroom-record-button,
 .classroom-open-button,
 .classroom-delete-button,

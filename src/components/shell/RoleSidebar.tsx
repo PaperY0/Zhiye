@@ -11,20 +11,28 @@ import { ROLE_THEME } from "./roleTheme"
 import { RoleSwitcher } from "./RoleSwitcher"
 import { RoleSearch } from "./RoleSearch"
 import { useTeacherSettings } from "../../features/teacher/settings/teacherSettings"
+import { useOptionalPrototype } from "../../app/prototype/PrototypeContext"
+import { unreadForRole } from "../../app/prototype/conversationOrder"
 
 interface RoleSidebarProps {
   route: RoleRoute
   onNavigate: (route: AppRoute) => void
+  showPinyin?: boolean
+  onTogglePinyin?: () => void
 }
 
-export function RoleSidebar({ route, onNavigate }: RoleSidebarProps) {
+export function RoleSidebar({ route, onNavigate, showPinyin: showPinyinOverride, onTogglePinyin }: RoleSidebarProps) {
   const metadata = ROLE_METADATA[route.role]
   const MarkIcon = ROLE_MARK_ICONS[route.role]
-  const showPinyin = ROLE_THEME[route.role].showPinyin
+  const showPinyin = showPinyinOverride ?? ROLE_THEME[route.role].showPinyin
   const items = ROLE_NAVIGATION[route.role]
   const primaryItems = items.filter((item) => item.mobilePrimary)
   const secondaryItems = items.filter((item) => !item.mobilePrimary)
   const teacherSettings = useTeacherSettings()
+  const conversations = useOptionalPrototype()?.conversations ?? []
+  const unreadMessages = route.role === "teacher" || route.role === "student" || route.role === "parent"
+    ? conversations.reduce((total, conversation) => total + unreadForRole(conversation, route.role as "teacher" | "student" | "parent"), 0)
+    : 0
 
   function renderItems(groupItems: typeof items) {
     return groupItems.map((item) => {
@@ -45,6 +53,11 @@ export function RoleSidebar({ route, onNavigate }: RoleSidebarProps) {
         >
           <Icon aria-hidden="true" size={19} strokeWidth={2} />
           <PinyinText text={item.label} showPinyin={showPinyin} />
+          {(item.route.page === "messages" && unreadMessages > 0) ? (
+            <span aria-label={`${unreadMessages}条未读消息`} className="ml-auto grid min-w-6 place-items-center rounded-full bg-[#426e4b] px-1.5 py-0.5 text-[11px] font-black text-white">
+              {unreadMessages > 99 ? "99+" : unreadMessages}
+            </span>
+          ) : null}
         </button>
       )
     })
@@ -82,6 +95,9 @@ export function RoleSidebar({ route, onNavigate }: RoleSidebarProps) {
       </nav>
 
       <RoleSwitcher className="mt-4 w-full justify-center" role={route.role} onNavigate={onNavigate} />
+      {route.role === "student" ? (
+        <button aria-label={showPinyin ? "关闭拼音辅助" : "开启拼音辅助"} aria-pressed={showPinyin} className="mt-3 min-h-11 rounded-2xl border border-[#c7dac9] bg-white/75 px-3 text-sm font-black text-[#3e6347]" onClick={onTogglePinyin} type="button">拼音辅助 · {showPinyin ? "已开启" : "已关闭"}</button>
+      ) : null}
 
       <div className={`${route.role === "student" ? "hidden" : ""} mt-auto rounded-[20px] border border-white/75 bg-white/55 p-3 text-xs leading-5 text-[#748078] shadow-[0_10px_30px_rgba(50,76,57,0.06)]`}>
         <p className="font-black text-[#35543e]">

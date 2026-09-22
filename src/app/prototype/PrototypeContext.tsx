@@ -24,6 +24,7 @@ import { acceptanceFixtureSet } from "./acceptanceFixtures"
 import { emptyFixtureSet } from "./emptyFixtures"
 import { isCompleteLessonAnalysis } from "../../services/lessonAnalysis"
 import { listenForPrototypeSync, publishPrototypeSync } from "./prototypeSync"
+import { unreadForRole } from "./conversationOrder"
 import {
   getGradeFromClassName,
   getTeacherSettings,
@@ -114,6 +115,7 @@ export type PrototypeContextValue = {
     body: string,
     sender?: Pick<Message, "senderId" | "senderName" | "senderRole">,
   ): void
+  markConversationRead(id: string, role: "teacher" | "student" | "parent"): void
   updateConversationTitle(id: string, title: string): void
   deleteConversation(id: string): void
   addConversation(conversation: Conversation): void
@@ -603,7 +605,22 @@ export function PrototypeProvider({
             conversation.id === id
               ? {
                   ...conversation,
-                  unreadCount: 0,
+                  unreadCount:
+                    author.senderRole === "teacher"
+                      ? unreadForRole(conversation, "teacher")
+                      : unreadForRole(conversation, "teacher") + 1,
+                  unreadByRole: {
+                    teacher:
+                      unreadForRole(conversation, "teacher") +
+                      (author.senderRole === "teacher" ? 0 : 1),
+                    student:
+                      (conversation.unreadByRole?.student ?? 0) +
+                      (author.senderRole !== "student" &&
+                      (conversation.kind === "student" || conversation.kind === "group") ? 1 : 0),
+                    parent:
+                      (conversation.unreadByRole?.parent ?? 0) +
+                      (author.senderRole !== "parent" && conversation.kind === "parent" ? 1 : 0),
+                  },
                   messages: [
                     ...conversation.messages,
                     {
@@ -641,6 +658,22 @@ export function PrototypeProvider({
       },
       deleteConversation(id) {
         setConversations((current) => current.filter((conversation) => conversation.id !== id))
+      },
+      markConversationRead(id, role) {
+        setConversations((current) =>
+          current.map((conversation) =>
+            conversation.id === id
+              ? {
+                  ...conversation,
+                  unreadCount: role === "teacher" ? 0 : conversation.unreadCount,
+                  unreadByRole: {
+                    ...conversation.unreadByRole,
+                    [role]: 0,
+                  },
+                }
+              : conversation,
+          ),
+        )
       },
       addConversation(conversation) {
         setConversations((current) => [...current, cloneFixture(conversation)])
@@ -803,6 +836,10 @@ export function usePrototype(): PrototypeContextValue {
     throw new Error("usePrototype must be used within PrototypeProvider")
   }
   return value
+}
+
+export function useOptionalPrototype(): PrototypeContextValue | null {
+  return useContext(PrototypeContext)
 }
 
 export function usePrototypeOptional(): PrototypeContextValue | null {

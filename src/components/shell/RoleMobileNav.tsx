@@ -10,16 +10,23 @@ import {
   type RoleRoute,
 } from "./navigation"
 import { ROLE_THEME } from "./roleTheme"
+import { useOptionalPrototype } from "../../app/prototype/PrototypeContext"
+import { unreadForRole } from "../../app/prototype/conversationOrder"
 
 interface RoleMobileNavProps {
   route: RoleRoute
   onNavigate: (route: AppRoute) => void
+  showPinyin?: boolean
 }
 
-export function RoleMobileNav({ route, onNavigate }: RoleMobileNavProps) {
+export function RoleMobileNav({ route, onNavigate, showPinyin: showPinyinOverride }: RoleMobileNavProps) {
   const metadata = ROLE_METADATA[route.role]
-  const showPinyin = ROLE_THEME[route.role].showPinyin
+  const showPinyin = showPinyinOverride ?? ROLE_THEME[route.role].showPinyin
   const [moreOpen, setMoreOpen] = useState(false)
+  const conversations = useOptionalPrototype()?.conversations ?? []
+  const unreadMessages = route.role === "teacher" || route.role === "student" || route.role === "parent"
+    ? conversations.reduce((total, conversation) => total + unreadForRole(conversation, route.role as "teacher" | "student" | "parent"), 0)
+    : 0
   const items = ROLE_NAVIGATION[route.role]
   const primaryItems = items.filter((item) => item.mobilePrimary)
   const secondaryItems = items.filter((item) => !item.mobilePrimary)
@@ -53,7 +60,12 @@ export function RoleMobileNav({ route, onNavigate }: RoleMobileNavProps) {
             }`}
             onClick={() => navigateTo(item.route)}
           >
-            <Icon aria-hidden="true" size={18} strokeWidth={2.1} />
+            <span className="relative">
+              <Icon aria-hidden="true" size={18} strokeWidth={2.1} />
+              {item.route.page === "messages" && unreadMessages > 0 ? (
+                <span aria-label={`${unreadMessages}条未读消息`} className="absolute -right-2 -top-2 size-4 rounded-full bg-[#426e4b] text-[10px] leading-4 text-white">{unreadMessages > 9 ? "9+" : unreadMessages}</span>
+              ) : null}
+            </span>
             <PinyinText
               className="whitespace-nowrap"
               text={item.shortLabel ?? item.label}
@@ -103,6 +115,9 @@ export function RoleMobileNav({ route, onNavigate }: RoleMobileNavProps) {
               >
                 <Icon aria-hidden="true" size={19} strokeWidth={2} />
                 <PinyinText text={item.label} showPinyin={showPinyin} />
+                {item.route.page === "messages" && unreadMessages > 0 ? (
+                  <span className="ml-auto rounded-full bg-[#426e4b] px-2 py-0.5 text-xs font-black text-white">{unreadMessages} 条新消息</span>
+                ) : null}
               </button>
             )
           })}

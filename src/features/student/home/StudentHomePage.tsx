@@ -39,7 +39,7 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
     <div className="role-page role-page-flow">
       <header className="role-page-header">
         <div>
-          <p className="role-page-kicker">今天的学习</p>
+          <p className="role-page-kicker"><PinyinText text="今天的学习" /></p>
           <h1 className="role-page-title">{student.name}，从下一步开始</h1>
           <p className="role-page-description">只展示老师已经发布的内容和你真实需要完成的任务。</p>
         </div>
@@ -55,7 +55,7 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
             <p className="mt-3 text-sm font-medium leading-7 text-[#65776b] sm:text-base">{latestReview?.recap ?? "老师发布新的课堂复习后，会自动出现在这里。"}</p>
             {latestReview && latestReview.recapTags.length > 0 ? <div className="mt-5 flex flex-wrap gap-2">{latestReview.recapTags.map((tag) => <span className="rounded-full bg-white/75 px-3 py-2 text-xs font-black text-[#536b59]" key={tag}>{tag}</span>)}</div> : null}
           </div>
-          {latestReview ? <button className="inline-flex min-h-14 shrink-0 items-center justify-center gap-3 rounded-[20px] bg-[#24462f] px-6 font-black text-white shadow-[0_12px_26px_rgba(36,70,47,.18)]" onClick={() => onNavigate({ role: "student", page: "review", lessonId: latestReview.id })} type="button"><BookOpenCheck aria-hidden size={20} />开始复习<ArrowRight aria-hidden size={17} /></button> : null}
+          {latestReview ? <button className="inline-flex min-h-14 shrink-0 items-center justify-center gap-3 rounded-[20px] bg-[#24462f] px-6 font-black text-white shadow-[0_12px_26px_rgba(36,70,47,.18)]" onClick={() => onNavigate({ role: "student", page: "review", lessonId: latestReview.id })} type="button"><BookOpenCheck aria-hidden size={20} /><PinyinText text="开始复习" pinyinClassName="text-white/80" /><ArrowRight aria-hidden size={17} /></button> : null}
         </div>
       </GlassSurface>
 

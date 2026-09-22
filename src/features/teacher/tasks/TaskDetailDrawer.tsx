@@ -30,6 +30,13 @@ const completionTones: Record<Task["completions"][number]["status"], StatusTone>
     reviewed: "success",
   }
 
+const submissionLabels: Record<NonNullable<Task["submissionMode"]>, string> = {
+  online: "在线作答",
+  photo: "拍照提交",
+  text: "文字说明",
+  "no-submit": "无需提交",
+}
+
 function percentage(value: number, total: number) {
   return total === 0 ? 0 : Math.round((value / total) * 100)
 }
@@ -94,7 +101,22 @@ export function TaskDetailDrawer({
             </StatusChip>
             <StatusChip tone="neutral">{task.audience.label}</StatusChip>
           </div>
-          <p className="mt-4 leading-7 text-[#627469]">{task.content}</p>
+          {task.objective ? (
+            <div className="mt-5 rounded-[22px] border border-[#dce6db] bg-[#edf4ea] p-4">
+              <p className="text-xs font-black tracking-[0.12em] text-[#68806d]">学习目标</p>
+              <p className="mt-2 font-bold leading-7 text-[#263b2d]">{task.objective}</p>
+            </div>
+          ) : null}
+          <div className="mt-4">
+            <p className="text-xs font-black tracking-[0.12em] text-[#718076]">任务说明</p>
+            <p className="mt-2 leading-7 text-[#627469]">{task.content}</p>
+          </div>
+          {task.successCriteria ? (
+            <div className="mt-4 rounded-[22px] border border-[#e5ddbd] bg-[#fff9e7] p-4">
+              <p className="text-xs font-black tracking-[0.12em] text-[#7b6b3f]">达成标准</p>
+              <p className="mt-2 font-bold leading-7 text-[#544b31]">{task.successCriteria}</p>
+            </div>
+          ) : null}
           <dl className="mt-5 grid gap-3 rounded-[22px] bg-white/55 p-4 text-sm sm:grid-cols-2">
             <div>
               <dt className="font-bold text-[#718076]">截止时间</dt>
@@ -113,7 +135,25 @@ export function TaskDetailDrawer({
               <dt className="font-bold text-[#718076]">提醒方式</dt>
               <dd className="mt-1 font-black">{task.reminder}</dd>
             </div>
+            {task.submissionMode ? (
+              <div>
+                <dt className="font-bold text-[#718076]">学习证据</dt>
+                <dd className="mt-1 font-black">{submissionLabels[task.submissionMode]}</dd>
+              </div>
+            ) : null}
+            {task.estimatedMinutes ? (
+              <div>
+                <dt className="font-bold text-[#718076]">预计用时</dt>
+                <dd className="mt-1 font-black">约 {task.estimatedMinutes} 分钟</dd>
+              </div>
+            ) : null}
           </dl>
+          {task.supportNote ? (
+            <div className="mt-4 rounded-[22px] bg-[#eef3f6] p-4 text-sm">
+              <p className="font-black text-[#536875]">差异化支持</p>
+              <p className="mt-1 leading-6 text-[#667680]">{task.supportNote}</p>
+            </div>
+          ) : null}
         </div>
 
         <section aria-labelledby="task-completion-heading">

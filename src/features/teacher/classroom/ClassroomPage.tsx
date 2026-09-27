@@ -207,7 +207,6 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
           onClick={() => {
             setRecordingLessonId(createLesson({
               className: teacherSettings.currentClass,
-              chapter: teacherSettings.chapter,
             }))
             setRecordingOpen(true)
           }}
@@ -279,7 +278,6 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
                 onClick={() => {
                   setRecordingLessonId(createLesson({
                     className: teacherSettings.currentClass,
-                    chapter: teacherSettings.chapter,
                   }))
                   setRecordingOpen(true)
                 }}
@@ -377,6 +375,7 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
             result.progressSuggestion,
             result.evidence,
             result.title,
+            result.chapter?.trim() || result.recapTags[0]?.trim() || result.title.trim(),
           )
           if (teacherSettings.lessonReadyNotification) {
             setToasts([{

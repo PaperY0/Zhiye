@@ -116,7 +116,7 @@ describe("AppRouter", () => {
       ["#/teacher/classroom", "教师端主导航", "课堂"],
       ["#/teacher/classroom/lesson-fractions", "教师端主导航", "课堂"],
       ["#/teacher/insights", "教师端主导航", "班级洞察"],
-      ["#/teacher/planning", "教师端主导航", "备课与测验"],
+      ["#/teacher/planning", "教师端主导航", "备课"],
       ["#/teacher/students", "教师端主导航", "学生档案"],
       ["#/teacher/students/student-lin-xiaoyu", "教师端主导航", "学生档案"],
       ["#/teacher/tasks", "教师端主导航", "任务"],

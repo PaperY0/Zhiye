@@ -49,6 +49,9 @@ describe("typed hash routes", () => {
       lessonId: "unit 1",
     })
     expect(parseHash("#/teacher/not-a-page")).toEqual({ page: "welcome" })
+    for (const role of ["teacher", "student", "parent", "admin"]) {
+      expect(parseHash(`#/${role}/history`)).toEqual({ page: "welcome" })
+    }
     expect(parseHash("#/teacher/recap-agent")).toEqual({
       role: "teacher",
       page: "classroom",

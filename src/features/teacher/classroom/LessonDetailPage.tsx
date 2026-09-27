@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
-import { BookOpenCheck, CheckCircle2, Eye, EyeOff, Flag, Save, Send } from "lucide-react"
+import { BookOpenCheck, CheckCircle2, Eye, EyeOff, ListChecks, Save, Send } from "lucide-react"
+import { navigate } from "../../../app/routes"
 import {
   hasCompleteLessonAnalysis,
   hasCompleteAiDraft,
@@ -85,12 +86,14 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
     lesson?.progress.completedPercent ?? 0,
   )
   const [nextStep, setNextStep] = useState(lesson?.progress.nextStep ?? "")
+  const [chapter, setChapter] = useState(lesson?.progress.chapter ?? "")
 
   useEffect(() => {
     setRecapDraft(lesson?.recap ?? "")
     setProgress(lesson?.progress.completedPercent ?? 0)
     setNextStep(lesson?.progress.nextStep ?? "")
-  }, [lesson?.recap, lesson?.progress.completedPercent, lesson?.progress.nextStep, lessonId])
+    setChapter(lesson?.progress.chapter ?? "")
+  }, [lesson?.recap, lesson?.progress.completedPercent, lesson?.progress.nextStep, lesson?.progress.chapter, lessonId])
 
   useEffect(() => {
     setTab("transcript")
@@ -114,6 +117,7 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
 
   const hasAnalysis = hasCompleteLessonAnalysis(lesson)
   const canPublish = hasCompleteAiDraft(lesson)
+  const contentChapter = hasAnalysis ? (lesson.recapTags[0]?.trim() || lesson.title.trim()) : ""
 
   return (
     <div className="mx-auto grid w-full max-w-[1500px] gap-5 p-4 sm:p-6 xl:p-8">
@@ -154,6 +158,8 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
               {lesson.durationMinutes} 分钟课堂 · {lesson.progress.chapter}
             </p>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+          <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#b8cdb9] bg-white/80 px-5 py-3 text-sm font-black text-[#284731]" onClick={() => { window.sessionStorage.setItem("zhiye-task-source-lesson", lesson.id); navigate({ role: "teacher", page: "tasks" }) }} type="button"><ListChecks aria-hidden="true" size={18} />根据课堂生成三题任务</button>
           {lesson.status !== "published" && canPublish ? (
             <button
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[#142219] px-5 py-3 font-black text-white shadow-[0_12px_25px_rgba(20,34,25,.18)]"
@@ -171,6 +177,7 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
               请先完成本次 AI 课堂分析，再确认发布。
             </p>
           ) : null}
+          </div>
         </div>
       </GlassSurface>
 
@@ -201,7 +208,10 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
               }`}
               id={`lesson-tab-${item.value}`}
               key={item.value}
-              onClick={() => setTab(item.value)}
+              onClick={(event) => {
+                setTab(item.value)
+                event.currentTarget.scrollIntoView?.({ block: "nearest", inline: "center" })
+              }}
               role="tab"
               type="button"
             >
@@ -289,14 +299,13 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
               <div className="grid gap-4">
                 <StatusChip tone="info">AI 初稿 · 教师需核对</StatusChip>
                 <article className="rounded-[24px] border border-white/85 bg-white/60 p-5">
-                  <h2 className="text-xl font-black text-[#1e3024]">教师课堂报告</h2>
+                  <h2 className="text-xl font-black text-[#1e3024]">AI 对本节课的评价</h2>
                   <p className="mt-3 leading-7 text-[#536258]">{lesson.teacherReport}</p>
                 </article>
-                <section aria-label="AI 报告依据" className="rounded-[24px] border border-[#d4dfd2] bg-[#f5f8f2]/80 p-5">
-                  <h2 className="font-black text-[#294530]">课堂依据 · AI 初稿</h2>
-                  <ul className="mt-3 grid gap-2 text-sm leading-6 text-[#526157]">
-                    {lesson.evidence?.map((item) => <li key={item}>{item}</li>)}
-                  </ul>
+                <section aria-label="下一节课改进建议" className="rounded-[24px] border border-[#d4dfd2] bg-[#f5f8f2]/80 p-5">
+                  <h2 className="font-black text-[#294530]">AI 对下一节课的改进建议</h2>
+                  <p className="mt-3 leading-7 text-[#526157]">{lesson.progressSuggestion}</p>
+                  <p className="mt-3 text-sm text-[#607365]">仅供教师参考；请结合实际课堂情况选择是否采纳，并在课程进度中填写最终安排。</p>
                 </section>
               </div>
             ) : (
@@ -308,31 +317,21 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
           ) : null}
 
           {tab === "progress" ? (
-            hasAnalysis ? <div className="mx-auto grid max-w-3xl gap-6">
-              <div className="rounded-[24px] border border-[#d4dfd2] bg-[#f5f8f2]/80 p-5">
-                <StatusChip tone="info">AI 初稿 · 进度建议</StatusChip>
-                <p className="mt-3 leading-7 text-[#526157]">{lesson.progressSuggestion}</p>
+            <div className="mx-auto grid max-w-3xl gap-6">
+              <div className="rounded-[24px] border border-[#d4dfd2] bg-white p-5">
+                <h2 className="text-xl font-black text-[#17231b]">教师确认的课程进度</h2>
+                <p className="mt-2 text-sm leading-6 text-[#69776d]">先核对这节课实际讲到的章节或主题，再记录完成进度和下一步安排。</p>
               </div>
-              <div className="text-center">
-                <Flag
-                  aria-hidden="true"
-                  className="mx-auto text-[#66846c]"
-                  size={28}
-                />
-                <h2 className="mt-3 text-2xl font-black text-[#17231b]">
-                  {lesson.progress.chapter}
-                </h2>
-                <p className="mt-2 text-sm text-[#69776d]">
-                  调整内容只用于当前高保真原型的页面演示。
-                </p>
-              </div>
+              {hasAnalysis && <details className="rounded-2xl border border-[#d4dfd2] bg-[#f5f8f2] p-4"><summary className="cursor-pointer font-bold text-[#294530]">查看 AI 的进度建议（可选）</summary><p className="mt-3 leading-7 text-[#526157]">{lesson.progressSuggestion}</p><button className="mt-3 rounded-xl border border-[#9ab59b] px-3 py-2 text-sm font-bold" onClick={() => setNextStep(lesson.progressSuggestion ?? "")} type="button">采纳到下一步安排</button></details>}
+              {contentChapter && contentChapter !== chapter.trim() && <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#d4dfd2] bg-[#f5f8f2] p-4 text-sm"><div><p className="font-bold text-[#294530]">本节课堂内容：{contentChapter}</p><p className="mt-1 text-[#69776d]">转写生成的主题仅供参考，请核对后保存。</p></div><button className="min-h-10 rounded-full border border-[#9ab59b] bg-white px-4 font-bold text-[#294530]" onClick={() => setChapter(contentChapter)} type="button">填入当前章节</button></div>}
+              <label className="grid gap-2 font-black text-[#2b4633]">当前章节<input className="min-w-0 rounded-2xl border border-[#d4dfd2] bg-white px-4 py-3 font-medium" onChange={(event) => setChapter(event.target.value)} placeholder="根据本节课填写章节或主题" value={chapter} /></label>
               <label className="grid gap-2 font-black text-[#2b4633]">
                 课程完成进度
                 <input
                   className="rounded-2xl border border-white/90 bg-white/70 px-4 py-3"
                   max={100}
                   min={0}
-                  onChange={(event) => setProgress(Number(event.target.value))}
+                  onChange={(event) => setProgress(Math.min(100, Math.max(0, Number(event.target.value))))}
                   type="number"
                   value={progress}
                 />
@@ -352,9 +351,10 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
               </div>
               <label className="grid gap-2 font-black text-[#2b4633]">
                 下一步教学内容
-                <input
-                  className="rounded-2xl border border-white/90 bg-white/70 px-4 py-3"
+                <textarea
+                  className="min-h-24 resize-y rounded-2xl border border-[#d4dfd2] bg-white px-4 py-3 font-medium leading-6"
                   onChange={(event) => setNextStep(event.target.value)}
+                  placeholder="例如：先复盘学生尚未掌握的步骤，再安排下一课"
                   value={nextStep}
                 />
               </label>
@@ -362,7 +362,7 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
                 <button
                   className="inline-flex items-center gap-2 rounded-full bg-[#24462f] px-5 py-3 font-black text-white"
                   onClick={() => {
-                    updateLessonProgress(lesson.id, progress, nextStep)
+                    updateLessonProgress(lesson.id, progress, nextStep, chapter)
                     setSaveResult({
                       title: "课程进度已保存",
                       description: `已将 ${Math.min(100, Math.max(0, progress))}% 的进度和下一步教学内容保存到课堂记录。`,
@@ -374,10 +374,7 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
                   保存课程进度
                 </button>
               </div>
-            </div> : <EmptyState
-              description="本次课堂成功生成完整分析后，课程进度建议会显示在这里。"
-              title="暂无课程进度初稿"
-            />
+            </div>
           ) : null}
         </section>
       </GlassSurface>

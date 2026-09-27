@@ -129,6 +129,11 @@
   padding: 12px 18px 24px;
 }
 
+.role-shell-teacher {
+  background-image: none !important;
+  background-color: #f4f7f3;
+}
+
 .role-shell-main > main > * {
   width: 100%;
   max-width: 1440px;
@@ -270,26 +275,54 @@
 
 /* Chromium's customizable select keeps native form semantics while allowing
    the picker to belong visually to the product instead of the operating system. */
+.planning-select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 36px 10px 13px;
+  border: 1px solid #d5e2d5;
+  border-radius: 12px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%23526b59' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") right 12px center / 16px no-repeat;
+  color: #203429;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  appearance: none;
+  cursor: pointer;
+}
+
+.planning-select:focus-visible {
+  outline: 2px solid #64836a;
+  outline-offset: 2px;
+}
+
 @supports (appearance: base-select) {
-  .role-shell select,
-  .role-shell ::picker(select) {
+  :is(.role-shell, .prototype-overlay) select,
+  :is(.role-shell, .prototype-overlay) ::picker(select) {
     appearance: base-select;
   }
 
-  .role-shell select {
+  :is(.role-shell, .prototype-overlay) select {
     cursor: pointer;
   }
 
-  .role-shell select::picker-icon {
+  .role-shell select.planning-select {
+    background-image: none;
+    padding-right: 13px;
+  }
+
+  :is(.role-shell, .prototype-overlay) select::picker-icon {
     color: #526b59;
     transition: rotate 160ms ease;
   }
 
-  .role-shell select:open::picker-icon {
+  :is(.role-shell, .prototype-overlay) select:open::picker-icon {
     rotate: 180deg;
   }
 
-  .role-shell ::picker(select) {
+  :is(.role-shell, .prototype-overlay) ::picker(select) {
+    inline-size: anchor-size(width);
+    max-inline-size: calc(100vw - 24px);
     max-height: min(320px, 52dvh);
     margin-block-start: 8px;
     padding: 6px;
@@ -305,51 +338,53 @@
       overlay 160ms allow-discrete;
   }
 
-  .role-shell select:open::picker(select) {
+  :is(.role-shell, .prototype-overlay) select:open::picker(select) {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
 
   @starting-style {
-    .role-shell select:open::picker(select) {
+    :is(.role-shell, .prototype-overlay) select:open::picker(select) {
       opacity: 0;
       transform: translateY(-4px) scale(0.985);
     }
   }
 
-  .role-shell select option {
+  :is(.role-shell, .prototype-overlay) select option {
     min-height: 42px;
     margin: 2px 0;
     padding: 10px 12px;
     border-radius: 12px;
     color: #203429;
     font-weight: 700;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
-  .role-shell select option:hover,
-  .role-shell select option:focus-visible {
+  :is(.role-shell, .prototype-overlay) select option:hover,
+  :is(.role-shell, .prototype-overlay) select option:focus-visible {
     background: #edf4eb;
   }
 
-  .role-shell select option:checked {
+  :is(.role-shell, .prototype-overlay) select option:checked {
     background: #dfece0;
     color: #284c32;
   }
 
-  .role-shell select option::checkmark {
+  :is(.role-shell, .prototype-overlay) select option::checkmark {
     color: #446d4f;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .role-shell ::picker(select),
-  .role-shell select::picker-icon {
+  :is(.role-shell, .prototype-overlay) ::picker(select),
+  :is(.role-shell, .prototype-overlay) select::picker-icon {
     transition: none;
   }
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .role-shell ::picker(select) {
+  :is(.role-shell, .prototype-overlay) ::picker(select) {
     background: #f8faf7;
     backdrop-filter: none;
   }
@@ -445,6 +480,7 @@
 .prototype-dialog,
 .prototype-drawer {
   display: flex;
+  min-width: 0;
   min-height: 0;
   flex-direction: column;
 }
@@ -499,12 +535,15 @@
 
 .prototype-dialog-body,
 .prototype-drawer-body {
+  min-width: 0;
   min-height: 0;
   flex: 1 1 auto;
   overflow: auto;
   overscroll-behavior: contain;
   padding: 24px;
 }
+
+.prototype-dialog-body { scrollbar-gutter: stable; }
 
 .prototype-dialog-footer {
   display: flex;

@@ -62,6 +62,7 @@ export function useModalLifecycle(options: {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (overlayStack.at(-1) !== overlayId) return
       if (event.key === "Escape") {
+        if (event.target instanceof HTMLSelectElement && event.target.matches(":open")) return
         event.preventDefault()
         closeRef.current()
         return
@@ -89,9 +90,9 @@ export function useModalLifecycle(options: {
       }
     }
 
-    document.addEventListener("keydown", handleKeyDown)
+    document.addEventListener("keydown", handleKeyDown, true)
     return () => {
-      document.removeEventListener("keydown", handleKeyDown)
+      document.removeEventListener("keydown", handleKeyDown, true)
       const index = overlayStack.lastIndexOf(overlayId)
       if (index >= 0) overlayStack.splice(index, 1)
       unlockBody()

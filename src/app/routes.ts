@@ -4,7 +4,7 @@ export type AppRoute = {
   page: "welcome"
 } | {
   role: "teacher"
-  page: "workspace" | "classroom" | "insights" | "planning" | "students" | "tasks" | "messages" | "settings" | "history"
+  page: "workspace" | "classroom" | "insights" | "planning" | "students" | "tasks" | "messages" | "settings"
 } | {
   role: "teacher"
   page: "lesson-detail"
@@ -15,17 +15,17 @@ export type AppRoute = {
   studentId: string
 } | {
   role: "student"
-  page: "home" | "tutoring" | "learning" | "mistakes" | "tasks" | "messages" | "history"
+  page: "home" | "tutoring" | "learning" | "mistakes" | "tasks" | "messages"
 } | {
   role: "student"
   page: "review"
   lessonId: string
 } | {
   role: "parent"
-  page: "home" | "messages" | "history"
+  page: "home" | "messages"
 } | {
   role: "admin"
-  page: "home" | "safety" | "audit" | "settings" | "history"
+  page: "home" | "safety" | "audit" | "settings"
 }
 
 type RoleRoute<R extends Role> = Extract<AppRoute, { role: R }>
@@ -41,7 +41,6 @@ const teacherPages = [
   "tasks",
   "messages",
   "settings",
-  "history",
 ] as const satisfies readonly TeacherStaticPage[]
 
 const studentPages = [
@@ -51,20 +50,17 @@ const studentPages = [
   "mistakes",
   "tasks",
   "messages",
-  "history",
 ] as const satisfies readonly StudentStaticPage[]
 
 const parentPages = [
   "home",
   "messages",
-  "history",
 ] as const satisfies readonly RoleRoute<"parent">["page"][]
 const adminPages = [
   "home",
   "safety",
   "audit",
   "settings",
-  "history",
 ] as const satisfies readonly RoleRoute<"admin">["page"][]
 
 function isKnownPage<const Pages extends readonly string[]>(

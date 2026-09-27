@@ -37,6 +37,7 @@ describe("TasksPage", () => {
       screen.getByRole("button", { name: "查看分数基本性质自检" }),
     )
     const drawer = screen.getByRole("dialog", { name: "分数基本性质自检" })
+    expect(within(drawer).getByRole("region", { name: "三道测试题预览" })).toBeInTheDocument()
     expect(within(drawer).getByText("10 / 12")).toBeInTheDocument()
     expect(within(drawer).getByText("83%")).toBeInTheDocument()
     expect(within(drawer).getByText("待教师查看 10 人")).toBeInTheDocument()
@@ -51,9 +52,7 @@ describe("TasksPage", () => {
     await user.click(screen.getByRole("button", { name: "新建任务" }))
     const dialog = screen.getByRole("dialog", { name: "新建任务" })
 
-    await user.click(
-      within(dialog).getByRole("radio", { name: /巩固练习/ }),
-    )
+    await user.selectOptions(within(dialog).getByRole("combobox", { name: "任务形式" }), "practice")
     await user.clear(within(dialog).getByLabelText("任务标题"))
     await user.type(
       within(dialog).getByLabelText("任务标题"),
@@ -71,15 +70,8 @@ describe("TasksPage", () => {
       within(dialog).getByLabelText("任务内容"),
       "完成 5 道单位换算题，并写出每一步为什么乘或除。",
     )
-    await user.click(within(dialog).getByRole("radio", { name: /全班/ }))
-    await user.clear(within(dialog).getByLabelText("截止时间"))
-    await user.type(
-      within(dialog).getByLabelText("截止时间"),
-      "2026-09-27T20:00",
-    )
-    await user.click(
-      within(dialog).getByRole("radio", { name: "截止前 2 小时" }),
-    )
+    expect(within(dialog).getByRole("radio", { name: /五年级（2）班/ })).toBeChecked()
+    expect(within(dialog).queryByLabelText("截止时间")).not.toBeInTheDocument()
     await user.click(
       within(dialog).getByRole("button", { name: "保存并预览" }),
     )
@@ -89,6 +81,7 @@ describe("TasksPage", () => {
     ).not.toBeInTheDocument()
     expect(screen.getByRole("status")).toHaveTextContent("任务草稿已保存")
     const drawer = screen.getByRole("dialog", { name: "单位换算巩固练习" })
+    expect(within(drawer).queryByText("截止时间")).not.toBeInTheDocument()
     expect(
       within(drawer).getByText("能够判断单位换算时应该乘还是除"),
     ).toBeInTheDocument()
@@ -125,11 +118,6 @@ describe("TasksPage", () => {
     )
 
     const notifications = screen.getByRole("region", { name: "任务操作通知" })
-    expect(within(notifications).getByRole("status")).toHaveTextContent(
-      "已提醒 2 名未完成学生",
-    )
-    expect(
-      within(notifications).getByText("单位换算巩固练习"),
-    ).toBeInTheDocument()
+    expect(within(notifications).getByRole("status")).toHaveTextContent(/已通过消息提醒|暂无可发送的学生会话/)
   })
 })

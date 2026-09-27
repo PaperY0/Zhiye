@@ -21,7 +21,7 @@ const taskTypeLabels: Record<Task["type"], string> = {
   review: "复习",
   practice: "练习",
   quiz: "自检",
-  reading: "阅读",
+  reading: "课堂热身",
 }
 
 const submissionLabels: Record<NonNullable<Task["submissionMode"]>, string> = {
@@ -66,7 +66,9 @@ function stateTone(state: StudentTaskState) {
 }
 
 export function StudentTasksPage() {
-  const { tasks, updateTaskCompletion } = usePrototype()
+  const { tasks, quizzes, updateTaskCompletion } = usePrototype()
+  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [responses, setResponses] = useState<Record<string, string>>({})
   const visibleTasks = useMemo(
     () =>
       tasks.filter(
@@ -88,6 +90,7 @@ export function StudentTasksPage() {
   )
 
   const selectedTask = visibleTasks.find((task) => task.id === selectedTaskId)
+  const selectedQuiz = quizzes.find((quiz) => quiz.id === selectedTask?.sourceQuizId)
   const filteredTasks = visibleTasks.filter((task) => {
     const state = progress[task.id] ?? initialStudentState(task)
     if (filter === "pending") return state !== "completed"
@@ -165,10 +168,10 @@ export function StudentTasksPage() {
               <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#65736a]">
                 {task.objective ?? task.content}
               </p>
-              <div className="mt-5 flex items-center gap-2 text-xs font-semibold text-[#76847b]">
+              {task.dueAt && <div className="mt-5 flex items-center gap-2 text-xs font-semibold text-[#76847b]">
                 <CalendarClock aria-hidden="true" size={16} />
                 截止 {formatDueAt(task.dueAt)}
-              </div>
+              </div>}
               <button
                 aria-label={`打开${task.title}`}
                 className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-4 py-3 text-sm font-black text-[#416449] shadow-lg shadow-[#527a5a]/10 transition hover:-translate-y-0.5"
@@ -263,18 +266,18 @@ export function StudentTasksPage() {
               </div>
             ) : null}
             <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-              <div className="rounded-2xl bg-[#eef3e9]/75 p-4">
+              {selectedTask.dueAt && <div className="rounded-2xl bg-[#eef3e9]/75 p-4">
                 <dt className="text-[#718077]">截止时间</dt>
                 <dd className="mt-1 font-bold text-[#26362b]">
                   {formatDueAt(selectedTask.dueAt)}
                 </dd>
-              </div>
+              </div>}
               <div className="rounded-2xl bg-[#eef3e9]/75 p-4">
                 <dt className="text-[#718077]">预计用时</dt>
                 <dd className="mt-1 font-bold text-[#26362b]">
                   {selectedTask.estimatedMinutes
                     ? `约 ${selectedTask.estimatedMinutes} 分钟`
-                    : selectedTask.reminder}
+                    : "由老师安排"}
                 </dd>
               </div>
               {selectedTask.submissionMode ? (
@@ -292,6 +295,11 @@ export function StudentTasksPage() {
                 <p className="mt-1 leading-6 text-[#61737c]">{selectedTask.supportNote}</p>
               </div>
             ) : null}
+
+            {selectedQuiz && (progress[selectedTask.id] ?? initialStudentState(selectedTask)) === "in-progress" ? <fieldset className="mt-5 max-h-[35dvh] overflow-auto rounded-2xl border border-[#dce7da] bg-white p-4"><legend className="px-2 font-black">测验题目</legend><div className="grid gap-5">{selectedQuiz.questions.map((question, index) => <div key={question.id}><p className="font-bold">{index + 1}. {question.prompt}</p>{question.type === "short-answer" ? <textarea aria-label={`第${index + 1}题答案`} className="mt-2 min-h-20 w-full rounded-xl border p-2" value={answers[question.id] ?? ""} onChange={(event) => setAnswers((current) => ({ ...current, [question.id]: event.target.value }))} /> : <div className="mt-2 grid gap-1">{question.options.map((option) => { const selected = question.type === "multiple-choice" ? (answers[question.id] ?? "").split("、").includes(option) : answers[question.id] === option; return <label className="flex min-h-10 items-center gap-2" key={option}><input checked={selected} name={question.id} onChange={() => setAnswers((current) => ({ ...current, [question.id]: question.type === "multiple-choice" ? (selected ? (current[question.id] ?? "").split("、").filter((item) => item !== option).join("、") : [...(current[question.id] ?? "").split("、").filter(Boolean), option].join("、")) : option }))} type={question.type === "multiple-choice" ? "checkbox" : "radio"} />{option}</label> })}</div>}</div>)}</div></fieldset> : null}
+            {selectedQuiz && (progress[selectedTask.id] ?? initialStudentState(selectedTask)) === "completed" ? <section className="mt-5 max-h-[35dvh] overflow-auto rounded-2xl border border-[#dce7da] bg-white p-4"><h3 className="font-black">测验反馈</h3><p className="mt-1 text-sm text-[#718076]">客观题得分：{selectedTask.completions.find((item) => item.studentId === STUDENT_ID)?.score ?? 0}。简答题等待教师查看。</p><ol className="mt-3 grid gap-3">{selectedQuiz.questions.map((question, index) => <li className="rounded-xl bg-[#f4f7f2] p-3 text-sm" key={question.id}><strong>{index + 1}. {question.prompt}</strong><p className="mt-1">你的回答：{selectedTask.completions.find((item) => item.studentId === STUDENT_ID)?.answers?.[question.id] ?? "未作答"}</p><p className="mt-1">参考答案：{Array.isArray(question.answer) ? question.answer.join("、") : question.answer}</p><p className="mt-1 text-[#5b7260]">{question.explanation}</p></li>)}</ol></section> : null}
+            {!selectedQuiz && selectedTask.submissionMode === "text" && (progress[selectedTask.id] ?? initialStudentState(selectedTask)) === "in-progress" ? <label className="mt-5 block text-sm font-bold">我的回答<textarea className="mt-2 min-h-28 w-full rounded-2xl border border-[#dce7da] bg-white p-3 font-normal" placeholder="写下思路或完成过程" value={responses[selectedTask.id] ?? ""} onChange={(event) => setResponses((current) => ({ ...current, [selectedTask.id]: event.target.value }))} /></label> : null}
+            {!selectedQuiz && selectedTask.submissionMode === "text" && (progress[selectedTask.id] ?? initialStudentState(selectedTask)) === "completed" ? <div className="mt-5 rounded-2xl bg-white p-4 text-sm"><strong>我的回答</strong><p className="mt-2 whitespace-pre-wrap">{selectedTask.completions.find((item) => item.studentId === STUDENT_ID)?.responseText ?? ""}</p></div> : null}
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-end">
               {(progress[selectedTask.id] ??
@@ -323,10 +331,20 @@ export function StudentTasksPage() {
                   className="min-h-12 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-5 font-black text-[#416449]"
                   onClick={() =>
                     (() => {
+                      if (selectedQuiz && selectedQuiz.questions.some((question) => !answers[question.id]?.trim())) { setNotice("请先完成所有测验题目"); return }
+                      if (selectedTask.sourceQuizId && !selectedQuiz) { setNotice("测验题目暂不可用，请联系老师"); return }
+                      if (!selectedQuiz && selectedTask.submissionMode === "text" && !responses[selectedTask.id]?.trim()) { setNotice("请先写下回答再提交"); return }
+                      const result = selectedQuiz ? { answers, score: selectedQuiz.questions.reduce((total, question) => {
+                        if (question.type === "short-answer") return total
+                        const expected = (Array.isArray(question.answer) ? question.answer : [question.answer]).map((item) => item.trim()).sort().join("、")
+                        const actual = (answers[question.id] ?? "").split("、").map((item) => item.trim()).sort().join("、")
+                        return total + (actual === expected ? question.score : 0)
+                      }, 0) } : selectedTask.submissionMode === "text" ? { responseText: responses[selectedTask.id].trim() } : undefined
                       updateTaskCompletion(
                         selectedTask.id,
                         STUDENT_ID,
                         "submitted",
+                        result,
                       )
                       setProgress((current) => ({
                         ...current,

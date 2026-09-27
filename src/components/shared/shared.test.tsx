@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { render, screen, within } from "@testing-library/react"
+import { fireEvent, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import Dialog from "./Dialog"
@@ -93,6 +93,21 @@ describe("shared prototype primitives", () => {
       screen.queryByRole("dialog", { name: "创建任务" }),
     ).not.toBeInTheDocument()
     expect(trigger).toHaveFocus()
+  })
+
+  it("lets an open select consume Escape before closing its dialog", () => {
+    const onClose = vi.fn()
+    render(<Dialog open title="选择课堂" onClose={onClose}><select aria-label="关联课堂"><option>课堂一</option></select></Dialog>)
+    const select = screen.getByRole("combobox", { name: "关联课堂" })
+    const matches = vi.spyOn(select, "matches").mockImplementation((selector) => selector === ":open")
+
+    fireEvent.keyDown(select, { key: "Escape" })
+    expect(onClose).not.toHaveBeenCalled()
+
+    matches.mockReturnValue(false)
+    fireEvent.keyDown(select, { key: "Escape" })
+    expect(onClose).toHaveBeenCalledOnce()
+    matches.mockRestore()
   })
 
   it("keeps focus inside a dialog and preserves input focus across rerenders", async () => {

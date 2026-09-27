@@ -1,0 +1,50 @@
+{
+  "id": "pep-math-g5-2026-autumn",
+  "title": "人教版数学 · 五年级上册",
+  "publisher": "人民教育出版社",
+  "subject": "数学",
+  "grade": "五年级",
+  "volume": "上册",
+  "edition": "2026 秋新教材",
+  "description": "按新版单元编排的原创备课提示，供教师核对手中的正式教材后使用。",
+  "sourceUrl": "https://www.pep.com.cn/xw/zt/hd/12/xjcjs/xx/202409/t20240920_1995566.html",
+  "units": [
+    {"id":"u1","title":"一 观察简单组合体","topics":[
+      {"id":"views","title":"从不同方向观察组合体","objective":"能辨认简单组合体从正面、上面和侧面看到的形状，并说明观察依据。","teachingHint":"用可拼搭的小正方体先操作后画图，强调遮挡与可见部分。","misconception":"把看不见的方块也画进视图。","activity":"两人一组搭建、观察并交换视图，让同伴复原。","check":"给出一个组合体，画两个方向的视图并解释差异。"},
+      {"id":"rebuild","title":"根据视图推想组合体","objective":"能依据不同方向的视图推想可能的组合体，认识答案可能不唯一。","teachingHint":"先根据俯视图确定底层位置，再用正面和侧面信息检验。","misconception":"只凭一个视图就认定唯一搭法。","activity":"用四个方块搭出符合给定视图的不同方案。","check":"解释两种搭法为何具有相同的正面视图。"}
+    ]},
+    {"id":"u2","title":"二 小数乘法","topics":[
+      {"id":"integer","title":"小数乘整数","objective":"能用单位转换或分配思路解释小数乘整数的算理并正确计算。","teachingHint":"从单价与数量情境出发，连接整数乘法和小数单位。","misconception":"只移动小数点而不能解释积的单位。","activity":"用价格标签比较三种计算方法。","check":"计算 2.4×3 并用图或语言说明结果。"},
+      {"id":"decimal","title":"小数乘小数","objective":"能解释两个小数相乘时积的小数位数与数量大小的关系。","teachingHint":"先估范围，再把小数乘法转化为整数乘法并还原单位。","misconception":"认为乘积一定比两个乘数都大。","activity":"用方格图表示 0.4×0.3，再与竖式对照。","check":"估算并计算 1.2×0.6，说明积的位置。"},
+      {"id":"properties","title":"运算律推广到小数","objective":"能选择合适的运算律简化小数乘法并解释选择理由。","teachingHint":"比较直接计算与重组计算的步骤，突出等值变形。","misconception":"任意移动括号导致运算顺序错误。","activity":"为购物清单设计两种总价算法。","check":"用两种方法计算 2.5×0.4×8。"}
+    ]},
+    {"id":"u3","title":"三 小数除法","topics":[
+      {"id":"whole-divisor","title":"除数是整数的小数除法","objective":"能理解小数除以整数的位值意义并正确书写竖式。","teachingHint":"用钱币或长度单位解释商中小数点的位置。","misconception":"商的小数点与被除数小数点不对齐。","activity":"把 6.4 米绳子平均分给 4 组，用图、算式互证。","check":"计算 7.5÷3 并说明每一步的单位。"},
+      {"id":"decimal-divisor","title":"一个数除以小数","objective":"能利用商不变的性质将除数为小数的除法转化为除数为整数的除法。","teachingHint":"先用单位换算说明被除数与除数必须同倍扩大。","misconception":"只移动除数的小数点。","activity":"用 2.4÷0.6 设计数轴跳格解释。","check":"计算 5.76÷1.2 并写出转化步骤。"},
+      {"id":"application","title":"小数除法解决问题","objective":"能根据问题情境判断是否需要小数除法，并检验商的合理性。","teachingHint":"用估算设定答案区间，比较平均分与包含分。","misconception":"不考虑单位与情境，机械舍入商。","activity":"讨论包装材料的分装数量如何取整。","check":"解一道需要解释取整方式的分装题。"}
+    ]},
+    {"id":"u4","title":"四 图形的运动","topics":[
+      {"id":"symmetry","title":"轴对称","objective":"能识别轴对称图形并通过对称点补全图形。","teachingHint":"借助折纸与方格纸，观察对应点到对称轴距离相等。","misconception":"只看整体相似，不核对对应点。","activity":"折纸描出图案并标出对称轴。","check":"在方格纸补全半个图形并说明对应点位置。"},
+      {"id":"translation","title":"平移","objective":"能描述图形平移的方向与距离，并在方格纸上准确作图。","teachingHint":"先标关键点，再整体移动，明确平移不改变形状和朝向。","misconception":"只数格子不说明方向，或改变图形朝向。","activity":"设计需要两次平移才能到达的位置路线。","check":"将三角形向右平移 4 格并说明每个顶点的变化。"},
+      {"id":"rotation","title":"旋转与图案设计","objective":"能描述简单旋转的中心、方向与角度，并用图形运动设计图案。","teachingHint":"使用透明片固定旋转中心，让学生比较旋转前后对应点。","misconception":"把旋转当平移，忽略旋转中心。","activity":"围绕一点旋转图形，创作四瓣图案。","check":"指出图案生成时用到的旋转中心和方向。"}
+    ]},
+    {"id":"u5","title":"五 用字母表示数和数量关系","topics":[
+      {"id":"express","title":"用字母表示数","objective":"能用字母表示变化的数与运算律，并解释字母在情境中的含义。","teachingHint":"从不同数量的相同物品总价入手，先写具体算式再概括。","misconception":"把字母当作一个固定且未知的数。","activity":"用 a 表示本数，写出多 3 本时的总本数。","check":"解释 5a 在一个自选情境中的意义。"},
+      {"id":"relation","title":"表示数量关系与代入求值","objective":"能用含字母的式子表示简单数量关系，并在给定取值时求值。","teachingHint":"明确数量单位与运算顺序；这一阶段不引入解方程。","misconception":"省略必要括号或混淆字母与单位。","activity":"给停车收费情境写出总价表达式并代入。","check":"说明 3n+2 中 n、3n 和 +2 各代表什么。"}
+    ]},
+    {"id":"u6","title":"六 多边形的面积","topics":[
+      {"id":"parallelogram","title":"平行四边形的面积","objective":"能通过割补推导平行四边形面积公式并明确底和对应高。","teachingHint":"让学生实际剪拼成长方形，记录面积不变与底高的对应。","misconception":"把斜边当成高。","activity":"剪拼纸质平行四边形并标注对应长度。","check":"解释为什么面积等于底乘高。"},
+      {"id":"triangle","title":"三角形的面积","objective":"能用拼摆或转化解释三角形面积公式中的二分之一。","teachingHint":"使用两个完全一样的三角形拼成平行四边形。","misconception":"漏除以 2 或使用不对应的底高。","activity":"同伴交换三角形卡片，验证两种拼法。","check":"画图解释面积为 24 平方厘米的三角形与对应平行四边形的关系。"},
+      {"id":"trapezoid","title":"梯形与组合图形的面积","objective":"能推导梯形面积公式，并选择分割或补全策略计算组合图形面积。","teachingHint":"比较梯形拼接、分割与补全方法，关注算式与图示的一致性。","misconception":"把梯形的高误认为腰，或重复计入重叠部分。","activity":"为一块不规则地块画两种求面积方案。","check":"写出组合图形各部分面积算式并解释边界。"},
+      {"id":"tiling","title":"有趣的密铺","objective":"能通过操作判断图形是否可密铺，并说明角度或边的拼接依据。","teachingHint":"用可剪的纸片与方格纸尝试，不以背诵结论代替探究。","misconception":"有缝隙或重叠仍认为完成密铺。","activity":"用两种图形设计不留缝隙的铺地图案。","check":"说明某一方案为何能或不能密铺。"}
+    ]},
+    {"id":"u7","title":"七 可能性","topics":[
+      {"id":"events","title":"事件发生的可能性","objective":"能用一定、可能、不可能描述随机事件，区分事实与预测。","teachingHint":"通过可重复的摸球实验，让学生先预测再记录。","misconception":"一次实验结果就证明事件一定发生。","activity":"设计不同颜色球的盒子，让同伴判断可能性。","check":"为三个真实情境选择可能性表述并给出理由。"},
+      {"id":"compare","title":"比较可能性大小","objective":"能根据各种结果的数量比较可能性大小并解释依据。","teachingHint":"记录多次实验频数，连接直观比较与实验结果。","misconception":"把偶然出现次数当作理论上的必然规律。","activity":"掷骰子并统计两种事件出现次数。","check":"比较两个转盘方案中获得奖品的可能性。"}
+    ]},
+    {"id":"u8","title":"八 复习与关联","topics":[
+      {"id":"connections","title":"数与运算、数量关系的关联","objective":"能把小数乘除法与数量关系组织成知识网络，并解释算法选择。","teachingHint":"用同一购物情境提出乘法、除法和估算问题。","misconception":"按题型套用算法而忽略问题所求。","activity":"小组绘制概念图并给出一个交叉情境。","check":"解释一道综合题中每一步的数量关系。"},
+      {"id":"geometry","title":"图形、空间与可能性的关联","objective":"能综合观察、图形运动、面积与可能性解决生活问题。","teachingHint":"让学生选择表征方法并说明验证过程。","misconception":"缺少图示或单位检查。","activity":"设计地砖图案并估算覆盖面积。","check":"用文字和图示说明自己的解决路径。"}
+    ]}
+  ]
+}

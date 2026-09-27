@@ -10,6 +10,7 @@ import { FilterBar } from "../../../components/shared/FilterBar"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { StatusChip } from "../../../components/shared/StatusChip"
 import { SafetyCaseDrawer } from "./SafetyCaseDrawer"
+import { readSavedAdminSettings } from "../settings/adminSettings"
 
 export interface SafetyPageProps {
   onAuditEvent?: (event: AuditEvent) => void
@@ -55,7 +56,7 @@ export function SafetyPage({ onAuditEvent }: SafetyPageProps) {
   const appendAudit = (
     action: string,
     safetyCase: SafetyCase,
-    actor = "王老师 · 德育负责人",
+    actor = readSavedAdminSettings().primaryContact,
     purpose = "人工核实学生支持需求",
   ) => {
     const index = localAuditEvents.length
@@ -86,7 +87,7 @@ export function SafetyPage({ onAuditEvent }: SafetyPageProps) {
   const assign = () => {
     if (!selectedCase) return
     updateSafetyCase(selectedCase.id, {
-      assignee: "王老师 · 德育负责人",
+      assignee: readSavedAdminSettings().primaryContact,
       status: "reviewing",
       updatedAt: new Date().toISOString(),
     })

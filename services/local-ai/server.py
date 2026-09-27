@@ -151,6 +151,7 @@ def generate_with_deepseek(
                 "content": (
                     "请把下面的课堂转写整理为 JSON，字段必须是："
                     "title（根据课堂内容总结的简短中文标题，不超过20个汉字）、"
+                    "chapter（本节课堂实际讲授的章节或知识主题，简短准确；只能从转写归纳，不能沿用教师设置中的章节）、"
                     "recap（给学生看的简短复习卡）、recapTags（最多3个知识点字符串）、"
                     "nextStep（给教师的下一步建议）、teacherReport（给教师的课堂报告）、"
                     "progressSuggestion（给教师的课程进度建议）、evidence（支持报告的课堂依据字符串数组）。"

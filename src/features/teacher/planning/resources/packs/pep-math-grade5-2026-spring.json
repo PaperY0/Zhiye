@@ -1,0 +1,47 @@
+{
+  "id": "pep-math-g5-2026-spring",
+  "title": "人教版数学 · 五年级下册",
+  "publisher": "人民教育出版社",
+  "subject": "数学",
+  "grade": "五年级",
+  "volume": "下册",
+  "edition": "2026 春使用版本",
+  "description": "按五年级下册单元编排的原创备课提示；与 2026 秋新版上册分开标注。",
+  "sourceUrl": "https://www.pep.com.cn/jxzy/tbjl/jplxc/",
+  "units": [
+    {"id":"u1","title":"一 观察物体（三）","topics":[
+      {"id":"build","title":"根据要求搭立体图形","objective":"能根据一个方向的视图搭出可能的立体图形并说明不同搭法。","teachingHint":"从单个视图逐步加入其他方向的信息。","misconception":"认为一个视图只对应一种搭法。","activity":"用小正方体搭建符合给定正面视图的图形。","check":"展示两种符合条件的搭法并解释。"}
+    ]},
+    {"id":"u2","title":"二 因数与倍数","topics":[
+      {"id":"factors","title":"因数和倍数","objective":"能在整数乘法算式中识别因数与倍数，并找出一个数的因数。","teachingHint":"用阵列图呈现乘法关系，强调两者相互依存。","misconception":"脱离指定数字说某数是因数。","activity":"用方块排出 24 的不同矩形阵列。","check":"列出 18 的全部因数并说明找全的方法。"},
+      {"id":"divisibility","title":"2、5、3 的倍数特征","objective":"能探索并应用 2、5、3 的倍数特征，解释判断依据。","teachingHint":"先观察数表，再用位值与分组探究。","misconception":"把 3 的倍数误判为个位是 3、6、9。","activity":"在百数表圈出不同倍数并比较规律。","check":"判断 315 是否同时是 3 和 5 的倍数并说明。"},
+      {"id":"prime","title":"质数和合数","objective":"能根据因数个数区分质数和合数，认识 1 的特殊性。","teachingHint":"用因数列表支持分类，避免只靠背质数表。","misconception":"把 1 当成质数或合数。","activity":"把 1 到 30 按因数个数分类。","check":"解释 29 和 30 属于哪类数。"}
+    ]},
+    {"id":"u3","title":"三 长方体和正方体","topics":[
+      {"id":"features","title":"认识长方体和正方体","objective":"能描述长方体和正方体的面、棱、顶点及其关系。","teachingHint":"通过真实包装盒与展开图连接空间形体和平面图。","misconception":"只看正面就判断形体。","activity":"拆开包装盒，标出相对的面。","check":"说明正方体为何也是特殊的长方体。"},
+      {"id":"surface","title":"表面积","objective":"能根据六个面的关系计算长方体和正方体的表面积。","teachingHint":"从展开图建立每个面的面积与总面积的联系。","misconception":"漏算一组面或把体积公式用于表面积。","activity":"为礼盒设计包装纸裁剪方案。","check":"求长宽高分别为 4、3、2 厘米的盒子表面积。"},
+      {"id":"volume","title":"体积与容积","objective":"能理解体积单位，计算规则立体的体积并区分体积与容积。","teachingHint":"先用单位立方体堆叠，再归纳长×宽×高。","misconception":"混淆平方单位与立方单位。","activity":"用 1 立方厘米方块搭建不同体积的长方体。","check":"写出一个水箱的体积和可装水量可能不同的原因。"}
+    ]},
+    {"id":"u4","title":"四 分数的意义和性质","topics":[
+      {"id":"meaning","title":"分数的意义与分数单位","objective":"能在不同整体中解释分数的意义，并指出分数单位。","teachingHint":"使用长度、数量、面积三种整体，明确平均分。","misconception":"分母相同就认为对应实际量一定相同。","activity":"给同一个 1/4 设计三种不同整体。","check":"解释两张大小不同的纸上 1/4 面积为何不同。"},
+      {"id":"relation","title":"分数与除法、真假分数","objective":"能解释分数与除法的关系，区分真分数和假分数。","teachingHint":"用 3 块饼平均分给 4 人等真实情境连接算式与图示。","misconception":"认为分子必须小于分母。","activity":"用纸条表示 7/4 并说出有几个单位分数。","check":"说明 5÷3 对应的分数表示什么。"},
+      {"id":"simplify","title":"分数基本性质、约分与通分","objective":"能用分数基本性质解释约分和通分，并比较异分母分数。","teachingHint":"用等长纸条或数轴验证分数的等值变形。","misconception":"只改变分子或分母。","activity":"把 2/3 和 3/4 表示在同一数轴上并比较。","check":"解释 6/8 为什么等于 3/4。"}
+    ]},
+    {"id":"u5","title":"五 图形的运动（三）","topics":[
+      {"id":"rotation","title":"旋转","objective":"能描述旋转中心、方向、角度，并在方格纸上画简单旋转结果。","teachingHint":"固定中心，用透明片追踪对应点。","misconception":"旋转后改变图形大小或忽略方向。","activity":"制作旋转纸盘并记录顶点变化。","check":"画出线段绕端点顺时针旋转 90 度的结果。"}
+    ]},
+    {"id":"u6","title":"六 分数的加法和减法","topics":[
+      {"id":"same","title":"同分母分数加减法","objective":"能解释同分母分数相加减就是相同分数单位的数量相加减。","teachingHint":"用分数条先操作再抽象计算规则。","misconception":"把分母也相加减。","activity":"用纸条表示 2/7+3/7。","check":"说明 5/8−1/8 的计算过程。"},
+      {"id":"different","title":"异分母分数加减法","objective":"能先通分再计算异分母分数加减法并检验结果。","teachingHint":"从单位不统一的问题出发，借助图示说明通分必要性。","misconception":"直接相加分子与分母。","activity":"设计分享蛋糕情境，求 1/2+1/3。","check":"用图和算式验证 3/4−1/6。"},
+      {"id":"mixed","title":"分数混合运算与应用","objective":"能根据数量关系选择合理的分数加减运算并说明每一步意义。","teachingHint":"先画线段图，明确整体与剩余。","misconception":"把不同整体中的分数直接相加。","activity":"分析阅读计划中的已读与未读部分。","check":"解释一道两步分数问题的整体和每一步。"}
+    ]},
+    {"id":"u7","title":"七 折线统计图","topics":[
+      {"id":"single","title":"单式折线统计图","objective":"能读取折线统计图的变化趋势与具体数据，选择恰当描述。","teachingHint":"区分数据大小与变化快慢，联系横纵轴单位。","misconception":"只看线段陡峭程度而忽略刻度。","activity":"把一周气温记录绘成折线图。","check":"指出哪两天变化最大并给出数值依据。"},
+      {"id":"double","title":"复式折线统计图","objective":"能比较两组数据的趋势和差异，并提出有根据的结论。","teachingHint":"先识别图例与单位，再比较同一时点。","misconception":"混淆两条线或比较不同时点。","activity":"比较两组植物高度记录。","check":"给出一条由图中数据支持的比较结论。"}
+    ]},
+    {"id":"u8","title":"八 数学广角与总复习","topics":[
+      {"id":"strategy","title":"找次品与推理策略","objective":"能通过分组与记录减少查找次数，并说明推理过程。","teachingHint":"从较少物品开始操作，用树状图记录每次结果。","misconception":"只凭猜测而不覆盖所有可能。","activity":"用天平模拟寻找一件质量不同的物品。","check":"说明每次称量后剩余的可能性。"},
+      {"id":"review","title":"本册知识整理","objective":"能关联因数倍数、分数运算、立体图形和数据分析解决综合问题。","teachingHint":"按概念之间的关系组织复习，不只按单元刷题。","misconception":"忽略单位、整体或数据来源。","activity":"小组绘制本册知识图谱并设计一题。","check":"解释一道综合题使用了哪些知识及其联系。"}
+    ]}
+  ]
+}

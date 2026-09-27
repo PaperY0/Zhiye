@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { CalendarClock, Plus, Send, Users } from "lucide-react"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
-import type { Task, TaskStatus } from "../../../app/prototype/types"
+import type { Quiz, Task, TaskStatus } from "../../../app/prototype/types"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import {
   StatusChip,
@@ -28,8 +28,8 @@ const statusOptions: Array<{
 const taskTypeLabels: Record<Task["type"], string> = {
   review: "复习",
   practice: "练习",
-  quiz: "测验",
-  reading: "阅读",
+  quiz: "三题自检",
+  reading: "课堂热身",
 }
 
 function formatDueAt(value: string) {
@@ -53,11 +53,22 @@ function completionSummary(task: Task) {
 }
 
 export function TasksPage() {
-  const { tasks, students, addTask, updateTaskStatus } = usePrototype()
+  const { tasks, students, lessons, plans, quizzes, conversations, addTask, addQuiz, updateTaskStatus, updateTaskCompletion, sendMessage } = usePrototype()
+  const [initialPlanId, setInitialPlanId] = useState<string | null>(null)
+  const [initialLessonId, setInitialLessonId] = useState<string | null>(null)
   const [selectedStatus, setSelectedStatus] = useState<TaskStatus>("active")
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
+
+  useEffect(() => {
+    const source = window.sessionStorage.getItem("zhiye-task-source-plan")
+    const lessonSource = window.sessionStorage.getItem("zhiye-task-source-lesson")
+    window.sessionStorage.removeItem("zhiye-task-source-plan")
+    window.sessionStorage.removeItem("zhiye-task-source-lesson")
+    if (lessonSource && lessons.some((lesson) => lesson.id === lessonSource)) { setInitialLessonId(lessonSource); setCreateOpen(true) }
+    else if (source && plans.some((plan) => plan.id === source)) { setInitialPlanId(source); setCreateOpen(true) }
+  }, [])
 
   const counts = useMemo(
     () =>
@@ -85,8 +96,11 @@ export function TasksPage() {
     ])
   }
 
-  function handleCreate(task: Task) {
+  function handleCreate(task: Task, quiz?: Quiz) {
+    if (quiz) addQuiz(quiz)
     addTask(task)
+    setInitialPlanId(null)
+    setInitialLessonId(null)
     setSelectedStatus("draft")
     setCreateOpen(false)
     setSelectedTaskId(task.id)
@@ -110,9 +124,12 @@ export function TasksPage() {
   }
 
   function handleReminder(task: Task, unfinishedCount: number) {
+    const pending = task.completions.filter((item) => item.status === "not-started" || item.status === "in-progress")
+    const directChats = conversations.filter((item) => item.kind === "student" && pending.some((completion) => completion.studentId === item.boundStudentId))
+    directChats.forEach((chat) => sendMessage(chat.id, task.dueAt ? `提醒：${task.title} 将于 ${formatDueAt(task.dueAt)} 截止。如有困难，可以在这里告诉老师。` : `提醒：请完成“${task.title}”。如有困难，可以在这里告诉老师。`))
     showToast({
-      title: `已提醒 ${unfinishedCount} 名未完成学生`,
-      description: task.title,
+      title: directChats.length ? `已通过消息提醒 ${directChats.length} 名学生` : "暂无可发送的学生会话",
+      description: directChats.length < unfinishedCount ? `其余 ${unfinishedCount - directChats.length} 名学生尚无单独会话，请在消息页联系。` : task.title,
       tone: "info",
     })
   }
@@ -133,7 +150,7 @@ export function TasksPage() {
         </div>
         <button
           className="inline-flex items-center gap-2 rounded-full bg-[#183021] px-5 py-3 text-sm font-black text-white shadow-lg shadow-[#183021]/15 transition hover:-translate-y-0.5"
-          onClick={() => setCreateOpen(true)}
+          onClick={() => { setInitialPlanId(null); setInitialLessonId(null); setCreateOpen(true) }}
           type="button"
         >
           <Plus aria-hidden="true" size={18} />
@@ -202,11 +219,11 @@ export function TasksPage() {
                     <dt className="sr-only">发布对象</dt>
                     <dd>{task.audience.label}</dd>
                   </div>
-                  <div className="flex items-center gap-2">
+                  {task.dueAt && <div className="flex items-center gap-2">
                     <CalendarClock aria-hidden="true" size={16} />
                     <dt className="sr-only">截止时间</dt>
                     <dd>截止 {formatDueAt(task.dueAt)}</dd>
-                  </div>
+                  </div>}
                 </dl>
                 <div className="mt-auto pt-6">
                   {completion.total > 0 ? (
@@ -260,17 +277,24 @@ export function TasksPage() {
       <CreateTaskDialog
         open={createOpen}
         students={students}
+        lessons={lessons}
+        plans={plans}
+        quizzes={quizzes}
+        initialPlanId={initialPlanId}
+        initialLessonId={initialLessonId}
         taskCount={tasks.length}
-        onClose={() => setCreateOpen(false)}
+        onClose={() => { setCreateOpen(false); setInitialPlanId(null); setInitialLessonId(null) }}
         onCreate={handleCreate}
       />
       <TaskDetailDrawer
         open={selectedTask !== null}
         students={students}
+        quizzes={quizzes}
         task={selectedTask}
         onClose={() => setSelectedTaskId(null)}
         onReminder={handleReminder}
         onStatusChange={handleStatusChange}
+        onReviewCompletion={(task, studentId, score) => { updateTaskCompletion(task.id, studentId, "reviewed", typeof score === "number" && Number.isFinite(score) ? { score } : undefined); showToast({ title: "已记录教师查看结果", description: task.title, tone: "success" }) }}
       />
       <ToastRegion
         label="任务操作通知"

@@ -1,4 +1,5 @@
-import type { Student, Task, TaskStatus } from "../../../app/prototype/types"
+import { useState } from "react"
+import type { Quiz, Student, Task, TaskStatus } from "../../../app/prototype/types"
 import { Drawer } from "../../../components/shared/Drawer"
 import {
   StatusChip,
@@ -9,9 +10,11 @@ interface TaskDetailDrawerProps {
   open: boolean
   task: Task | null
   students: Student[]
+  quizzes?: Quiz[]
   onClose: () => void
   onStatusChange: (task: Task, status: TaskStatus) => void
   onReminder: (task: Task, unfinishedCount: number) => void
+  onReviewCompletion?: (task: Task, studentId: string, score?: number) => void
 }
 
 const completionLabels: Record<Task["completions"][number]["status"], string> =
@@ -45,10 +48,13 @@ export function TaskDetailDrawer({
   open,
   task,
   students,
+  quizzes = [],
   onClose,
   onStatusChange,
   onReminder,
+  onReviewCompletion,
 }: TaskDetailDrawerProps) {
+  const [scores, setScores] = useState<Record<string, string>>({})
   if (!task) {
     return (
       <Drawer onClose={onClose} open={false} title="任务详情">
@@ -74,6 +80,7 @@ export function TaskDetailDrawer({
   const studentNames = new Map(
     students.map((student) => [student.id, student.name]),
   )
+  const quiz = quizzes.find((item) => item.id === task.sourceQuizId)
 
   return (
     <Drawer onClose={onClose} open={open} title={task.title}>
@@ -117,8 +124,9 @@ export function TaskDetailDrawer({
               <p className="mt-2 font-bold leading-7 text-[#544b31]">{task.successCriteria}</p>
             </div>
           ) : null}
+          {quiz && <section className="mt-4 rounded-[22px] border border-[#dce6db] bg-white/70 p-4" aria-label="三道测试题预览"><h3 className="font-black">三道测试题</h3><ol className="mt-3 grid gap-3">{quiz.questions.map((question, index) => <li className="rounded-xl bg-[#f2f6f0] p-3 text-sm" key={question.id}><p className="font-bold">{index + 1}. {question.prompt}</p>{question.options.length > 0 && <p className="mt-2 text-[#627469]">{question.options.join(" · ")}</p>}<p className="mt-2 text-[#395742]">参考答案：{Array.isArray(question.answer) ? question.answer.join("、") : question.answer}</p>{question.explanation && <p className="mt-1 text-[#627469]">{question.explanation}</p>}</li>)}</ol></section>}
           <dl className="mt-5 grid gap-3 rounded-[22px] bg-white/55 p-4 text-sm sm:grid-cols-2">
-            <div>
+            {task.dueAt && <div>
               <dt className="font-bold text-[#718076]">截止时间</dt>
               <dd className="mt-1 font-black">
                 {new Intl.DateTimeFormat("zh-CN", {
@@ -130,11 +138,7 @@ export function TaskDetailDrawer({
                   timeZone: "Asia/Shanghai",
                 }).format(new Date(task.dueAt))}
               </dd>
-            </div>
-            <div>
-              <dt className="font-bold text-[#718076]">提醒方式</dt>
-              <dd className="mt-1 font-black">{task.reminder}</dd>
-            </div>
+            </div>}
             {task.submissionMode ? (
               <div>
                 <dt className="font-bold text-[#718076]">学习证据</dt>
@@ -198,11 +202,13 @@ export function TaskDetailDrawer({
               <ul className="mt-4 grid gap-2">
                 {task.completions.map((completion) => (
                   <li
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-white/80 bg-white/45 px-4 py-3"
+                    className="rounded-2xl border border-white/80 bg-white/45 px-4 py-3"
                     key={completion.studentId}
                   >
-                    <span className="font-bold">
+                    <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 font-bold">
                       {studentNames.get(completion.studentId) ?? "学生"}
+                      {completion.responseText && <span className="mt-1 block whitespace-pre-wrap text-xs font-normal text-[#627469]">{completion.responseText}</span>}
                     </span>
                     <div className="flex items-center gap-2">
                       {typeof completion.score === "number" ? (
@@ -214,6 +220,9 @@ export function TaskDetailDrawer({
                         {completionLabels[completion.status]}
                       </StatusChip>
                     </div>
+                    </div>
+                    {quiz && completion.answers && <details className="mt-2 text-xs"><summary className="cursor-pointer font-bold text-[#416449]">查看测验作答与参考答案</summary><ol className="mt-2 grid gap-2">{quiz.questions.map((question) => <li key={question.id}><strong>{question.prompt}</strong><p>学生：{completion.answers?.[question.id] ?? "未作答"}</p><p>参考：{Array.isArray(question.answer) ? question.answer.join("、") : question.answer}</p><p>{question.explanation}</p></li>)}</ol></details>}
+                    {completion.status === "submitted" && onReviewCompletion && <div className="mt-3 flex flex-wrap items-end gap-2"><label className="text-xs font-bold">总分<input aria-label={`评分${studentNames.get(completion.studentId) ?? "学生"}`} className="ml-2 w-20 rounded-lg border border-[#c9d6cb] px-2 py-1" min="0" type="number" value={scores[completion.studentId] ?? String(completion.score ?? "")} onChange={(event) => setScores((current) => ({ ...current, [completion.studentId]: event.target.value }))} /></label><button className="rounded-full bg-[#183021] px-3 py-1.5 text-xs font-bold text-white" onClick={() => onReviewCompletion(task, completion.studentId, scores[completion.studentId] === undefined ? completion.score : Number(scores[completion.studentId]))} type="button">完成查看</button></div>}
                   </li>
                 ))}
               </ul>

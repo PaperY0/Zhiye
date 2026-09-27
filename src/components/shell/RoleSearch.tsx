@@ -89,7 +89,7 @@ export function RoleSearch({
       <button
         aria-label={iconOnly ? "搜索当前空间" : undefined}
         className={iconOnly
-          ? "grid size-11 place-items-center rounded-full border border-white/85 bg-white/88 text-[#45624d] shadow-[0_12px_30px_rgba(36,62,43,.15)] backdrop-blur-xl"
+          ? "grid size-11 place-items-center rounded-full border border-[#dce6db] bg-[#f9fbf8] text-[#45624d] shadow-sm"
           : compact
           ? "flex min-h-12 w-full items-center gap-3 rounded-[16px] bg-white/70 px-4 text-left text-sm font-black text-[#526158]"
           : "flex min-h-11 w-full items-center gap-3 rounded-[16px] border border-white/80 bg-white/55 px-3 text-left text-sm font-bold text-[#627468] hover:bg-white/75"}

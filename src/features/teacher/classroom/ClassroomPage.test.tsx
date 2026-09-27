@@ -43,6 +43,11 @@ function LessonStatuses() {
   )
 }
 
+function LessonChapters() {
+  const { lessons } = usePrototype()
+  return <output data-testid="lesson-chapters">{lessons.map((lesson) => `${lesson.id}:${lesson.progress.chapter}`).join("|")}</output>
+}
+
 function DraftReadyLessonIds() {
   const { lessons } = usePrototype()
   return (

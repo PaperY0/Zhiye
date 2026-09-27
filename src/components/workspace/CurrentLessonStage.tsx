@@ -99,7 +99,7 @@ export default function CurrentLessonStage({ onNavigate = () => undefined }: { o
         </div>
         <div className="workspace-recap-actions mt-7 flex flex-wrap items-center justify-between gap-4 border-t border-[#34583d]/10 pt-5">
           <button className="workspace-tertiary-action" onClick={() => onNavigate({ role: "teacher", page: "lesson-detail", lessonId: lesson.id })} type="button"><Waves aria-hidden="true" className="h-4 w-4" />查看课堂依据</button>
-          <button className="workspace-primary-action" onClick={() => onNavigate({ role: "teacher", page: "lesson-detail", lessonId: lesson.id })} type="button">审核并发布<ArrowRight aria-hidden="true" className="h-4 w-4" /></button>
+          <button className="workspace-primary-action" onClick={() => onNavigate({ role: "teacher", page: "lesson-detail", lessonId: lesson.id })} type="button">查看并发布<ArrowRight aria-hidden="true" className="h-4 w-4" /></button>
         </div>
       </section>
     </section>

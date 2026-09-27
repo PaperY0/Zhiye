@@ -38,15 +38,12 @@ describe("WorkspaceScreen", () => {
     )
 
     expect(screen.getByText("五年级（2）班")).toBeInTheDocument()
-    expect(
-      screen.getByRole("searchbox", { name: "搜索课堂、学生或知识点" }),
-    ).toBeInTheDocument()
     expect(screen.getByText("现在要做")).toBeInTheDocument()
     expect(
       screen.getByRole("heading", { name: "审核课堂复盘" }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole("button", { name: "审核并发布" }),
+      screen.getByRole("button", { name: "查看并发布" }),
     ).toBeInTheDocument()
     expect(screen.queryByLabelText("课堂回响处理进度")).not.toBeInTheDocument()
   })
@@ -96,7 +93,7 @@ describe("WorkspaceScreen", () => {
     expect(screen.getByText("班级动态")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "查看班级动态" })).toHaveTextContent("单位换算")
     expect(screen.getByTestId("workspace-content-row")).toHaveClass(
-      "app-split-layout-fill",
+      "app-split-layout",
     )
     expect(
       screen.getByRole("complementary", { name: "待办与班级动态" }),
@@ -118,28 +115,6 @@ describe("WorkspaceScreen", () => {
     expect(screen.queryByText("分子和分母同时乘或除以相同的数，分数的大小不变。")).not.toBeInTheDocument()
     expect(screen.getByRole("heading", { name: "开始下一节课堂" })).toBeInTheDocument()
     expect(screen.getByText("小数乘法估算")).toBeInTheDocument()
-  })
-
-  it("searches real workspace data and opens the selected source", async () => {
-    const user = userEvent.setup()
-    const onNavigate = vi.fn()
-    render(
-      <PrototypeProvider persist={false}>
-        <WorkspaceScreen onNavigate={onNavigate} />
-      </PrototypeProvider>,
-    )
-
-    await user.type(
-      screen.getByRole("searchbox", { name: "搜索课堂、学生或知识点" }),
-      "分数",
-    )
-    await user.click(screen.getByRole("button", { name: "打开分数的基本性质" }))
-
-    expect(onNavigate).toHaveBeenCalledWith({
-      role: "teacher",
-      page: "lesson-detail",
-      lessonId: "lesson-fractions",
-    })
   })
 
   it("connects classroom evidence to the lesson detail", async () => {
@@ -167,7 +142,7 @@ describe("WorkspaceScreen", () => {
       </PrototypeProvider>,
     )
 
-    expect(screen.queryByRole("button", { name: "审核并发布" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "查看并发布" })).not.toBeInTheDocument()
     expect(
       screen.getByRole("button", { name: "开始课堂录音" }),
     ).toBeInTheDocument()

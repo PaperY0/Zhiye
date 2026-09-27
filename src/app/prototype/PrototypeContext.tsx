@@ -50,6 +50,7 @@ import type {
 } from "./types"
 
 export type PrototypeContextValue = {
+  storageError: string | null
   lessons: Lesson[]
   students: Student[]
   signals: KnowledgeSignal[]
@@ -71,7 +72,7 @@ export type PrototypeContextValue = {
     suggestionId: string,
     status: Lesson["suggestions"][number]["status"],
   ): void
-  updateLessonProgress(id: string, completedPercent: number, nextStep: string): void
+  updateLessonProgress(id: string, completedPercent: number, nextStep: string, chapter?: string): void
   publishLesson(id: string, recap?: string): void
   updateLessonRecap(id: string, recap: string): void
   updateLessonAnalysis(
@@ -85,6 +86,7 @@ export type PrototypeContextValue = {
     progressSuggestion: string,
     evidence: string[],
     title: string,
+    chapter?: string,
   ): void
   deleteLesson(id: string): void
   addStudent(student: Student): void
@@ -109,6 +111,7 @@ export type PrototypeContextValue = {
     taskId: string,
     studentId: string,
     status: Task["completions"][number]["status"],
+    result?: Partial<Pick<Task["completions"][number], "score" | "answers" | "responseText">>,
   ): void
   sendMessage(
     id: string,
@@ -265,6 +268,7 @@ export function PrototypeProvider({
   const [recapJobs, setRecapJobs] = useState(() =>
     cloneFixture(persisted?.recapJobs ?? []),
   )
+  const [storageError, setStorageError] = useState<string | null>(null)
   const skipNextSyncPublishRef = useRef(false)
 
   useEffect(() => {
@@ -289,9 +293,10 @@ export function PrototypeProvider({
         recapJobs,
       }
       window.localStorage.setItem(storageKey, JSON.stringify(snapshot))
+      setStorageError(null)
       publishPrototypeSync(storageKey, snapshot)
     } catch {
-      // Storage is best-effort in the prototype; in-memory state remains usable.
+      setStorageError("浏览器本地存储失败。当前修改只在本次打开期间可见，请检查可用空间或浏览器存储权限。")
     }
   }, [auditEvents, conversations, learningTopics, lessons, parentSummary, persist, plans, quizzes, recapJobs, safetyCases, signals, students, tasks])
 
@@ -317,6 +322,7 @@ export function PrototypeProvider({
 
   const value = useMemo<PrototypeContextValue>(
     () => ({
+      storageError,
       lessons,
       students,
       signals,
@@ -350,7 +356,7 @@ export function PrototypeProvider({
             transcript: [],
             suggestions: [],
             progress: {
-              chapter: defaults?.chapter?.trim() || "待识别",
+              chapter: defaults?.chapter?.trim() || "待确认",
               completedPercent: 0,
               nextStep: "等待课堂内容整理",
             },
@@ -395,7 +401,7 @@ export function PrototypeProvider({
           ),
         )
       },
-      updateLessonProgress(id, completedPercent, nextStep) {
+      updateLessonProgress(id, completedPercent, nextStep, chapter) {
         setLessons((current) =>
           current.map((lesson) =>
             lesson.id === id
@@ -403,6 +409,7 @@ export function PrototypeProvider({
                   ...lesson,
                   progress: {
                     ...lesson.progress,
+                    chapter: chapter?.trim() || lesson.progress.chapter,
                     completedPercent: Math.min(100, Math.max(0, completedPercent)),
                     nextStep: nextStep.trim(),
                   },
@@ -442,6 +449,7 @@ export function PrototypeProvider({
         progressSuggestion,
         evidence,
         title,
+        chapter,
       ) {
         const requireReview = getTeacherSettings().requireReviewBeforePublish
         const analysis = {
@@ -476,6 +484,9 @@ export function PrototypeProvider({
                   durationMinutes: Math.max(1, Math.ceil(durationMinutes)),
                   progress: {
                     ...lesson.progress,
+                    chapter: lesson.progress.chapter === "待确认" || lesson.progress.chapter === "待识别"
+                      ? chapter?.trim() || recapTags[0]?.trim() || title.trim()
+                      : lesson.progress.chapter,
                     nextStep,
                   },
                 }
@@ -534,10 +545,12 @@ export function PrototypeProvider({
         )
       },
       updateQuiz(id, patch) {
+        if (tasks.some((task) => task.sourceQuizId === id)) return
         setQuizzes((current) => current.map((quiz) =>
           quiz.id === id ? { ...quiz, ...cloneFixture(patch), id } : quiz))
       },
       deleteQuiz(id) {
+        if (tasks.some((task) => task.sourceQuizId === id)) return
         setQuizzes((current) => current.filter((quiz) => quiz.id !== id))
       },
       addTask(task) {
@@ -558,7 +571,7 @@ export function PrototypeProvider({
           current.map((task) => (task.id === id ? { ...task, status } : task)),
         )
       },
-      updateTaskCompletion(taskId, studentId, status) {
+      updateTaskCompletion(taskId, studentId, status, result) {
         const updatedAt = new Date().toISOString()
         setTasks((current) =>
           current.map((task) => {
@@ -574,6 +587,7 @@ export function PrototypeProvider({
                       ? {
                           ...completion,
                           status,
+                          ...(result ?? {}),
                           updatedAt,
                           submittedAt:
                             status === "submitted" || status === "reviewed"
@@ -584,7 +598,7 @@ export function PrototypeProvider({
                   )
                 : [
                     ...task.completions,
-                    { studentId, status },
+                    { studentId, status, ...(result ?? {}) },
                   ],
             }
           }),
@@ -819,6 +833,7 @@ export function PrototypeProvider({
       signals,
       learningTopics,
       students,
+      storageError,
       tasks,
     ],
   )

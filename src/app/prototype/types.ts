@@ -111,6 +111,8 @@ export type Student = {
 
 export type KnowledgeSignal = {
   id: string
+  className?: string
+  sourceLessonId?: string
   subject: Subject
   knowledgePoint: string
   step: string
@@ -133,6 +135,9 @@ export type LearningTopic = {
 
 export type PlanDraft = {
   id: string
+  teachingAidId?: string
+  teachingAidUnitId?: string
+  teachingAidTopicId?: string
   title: string
   subject: Subject
   grade: string
@@ -145,6 +150,9 @@ export type PlanDraft = {
   misconceptions: string[]
   suggestions: string[]
   extension: string
+  durationMinutes?: number
+  materials?: string
+  assessment?: string
   status: "draft" | "ready" | "published"
   createdAt: string
 }
@@ -161,6 +169,7 @@ export type QuizQuestion = {
 
 export type Quiz = {
   id: string
+  sourcePlanId?: string
   title: string
   subject: Subject
   lessonId?: string
@@ -177,12 +186,17 @@ export type TaskCompletion = {
   submittedAt?: string
   updatedAt?: string
   score?: number
+  answers?: Record<string, string>
+  responseText?: string
 }
 
 export type Task = {
   id: string
   title: string
   type: "review" | "practice" | "quiz" | "reading"
+  sourcePlanId?: string
+  sourceQuizId?: string
+  sourceLessonId?: string
   objective?: string
   successCriteria?: string
   content: string
@@ -194,7 +208,7 @@ export type Task = {
     label: string
     studentIds: string[]
   }
-  dueAt: string
+  dueAt?: string
   reminder: string
   status: TaskStatus
   completions: TaskCompletion[]

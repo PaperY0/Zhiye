@@ -1,9 +1,6 @@
 import {
   ArrowRight,
   Building2,
-  CalendarClock,
-  KeyRound,
-  Link2,
   School,
   ShieldAlert,
   SlidersHorizontal,
@@ -47,7 +44,7 @@ export function AdminHomePage({ onNavigate }: AdminHomePageProps) {
   const metricCards = [
     { label: "学校", value: "1", detail: settings.schoolName, icon: Building2 },
     { label: "班级", value: String(classNames.length), detail: classNames.join("、") || "尚未创建班级", icon: School },
-    { label: "教师", value: String(settings.teacherCount), detail: "可在学校设置中修改", icon: UsersRound },
+    { label: "学生", value: String(students.length), detail: "当前本机学生档案", icon: UsersRound },
   ]
   const pendingSafetyCases = safetyCases.filter(
     ({ status }) => status === "new" || status === "reviewing",
@@ -65,7 +62,7 @@ export function AdminHomePage({ onNavigate }: AdminHomePageProps) {
             学校管理概览
           </h1>
           <p className="role-page-description">
-            汇总学校组织、接入凭据、数据留存和需要人工核实的保护性反馈入口。
+            查看当前学校资料、学生档案与需要人工核实的保护性反馈。
           </p>
         </div>
         <NavigationButton
@@ -135,73 +132,13 @@ export function AdminHomePage({ onNavigate }: AdminHomePageProps) {
           </div>
         </GlassSurface>
 
-        <GlassSurface
-          aria-label="数据留存摘要"
-          className="rounded-[28px] p-5 sm:p-6"
-          role="region"
-        >
-          <div className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-2xl bg-[#e7eee5] text-[#58735e]">
-              <CalendarClock aria-hidden="true" size={21} />
-            </span>
-            <div>
-              <h2 className="text-lg font-black text-[#17251c]">
-                数据留存摘要
-              </h2>
-              <p className="mt-1 text-sm text-[#728178]">当前原型策略</p>
-            </div>
-          </div>
-          <dl className="mt-5 divide-y divide-[#385443]/10 rounded-[20px] border border-white/75 bg-white/42 px-4">
-            <div className="flex items-center justify-between gap-4 py-4">
-              <dt className="text-sm font-bold text-[#33483a]">课堂原始音频</dt>
-              <dd className="text-sm font-black text-[#173022]">{settings.retentionDays} 天</dd>
-            </div>
-            <div className="flex items-center justify-between gap-4 py-4">
-              <dt className="text-sm font-bold text-[#33483a]">AI 生成内容</dt>
-              <dd className="text-sm font-black text-[#173022]">{settings.aiContentDays} 天</dd>
-            </div>
-            <div className="flex items-center justify-between gap-4 py-4">
-              <dt className="text-sm font-bold text-[#33483a]">审计记录</dt>
-              <dd className="text-sm font-black text-[#173022]">{settings.auditDays} 天</dd>
-            </div>
-          </dl>
+        <GlassSurface aria-label="保护性反馈联系人" className="rounded-[28px] p-5 sm:p-6" role="region">
+          <h2 className="text-lg font-black text-[#17251c]">保护性反馈联系人</h2>
+          <p className="mt-2 text-sm text-[#728178]">人工核实与升级处理时使用</p>
+          <dl className="mt-5 grid gap-3 text-sm"><div><dt className="text-[#718076]">主要联系人</dt><dd className="font-black">{settings.primaryContact}</dd></div><div><dt className="text-[#718076]">备用联系人</dt><dd className="font-black">{settings.backupContact}</dd></div><div><dt className="text-[#718076]">升级联系人</dt><dd className="font-black">{settings.escalationContact}</dd></div></dl>
         </GlassSurface>
       </div>
 
-      <GlassSurface
-        aria-label="邀请码与绑定码"
-        className="mt-5 rounded-[28px] p-5 sm:p-6"
-        role="region"
-      >
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="text-xl font-black text-[#17251c]">
-              邀请码与绑定码
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-[#6d7e73]">
-              用于演示教师加入学校与班级绑定。代码不会在真实系统中生效。
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="min-w-[220px] rounded-[20px] border border-white/80 bg-white/48 px-4 py-3">
-              <p className="flex items-center gap-2 text-xs font-bold text-[#708176]">
-                <KeyRound aria-hidden="true" size={15} /> 学校邀请码
-              </p>
-              <strong className="mt-2 block font-mono text-lg text-[#183023]">
-                {settings.invitationCode}
-              </strong>
-            </div>
-            <div className="min-w-[220px] rounded-[20px] border border-white/80 bg-white/48 px-4 py-3">
-              <p className="flex items-center gap-2 text-xs font-bold text-[#708176]">
-                <Link2 aria-hidden="true" size={15} /> 五年级（2）班绑定码
-              </p>
-              <strong className="mt-2 block font-mono text-lg text-[#183023]">
-                {settings.bindingCode}
-              </strong>
-            </div>
-          </div>
-        </div>
-      </GlassSurface>
     </div>
   )
 }

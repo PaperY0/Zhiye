@@ -3,6 +3,7 @@ import { teacherSettingsForAi } from "../features/teacher/settings/teacherSettin
 
 export type GenerationKind =
   | "lesson-plan"
+  | "task-draft"
   | "quiz"
   | "remedial-plan"
   | "learning-reply"

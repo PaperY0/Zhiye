@@ -27,7 +27,7 @@ it("connects workspace navigation cards to teacher routes", async () => {
   )
   expect(onNavigate).toHaveBeenLastCalledWith({ role: "teacher", page: "classroom" })
 
-  await user.click(screen.getByRole("button", { name: "审核并发布" }))
+  await user.click(screen.getByRole("button", { name: "查看并发布" }))
   expect(onNavigate).toHaveBeenLastCalledWith({
     role: "teacher",
     page: "lesson-detail",
@@ -36,4 +36,12 @@ it("connects workspace navigation cards to teacher routes", async () => {
 
   await user.click(screen.getByRole("button", { name: "查看班级动态" }))
   expect(onNavigate).toHaveBeenLastCalledWith({ role: "teacher", page: "insights" })
+
+  const sidebar = document.querySelector(".role-sidebar")
+  expect(sidebar).not.toBeNull()
+  await user.click(within(sidebar as HTMLElement).getByRole("button", { name: "搜索当前空间" }))
+  const search = screen.getByRole("dialog", { name: "搜索" })
+  await user.type(within(search).getByRole("searchbox", { name: "全局搜索" }), "分数")
+  await user.click(within(search).getByRole("button", { name: /分数的基本性质/ }))
+  expect(onNavigate).toHaveBeenLastCalledWith({ role: "teacher", page: "lesson-detail", lessonId: "lesson-fractions" })
 })

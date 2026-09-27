@@ -27,6 +27,67 @@ def test_quiz_rejects_less_than_three_questions():
         )
 
 
+def test_task_draft_uses_a_validated_context_and_response(monkeypatch):
+    request = GenerateRequest(kind="task-draft", context={
+        "title": "分数练习", "objective": "解释分数", "sourcePlan": "先画图",
+        "learningEvidence": ["通分有困难"], "taskType": "practice",
+    })
+    monkeypatch.setattr(generation, "call_deepseek", lambda _: json.dumps({
+        "title": "分数练习", "objective": "解释分数", "successCriteria": "完成两题",
+        "content": "先画图再计算", "supportNote": "可看示例",
+    }, ensure_ascii=False))
+    assert generate_draft(request)["successCriteria"] == "完成两题"
+
+
+def test_task_draft_retries_incomplete_output_and_preserves_camel_case(monkeypatch):
+    request = GenerateRequest(kind="task-draft", context={
+        "title": "分数练习", "objective": "解释分数", "sourcePlan": "先画图",
+        "learningEvidence": [], "taskType": "practice",
+    })
+    calls = []
+
+    def fake_call(body):
+        calls.append(body)
+        if len(calls) == 1:
+            return '{"title":"分数练习","objective":"解释分数"}'
+        return json.dumps({
+            "title": "分数练习", "objective": "解释分数",
+            "success_criteria": "画图并解释", "content": "先画图，再用一句话解释",
+            "support_note": "可以用分数条",
+        }, ensure_ascii=False)
+
+    monkeypatch.setattr(generation, "call_deepseek", fake_call)
+    result = generate_draft(request)
+    assert result["successCriteria"] == "画图并解释"
+    assert result["supportNote"] == "可以用分数条"
+    assert len(calls) == 2
+    assert calls[0]["max_tokens"] == 2000
+    assert calls[1]["temperature"] == 0
+    assert "content 是可直接交给学生的任务说明" in calls[0]["messages"][0]["content"]
+
+
+def test_lesson_plan_retries_a_truncated_response_once(monkeypatch):
+    request = GenerateRequest(kind="lesson-plan", context={
+        "textbook": "人教版数学五年级", "chapter": "小数乘法",
+        "objective": "解释算理", "context": "购物", "evidence": ["本次不使用课堂证据"],
+        "teachingAid": "先估算再计算",
+    })
+    calls = []
+    valid = {"title": "小数乘法", "outline": ["操作"], "examples": ["购物"],
+             "misconceptions": ["小数点位置"], "suggestions": ["估算"], "extension": "自检"}
+
+    def fake_call(body):
+        calls.append(body)
+        return '{"title":"未完成"' if len(calls) == 1 else json.dumps(valid, ensure_ascii=False)
+
+    monkeypatch.setattr(generation, "call_deepseek", fake_call)
+    assert generate_draft(request)["title"] == "小数乘法"
+    assert len(calls) == 2
+    assert calls[0]["max_tokens"] == 3200
+    assert calls[1]["temperature"] == 0
+    assert "teachingAid" in calls[1]["messages"][1]["content"]
+
+
 def test_unexpected_model_json_is_rejected(monkeypatch):
     monkeypatch.setattr(generation, "call_deepseek", lambda _: '{"unsafe": true}')
 

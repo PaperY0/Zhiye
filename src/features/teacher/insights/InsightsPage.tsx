@@ -1,573 +1,195 @@
-import { useMemo, useState } from "react"
-
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  BookOpenCheck,
-  CalendarRange,
-  ChartNoAxesCombined,
-  Lightbulb,
-  Sparkles,
-  UsersRound,
-} from "lucide-react"
-
+import { useMemo, useState, type FormEvent } from "react"
+import { ArrowRight, BookOpen, ClipboardList, Plus, Sparkles } from "lucide-react"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
-import { generateDraft } from "../../../services/localAi"
-import { aggregateTaskFeedback } from "../../../services/learningFeedback"
-
-import type { KnowledgeSignal, Subject } from "../../../app/prototype/types"
-
+import type { KnowledgeSignal, Subject, Task } from "../../../app/prototype/types"
+import { navigate } from "../../../app/routes"
 import { Drawer } from "../../../components/shared/Drawer"
-
-import { EmptyState } from "../../../components/shared/EmptyState"
-
-import { FilterBar } from "../../../components/shared/FilterBar"
-
-import { GlassSurface } from "../../../components/shared/GlassSurface"
-
-import {
-  StatusChip,
-  type StatusTone,
-} from "../../../components/shared/StatusChip"
-
-import { KnowledgeHeatmap, getSignalAxis } from "./KnowledgeHeatmap"
+import { generateDraft } from "../../../services/localAi"
+import { getGradeFromClassName, useTeacherSettings } from "../settings/teacherSettings"
 import { toQuiz, toRemedialPlanDraft } from "../planning/generators"
+import { buildInsightData, type InsightRange, type InsightSubject } from "./insightData"
 
-type TimeRange = "today" | "week" | "month"
+const severityLabels = { watch: "持续观察", attention: "需要关注", priority: "优先处理" } as const
+const severityStyles = { watch: "bg-[#edf4ee] text-[#496b52]", attention: "bg-[#fff4dc] text-[#806222]", priority: "bg-[#fff0e8] text-[#9a5138]" } as const
+const taskStatusLabels = { draft: "草稿", active: "进行中", review: "待查看", completed: "已完成" } as const
 
-type SubjectFilter = "all" | Subject
-
-const severityMeta: Record<KnowledgeSignal["severity"], {
-  label: string
-  tone: StatusTone
-}> = {
-  watch: { label: "持续观察", tone: "info" },
-
-  attention: { label: "需要关注", tone: "warning" },
-
-  priority: { label: "优先处理", tone: "critical" },
+type ObservationForm = {
+  subject: Subject
+  knowledgePoint: string
+  step: string
+  severity: KnowledgeSignal["severity"]
+  affectedCount: number
+  affectedStudentIds: string[]
+  evidenceText: string
+  sourceLessonId: string
 }
 
-function matchesTime(signal: KnowledgeSignal, range: TimeRange, referenceDate: string) {
-  if (range === "today") return signal.observedAt.startsWith(referenceDate)
-
-  return true
+function formFromSignal(signal?: KnowledgeSignal): ObservationForm {
+  return {
+    subject: signal?.subject ?? "数学",
+    knowledgePoint: signal?.knowledgePoint ?? "",
+    step: signal?.step ?? "",
+    severity: signal?.severity ?? "watch",
+    affectedCount: signal?.affectedCount ?? 0,
+    affectedStudentIds: signal?.affectedStudentIds ?? [],
+    evidenceText: signal?.evidence.join("\n") ?? "",
+    sourceLessonId: signal?.sourceLessonId ?? "",
+  }
 }
 
-function metricTrend(signals: KnowledgeSignal[]) {
-  if (signals.length === 0) return 0
-
-  return signals.reduce((total, signal) => {
-    const first = signal.trend.at(0) ?? 0
-
-    const last = signal.trend.at(-1) ?? first
-
-    return total + last - first
-  }, 0)
+function formatDate(value: string) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "numeric", day: "numeric", timeZone: "Asia/Shanghai" }).format(date)
 }
 
-function TrendChart({ signals }: { signals: KnowledgeSignal[] }) {
-  const points = useMemo(() => {
-    if (signals.length === 0) return []
+function taskCounts(task: Task) {
+  return {
+    submitted: task.completions.filter((item) => item.status === "submitted" || item.status === "reviewed").length,
+    reviewed: task.completions.filter((item) => item.status === "reviewed").length,
+    total: task.completions.length,
+  }
+}
 
-    const values = Array.from({ length: 5 }, (_, index) =>
-      Math.max(...signals.map((signal) => signal.trend[index] ?? 0)),
-    )
+function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return <div className="min-h-32 rounded-[22px] border border-[#dce6dc] bg-white p-5"><p className="text-xs font-bold text-[#66806b]">{label}</p><strong className="mt-2 block text-2xl font-black">{value}</strong><p className="mt-2 text-xs leading-5 text-[#718076]">{detail}</p></div>
+}
 
-    const max = Math.max(...values, 1)
-
-    return values.map((value, index) => ({
-      value,
-
-      x: 22 + index * 84,
-
-      y: 132 - (value / max) * 96,
-    }))
-  }, [signals])
-
-  const path = points.map((point) => `${point.x},${point.y}`).join(" ")
-
-  const primary = signals[0]
-
-  return (
-    <GlassSurface className="p-5 sm:p-6" weight="light">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-black tracking-[0.12em] text-[#617265]">
-            变化趋势
-          </p>
-          <h2 className="mt-2 text-xl font-black text-[#17231b]">
-            近五次学习活动
-          </h2>
-        </div>
-        <StatusChip tone="info">按最高受影响人数</StatusChip>
-      </div>
-      {primary ? (
-        <>
-          <svg
-            aria-label="困难信号近五次变化趋势"
-            className="mt-5 h-44 w-full overflow-visible"
-            role="img"
-            viewBox="0 0 380 160"
-          >
-            <defs>
-              <linearGradient id="insight-area" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0" stopColor="#668c6f" stopOpacity=".34" />
-                <stop offset="1" stopColor="#668c6f" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            {[36, 84, 132].map((y) => (
-              <line
-                key={y}
-                stroke="rgba(54,83,61,.12)"
-                x1="22"
-                x2="358"
-                y1={y}
-                y2={y}
-              />
-            ))}
-            <polygon
-              fill="url(#insight-area)"
-              points={`22,140 ${path} 358,140`}
-            />
-            <polyline
-              fill="none"
-              points={path}
-              stroke="#416b4d"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="4"
-            />
-            {points.map((point, index) => (
-              <g key={`${point.x}-${point.y}`}>
-                <circle
-                  cx={point.x}
-                  cy={point.y}
-                  fill="#f8fbf7"
-                  r="7"
-                  stroke="#416b4d"
-                  strokeWidth="3"
-                />
-                <text
-                  fill="#53665a"
-                  fontSize="11"
-                  textAnchor="middle"
-                  x={point.x}
-                  y="156"
-                >
-                  第 {index + 1} 次
-                </text>
-              </g>
-            ))}
-          </svg>
-          <p className="mt-1 text-sm font-semibold text-[#607166]">
-            {primary.trend.join(" → ")} 名学生
-          </p>
-        </>
-      ) : (
-        <p className="mt-8 text-sm text-[#68796d]">当前筛选下暂无趋势数据。</p>
-      )}
-    </GlassSurface>
-  )
+function EmptyCopy({ title, detail }: { title: string; detail: string }) {
+  return <div className="py-8 text-center"><strong className="text-sm">{title}</strong><p className="mt-2 text-sm leading-6 text-[#718076]">{detail}</p></div>
 }
 
 export function InsightsPage() {
-  const { signals, tasks, addPlan, addQuiz, addSignal, deleteSignal, updateSignal } = usePrototype()
-
-  const [timeRange, setTimeRange] = useState<TimeRange>("week")
-
-  const [subject, setSubject] = useState<SubjectFilter>("all")
-
-  const [selectedSignal, setSelectedSignal] = useState<KnowledgeSignal | null>(
-    null,
-  )
-
+  const { currentClass } = useTeacherSettings()
+  const { signals, lessons, tasks, students, addSignal, updateSignal, deleteSignal, addPlan, addQuiz } = usePrototype()
+  const [range, setRange] = useState<InsightRange>("all")
+  const [subject, setSubject] = useState<InsightSubject>("all")
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState<ObservationForm>(() => formFromSignal())
+  const [formError, setFormError] = useState("")
+  const [actionError, setActionError] = useState("")
+  const [busy, setBusy] = useState<"plan" | "quiz" | null>(null)
   const [notice, setNotice] = useState("")
-  const [generationError, setGenerationError] = useState<{
-    action: "plan" | "quiz"
-    message: string
-  } | null>(null)
-  const [generatingAction, setGeneratingAction] = useState<"plan" | "quiz" | null>(null)
-  const referenceDate = useMemo(() => signals.map((signal) => signal.observedAt.slice(0, 10)).sort().at(-1) ?? new Date().toISOString().slice(0, 10), [signals])
 
-  const filteredSignals = useMemo(
-    () =>
-      signals.filter(
-        (signal) =>
-          matchesTime(signal, timeRange, referenceDate) &&
-          (subject === "all" || signal.subject === subject),
-      ),
+  const data = useMemo(() => buildInsightData({ signals, lessons, tasks, students, className: currentClass, subject, range }), [signals, lessons, tasks, students, currentClass, subject, range])
+  const classStudents = students.filter((student) => student.className === currentClass)
+  const classLessons = lessons.filter((lesson) => lesson.className === currentClass && (lesson.evidence?.length || lesson.teacherReport)).sort((a, b) => Date.parse(b.date) - Date.parse(a.date))
+  const selected = editingId && editingId !== "new" ? signals.find((item) => item.id === editingId) : undefined
+  const sourceLesson = selected?.sourceLessonId ? lessons.find((lesson) => lesson.id === selected.sourceLessonId) : undefined
+  const evidence = form.evidenceText.split("\n").map((item) => item.trim()).filter(Boolean)
+  const knownIds = form.affectedStudentIds.filter((id) => classStudents.some((student) => student.id === id))
 
-    [referenceDate, signals, subject, timeRange],
-  )
-
-  const affectedCount = filteredSignals.reduce(
-    (largest, signal) => Math.max(largest, signal.affectedCount),
-
-    0,
-  )
-
-  const priorityCount = filteredSignals.filter(
-    (signal) => signal.severity === "priority",
-  ).length
-
-  const trendDelta = metricTrend(filteredSignals)
-  const feedback = useMemo(() => aggregateTaskFeedback(tasks), [tasks])
-  const latestFeedback = feedback[0]
-  const nextLessonDraft = latestFeedback?.signal === "needs-practice"
-    ? `下一课教师草稿：针对“${latestFeedback.title}”中未完成的步骤，先用课堂证据复盘，再安排一道同类变式题。`
-    : "下一课教师草稿：当前练习完成节奏稳定，可继续观察课堂中的关键条件。"
-
+  function openNew() {
+    setEditingId("new"); setForm(formFromSignal()); setFormError(""); setActionError("")
+  }
+  function openSignal(signal: KnowledgeSignal) {
+    setEditingId(signal.id); setForm(formFromSignal(signal)); setFormError(""); setActionError("")
+  }
+  function saveObservation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!form.knowledgePoint.trim() || !form.step.trim() || evidence.length === 0) {
+      setFormError("请填写知识点、困难步骤和至少一条可核对的证据。")
+      return
+    }
+    const count = knownIds.length || Math.min(classStudents.length, Math.max(0, Math.floor(form.affectedCount)))
+    const patch = {
+      className: currentClass, subject: form.subject, knowledgePoint: form.knowledgePoint.trim(),
+      step: form.step.trim(), severity: form.severity, affectedStudentIds: knownIds,
+      affectedCount: count, evidence, sourceLessonId: form.sourceLessonId || undefined,
+    }
+    if (selected) {
+      updateSignal(selected.id, { ...patch, trend: selected.affectedCount === count ? selected.trend : [...selected.trend, count].slice(-5) })
+      setNotice("观察已更新，课堂证据和人数以教师确认的内容为准。")
+    } else {
+      const id = crypto.randomUUID()
+      addSignal({ id, ...patch, trend: [count], observedAt: new Date().toISOString() })
+      setEditingId(id)
+      setNotice("观察已保存，可以继续生成教案或测验草稿。")
+    }
+    setFormError("")
+  }
+  function removeObservation(signal: KnowledgeSignal) {
+    if (!window.confirm("确认移除“" + signal.knowledgePoint + "”观察吗？")) return
+    deleteSignal(signal.id); setEditingId(null); setNotice("观察已移除。")
+  }
   async function generatePlan(signal: KnowledgeSignal) {
-    setGeneratingAction("plan")
-    setGenerationError(null)
+    setBusy("plan"); setActionError("")
     try {
       const response = await generateDraft("remedial-plan", {
-        knowledgePoint: signal.knowledgePoint,
-        step: signal.step,
-        affectedCount: signal.affectedCount,
-        trend: signal.trend.join(" → "),
-        evidence: signal.evidence,
-      })
-      const payload = response as { content?: unknown }
-      const plan = toRemedialPlanDraft(payload.content, {
-        subject: signal.subject,
-        knowledgePoint: signal.knowledgePoint,
-        evidence: signal.evidence,
-      })
+        knowledgePoint: signal.knowledgePoint, step: signal.step, affectedCount: signal.affectedCount,
+        trend: signal.trend.join(" → "), evidence: signal.evidence,
+      }) as { content?: unknown }
+      const plan = toRemedialPlanDraft(response.content, { subject: signal.subject, knowledgePoint: signal.knowledgePoint, evidence: signal.evidence })
+      plan.grade = getGradeFromClassName(currentClass)
+      plan.objective = "让学生能够解释并完成“" + signal.step + "”"
+      plan.context = signal.evidence[0] ?? ""
       addPlan(plan)
-      setNotice(`已生成“${plan.title}”，可在备课与测验中继续编辑。`)
-      setSelectedSignal(null)
-    } catch (error) {
-      setGenerationError({
-        action: "plan",
-        message: error instanceof Error ? error.message : "生成失败，请重试",
-      })
-    } finally {
-      setGeneratingAction(null)
-    }
+      window.sessionStorage.setItem("zhiye-planning-open-plan", plan.id)
+      navigate({ role: "teacher", page: "planning" })
+    } catch (error) { setActionError(error instanceof Error ? error.message : "生成失败，请重试") }
+    finally { setBusy(null) }
   }
-
   async function generateQuiz(signal: KnowledgeSignal) {
-    setGeneratingAction("quiz")
-    setGenerationError(null)
+    setBusy("quiz"); setActionError("")
     try {
       const response = await generateDraft("quiz", {
-        title: `${signal.knowledgePoint}${getSignalAxis(signal)}巩固练习`,
-        topic: signal.knowledgePoint,
-        difficulty: signal.severity,
-        focus: signal.step,
-      })
-      const payload = response as { content?: unknown }
-      const quiz = toQuiz(payload.content)
+        title: signal.knowledgePoint + " · " + signal.step + "自检",
+        topic: signal.knowledgePoint, difficulty: signal.severity, focus: signal.step,
+      }) as { content?: unknown }
+      const quiz = toQuiz(response.content)
       addQuiz({ ...quiz, subject: signal.subject })
-      setNotice(`已生成“${quiz.title}”，可在备课与测验中继续编辑。`)
-      setSelectedSignal(null)
-    } catch (error) {
-      setGenerationError({
-        action: "quiz",
-        message: error instanceof Error ? error.message : "生成失败，请重试",
-      })
-    } finally {
-      setGeneratingAction(null)
-    }
+      window.sessionStorage.setItem("zhiye-quiz-edit-id", quiz.id)
+      navigate({ role: "teacher", page: "tasks" })
+    } catch (error) { setActionError(error instanceof Error ? error.message : "生成失败，请重试") }
+    finally { setBusy(null) }
   }
 
-  return (
-    <section
-      className="mx-auto w-full max-w-[1540px] space-y-5 p-4 sm:p-6 xl:p-8"
-      aria-labelledby="insights-title"
-    >
-      <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-sm font-black text-[#55705d]">
-            <Sparkles aria-hidden="true" size={17} />
-            基于课堂事实的保护性观察
-          </div>
-          <h1
-            className="mt-3 text-3xl font-black tracking-[-0.04em] text-[#142018] sm:text-4xl"
-            id="insights-title"
-          >
-            班级洞察
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#69786f] sm:text-base">
-            从知识点和学习步骤观察全班变化，不进行学生间比较。所有建议都需要教师确认。
-          </p>
-        </div>
-
-        <FilterBar
-          aria-label="洞察筛选"
-          className="flex flex-wrap gap-3 rounded-[22px] p-3"
-        >
-          <label className="flex min-w-40 items-center gap-2 rounded-2xl bg-white/65 px-3 py-2 text-sm font-bold text-[#53665a]">
-            <CalendarRange aria-hidden="true" size={16} />
-            <span>时间范围</span>
-            <select
-              aria-label="时间范围"
-              className="min-w-0 flex-1 bg-transparent text-[#1f3225] outline-none"
-              onChange={(event) =>
-                setTimeRange(event.target.value as TimeRange)
-              }
-              value={timeRange}
-            >
-              <option value="today">今天</option>
-              <option value="week">近 7 天</option>
-              <option value="month">近 30 天</option>
-            </select>
-          </label>
-          <label className="flex min-w-36 items-center gap-2 rounded-2xl bg-white/65 px-3 py-2 text-sm font-bold text-[#53665a]">
-            <BookOpenCheck aria-hidden="true" size={16} />
-            <span>学科</span>
-            <select
-              aria-label="学科"
-              className="min-w-0 flex-1 bg-transparent text-[#1f3225] outline-none"
-              onChange={(event) =>
-                setSubject(event.target.value as SubjectFilter)
-              }
-              value={subject}
-            >
-              <option value="all">全部</option>
-              <option value="数学">数学</option>
-              <option value="语文">语文</option>
-              <option value="英语">英语</option>
-            </select>
-          </label>
-        </FilterBar>
-        <button className="min-h-11 rounded-full bg-[#173022] px-5 text-sm font-black text-white" onClick={() => {
-          const signal: KnowledgeSignal = { id: `signal-${Date.now()}`, subject: "数学", knowledgePoint: "新知识点", step: "等待教师补充观察", severity: "watch", affectedStudentIds: [], affectedCount: 0, trend: [0, 0, 0, 0, 0], evidence: ["教师新增的待核实观察"], observedAt: new Date().toISOString() }
-          addSignal(signal)
-          setSelectedSignal(signal)
-        }} type="button">新增观察</button>
-      </header>
-
-      {notice ? (
-        <div
-          aria-label="生成结果通知"
-          className="rounded-2xl border border-[#a9c9ae]/70 bg-[#edf7ee]/85 px-4 py-3 text-sm font-bold text-[#31563a]"
-          role="status"
-        >
-          {notice}
-        </div>
-      ) : null}
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          icon={ChartNoAxesCombined}
-          label="知识信号"
-          value={`${filteredSignals.length} 个知识信号`}
-        />
-        <MetricCard
-          icon={UsersRound}
-          label="影响范围"
-          value={`${affectedCount} 名学生受影响`}
-        />
-        <MetricCard
-          icon={Lightbulb}
-          label="优先处理"
-          value={`${priorityCount} 个步骤`}
-        />
-        <MetricCard
-          icon={trendDelta > 0 ? ArrowUpRight : ArrowDownRight}
-          label="变化幅度"
-          value={`${trendDelta > 0 ? "+" : ""}${trendDelta} 人次`}
-        />
+  return <main className="mx-auto max-w-[1480px] space-y-5 p-4 text-[#17251b] sm:p-6 lg:p-8">
+    <header className="flex flex-wrap items-end justify-between gap-4">
+      <div><p className="text-xs font-black tracking-[.16em] text-[#66806b]">教学决策 · {currentClass}</p><h1 className="mt-2 text-3xl font-black tracking-tight">班级洞察</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[#718076]">从课堂记录和任务提交核对学习卡点，决定下一次讲解与练习。观察需由教师确认。</p></div>
+      <button className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#193422] px-4 text-sm font-bold text-white" onClick={openNew} type="button"><Plus size={17} />记录课堂观察</button>
+    </header>
+    <div className="flex flex-wrap gap-3 rounded-2xl border border-[#dce6dc] bg-white p-3" aria-label="洞察筛选">
+      <label className="grid min-w-36 flex-1 gap-1 text-xs font-bold text-[#53675a] sm:flex-none">时间范围<select aria-label="时间范围" className="planning-select" value={range} onChange={(event) => setRange(event.target.value as InsightRange)}><option value="all">全部记录</option><option value="7d">近 7 天</option><option value="30d">近 30 天</option></select></label>
+      <label className="grid min-w-36 flex-1 gap-1 text-xs font-bold text-[#53675a] sm:flex-none">学科<select aria-label="学科" className="planning-select" value={subject} onChange={(event) => setSubject(event.target.value as InsightSubject)}><option value="all">全部学科</option><option value="数学">数学</option><option value="语文">语文</option><option value="英语">英语</option></select></label>
+      <p className="self-center text-xs text-[#718076]">按记录日期筛选；任务没有学科字段，仅在“全部学科”展示提交统计。</p>
+    </div>
+    {notice && <p role="status" aria-label="洞察通知" className="rounded-xl bg-[#e7f2e7] px-4 py-3 text-sm font-bold text-[#365b3d]">{notice}</p>}
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="班级概览">
+      <Metric label="需关注的知识步骤" value={data.signals.length + " 个"} detail={data.priorityCount + " 个标为优先处理"} />
+      <Metric label="涉及学生" value={"至少 " + data.affectedLowerBound + " 名"} detail="有重叠时按已识别学生去重；匿名记录取下界" />
+      <Metric label="任务提交" value={data.totalSubmitted + " / " + data.totalExpected + " 份"} detail="只统计已发布任务的提交记录" />
+      <Metric label="教师已查看" value={data.totalReviewed + " 份"} detail="来自任务中的实际评阅状态" />
+    </div>
+    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,.7fr)]">
+      <section className="rounded-[24px] border border-[#dce6dc] bg-white p-5 sm:p-6" aria-labelledby="signal-title">
+        <div className="mb-4 flex items-end justify-between gap-3"><div><p className="text-xs font-black tracking-[.14em] text-[#66806b]">证据 → 安排</p><h2 id="signal-title" className="mt-1 text-xl font-black">需要跟进的学习步骤</h2></div><span className="text-xs text-[#718076]">按记录时间排列</span></div>
+        {data.signals.length ? <div className="divide-y divide-[#e6ece5]">{data.signals.map((signal) => <button key={signal.id} className="flex w-full items-start justify-between gap-4 py-4 text-left hover:bg-[#f7faf6] focus-visible:outline-2 focus-visible:outline-[#64836a]" onClick={() => openSignal(signal)} type="button"><span className="min-w-0"><span className="flex flex-wrap items-center gap-2"><strong className="text-base">{signal.knowledgePoint} · {signal.step}</strong><span className={"rounded-full px-2 py-1 text-xs font-bold " + severityStyles[signal.severity]}>{severityLabels[signal.severity]}</span></span><span className="mt-2 block line-clamp-2 text-sm leading-6 text-[#617266]">{signal.evidence[0]}</span><span className="mt-1 block text-xs text-[#839087]">{formatDate(signal.observedAt)} · {signal.affectedCount} 名学生</span></span><ArrowRight className="mt-1 shrink-0 text-[#69836f]" size={18} /></button>)}</div> : <EmptyCopy title="此范围暂无观察" detail="可切换时间，或用“记录课堂观察”保存一条有证据的记录。" />}
+      </section>
+      <div className="grid gap-5">
+        <section className="rounded-[24px] border border-[#dce6dc] bg-white p-5 sm:p-6" aria-labelledby="task-feedback-title"><div className="flex items-center gap-2"><ClipboardList size={19} /><h2 id="task-feedback-title" className="text-lg font-black">任务回流</h2></div><p className="mt-2 text-sm leading-6 text-[#718076]">提交进度与评阅状态只说明任务流转，不自动判定知识掌握。</p>{data.tasks.length ? <div className="mt-3 divide-y divide-[#e6ece5]">{data.tasks.slice(0, 4).map((task) => { const count = taskCounts(task); return <button key={task.id} className="flex w-full items-center justify-between gap-3 py-3 text-left hover:bg-[#f7faf6]" type="button" onClick={() => { window.sessionStorage.setItem("zhiye-task-open-id", task.id); navigate({ role: "teacher", page: "tasks" }) }}><span className="min-w-0"><strong className="block truncate text-sm">{task.title}</strong><span className="mt-1 block text-xs text-[#718076]">{taskStatusLabels[task.status]} · 已提交 {count.submitted}/{count.total} · 已查看 {count.reviewed}</span></span><ArrowRight className="shrink-0 text-[#69836f]" size={17} /></button> })}</div> : <EmptyCopy title="暂无任务回流" detail="发布任务并收到提交后，这里会显示真实进度。" />}</section>
+        <section className="rounded-[24px] border border-[#dce6dc] bg-white p-5 sm:p-6" aria-labelledby="lesson-evidence-title"><div className="flex items-center gap-2"><BookOpen size={19} /><h2 id="lesson-evidence-title" className="text-lg font-black">课堂来源</h2></div>{data.lessons.length ? <div className="mt-3 divide-y divide-[#e6ece5]">{data.lessons.slice(0, 3).map((lesson) => <button className="flex w-full items-center justify-between gap-3 py-3 text-left hover:bg-[#f7faf6]" key={lesson.id} onClick={() => navigate({ role: "teacher", page: "lesson-detail", lessonId: lesson.id })} type="button"><span className="min-w-0"><strong className="block truncate text-sm">{lesson.title}</strong><span className="mt-1 block text-xs text-[#718076]">{formatDate(lesson.date)} · {lesson.evidence?.length ?? 0} 条证据</span></span><ArrowRight className="shrink-0 text-[#69836f]" size={17} /></button>)}</div> : <EmptyCopy title="暂无课堂证据" detail="完成课堂整理后，可在这里回看原始记录。" />}</section>
       </div>
+    </div>
 
-      <GlassSurface aria-label="课后回流" role="region" className="grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_minmax(280px,.8fr)] sm:items-center" weight="light">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-xs font-black tracking-[0.12em] text-[#617265]">课后回流</p>
-            <StatusChip tone={latestFeedback?.signal === "needs-practice" ? "warning" : "success"}>
-              {latestFeedback?.signal === "needs-practice" ? "需要再练" : "完成稳定"}
-            </StatusChip>
-          </div>
-          <h2 className="mt-2 text-xl font-black text-[#17231b]">学生完成后，下一课怎么接</h2>
-          <p className="mt-2 text-sm leading-6 text-[#637269]">
-            {latestFeedback
-              ? `${latestFeedback.title}：${latestFeedback.submittedCount}/${latestFeedback.totalCount} 人已提交（${latestFeedback.completionRate}%）。仅显示班级聚合，不展示个人答案。`
-              : "学生完成任务后，这里会出现匿名聚合结果。"}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-[#dce8d8] bg-[#f7faf5] p-4 text-sm font-bold leading-6 text-[#47604d]">
-          <span className="text-xs font-black text-[#758579]">教师草稿 · 不自动推送</span>
-          <p className="mt-2">{nextLessonDraft}</p>
-        </div>
-      </GlassSurface>
-
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,.7fr)]">
-        <GlassSurface className="min-w-0 p-5 sm:p-6" weight="card">
-          <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-black tracking-[0.12em] text-[#617265]">
-                知识点 × 学习步骤
-              </p>
-              <h2 className="mt-2 text-xl font-black text-[#17231b]">
-                困难热力图
-              </h2>
-            </div>
-            <p className="max-w-xs text-sm leading-6 text-[#6b796f]">
-              颜色强度表示受影响范围；选择卡片查看课堂证据和生成支持材料。
-            </p>
-          </div>
-
-          {filteredSignals.length > 0 ? (
-            <KnowledgeHeatmap
-              signals={filteredSignals}
-              onSelect={setSelectedSignal}
-            />
-          ) : (
-            <EmptyState
-              description="切换时间或学科后再看看。系统不会用空数据推断学生表现。"
-              title="这个筛选条件下还没有困难信号"
-            />
-          )}
-        </GlassSurface>
-
-        <TrendChart signals={filteredSignals} />
-      </div>
-
-      <Drawer
-        onClose={() => setSelectedSignal(null)}
-        open={selectedSignal !== null}
-        title={
-          selectedSignal
-            ? `${selectedSignal.knowledgePoint} · ${getSignalAxis(selectedSignal)}步骤`
-            : "信号详情"
-        }
-      >
-        {selectedSignal ? (
-          <div className="space-y-6 text-[#203027]">
-            <div className="flex flex-wrap items-center gap-3">
-              <StatusChip tone={severityMeta[selectedSignal.severity].tone}>
-                {severityMeta[selectedSignal.severity].label}
-              </StatusChip>
-              <span className="text-sm font-bold text-[#66766c]">
-                {selectedSignal.affectedCount} 名学生出现相似卡点
-              </span>
-            </div>
-
-            <section className="grid gap-3 rounded-[22px] border border-white/80 bg-white/60 p-5 sm:grid-cols-2" aria-label="校正知识信号">
-              <label className="grid gap-2 text-sm font-black">知识点<input aria-label="信号知识点" className="min-h-11 rounded-2xl border border-[#dce7da] bg-white/80 px-4" onChange={(event) => { const patch = { knowledgePoint: event.target.value }; updateSignal(selectedSignal.id, patch); setSelectedSignal({ ...selectedSignal, ...patch }) }} value={selectedSignal.knowledgePoint} /></label>
-              <label className="grid gap-2 text-sm font-black">优先级<select aria-label="信号优先级" className="min-h-11 rounded-2xl border border-[#dce7da] bg-white/80 px-4" onChange={(event) => { const patch = { severity: event.target.value as KnowledgeSignal["severity"] }; updateSignal(selectedSignal.id, patch); setSelectedSignal({ ...selectedSignal, ...patch }) }} value={selectedSignal.severity}><option value="watch">持续观察</option><option value="attention">需要关注</option><option value="priority">优先处理</option></select></label>
-              <label className="grid gap-2 text-sm font-black sm:col-span-2">困难步骤<textarea aria-label="信号困难步骤" className="min-h-20 rounded-2xl border border-[#dce7da] bg-white/80 p-4" onChange={(event) => { const patch = { step: event.target.value }; updateSignal(selectedSignal.id, patch); setSelectedSignal({ ...selectedSignal, ...patch }) }} value={selectedSignal.step} /></label>
-              <label className="grid gap-2 text-sm font-black">受影响人数<input aria-label="信号受影响人数" className="min-h-11 rounded-2xl border border-[#dce7da] bg-white/80 px-4" min="0" onChange={(event) => { const patch = { affectedCount: Number(event.target.value) }; updateSignal(selectedSignal.id, patch); setSelectedSignal({ ...selectedSignal, ...patch }) }} type="number" value={selectedSignal.affectedCount} /></label>
-              <button className="min-h-11 self-end rounded-full border border-[#e3c8c2] bg-[#fff5f2] px-4 text-sm font-black text-[#934f43]" onClick={() => { if (window.confirm(`确认移除“${selectedSignal.knowledgePoint}”信号吗？`)) { deleteSignal(selectedSignal.id); setSelectedSignal(null) } }} type="button">移除这个信号</button>
-            </section>
-
-            <section
-              aria-labelledby="insight-step-title"
-              className="rounded-[22px] border border-white/80 bg-white/60 p-5"
-            >
-              <p className="text-xs font-black tracking-[0.12em] text-[#617265]">
-                观察到的困难步骤
-              </p>
-              <h3 className="mt-2 text-xl font-black" id="insight-step-title">
-                {selectedSignal.step}
-              </h3>
-              <p className="mt-3 text-sm leading-6 text-[#68786d]">
-                这是课堂行为和练习结果的聚合事实，不代表学生能力结论，也不用于学生间比较。
-              </p>
-            </section>
-
-            <section aria-labelledby="insight-evidence-title">
-              <h3 className="text-base font-black" id="insight-evidence-title">
-                课堂证据
-              </h3>
-              <ul className="mt-3 space-y-3">
-                {selectedSignal.evidence.map((evidence) => (
-                  <li
-                    className="rounded-2xl border border-[#dfe8df] bg-[#f8fbf7] px-4 py-3 text-sm leading-6"
-                    key={evidence}
-                  >
-                    {evidence}
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section aria-labelledby="insight-trend-title">
-              <h3 className="text-base font-black" id="insight-trend-title">
-                近五次变化
-              </h3>
-              <p className="mt-3 rounded-2xl bg-[#eef3ed] px-4 py-3 text-sm font-bold text-[#48604e]">
-                {selectedSignal.trend.join(" → ")} 名学生
-              </p>
-            </section>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#17251c] px-4 py-3 text-sm font-black text-white shadow-[0_12px_24px_rgba(24,42,29,.18)] transition hover:bg-[#284632] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#416b4d]/25"
-                disabled={generatingAction !== null}
-                onClick={() => void generatePlan(selectedSignal)}
-                type="button"
-              >
-                <Sparkles aria-hidden="true" size={17} />
-                {generatingAction === "plan" ? "正在生成草稿" : "一键生成补讲方案"}
-              </button>
-              <button
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[#b9cdbb] bg-white/75 px-4 py-3 text-sm font-black text-[#2f5638] transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#416b4d]/25"
-                disabled={generatingAction !== null}
-                onClick={() => void generateQuiz(selectedSignal)}
-                type="button"
-              >
-                <BookOpenCheck aria-hidden="true" size={17} />
-                {generatingAction === "quiz" ? "正在生成草稿" : "一键生成巩固练习"}
-              </button>
-            </div>
-            {generationError ? (
-              <div className="grid gap-3 rounded-2xl border border-[#e4b9b4] bg-[#fff5f3] p-4 text-sm text-[#8d332b]" role="alert">
-                <p>{generationError.message}</p>
-                <button
-                  className="w-fit rounded-full border border-current px-4 py-2 font-black"
-                  type="button"
-                  onClick={() =>
-                    void (generationError.action === "plan"
-                      ? generatePlan(selectedSignal)
-                      : generateQuiz(selectedSignal))
-                  }
-                >
-                  重试生成
-                </button>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </Drawer>
-    </section>
-  )
-}
-
-function MetricCard({
-  icon: Icon,
-
-  label,
-
-  value,
-}: {
-  icon: typeof ChartNoAxesCombined
-
-  label: string
-
-  value: string
-}) {
-  return (
-    <GlassSurface
-      className="flex min-h-32 items-center gap-4 p-5"
-      weight="light"
-    >
-      <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#e8f0e6] text-[#486a50]">
-        <Icon aria-hidden="true" size={21} />
-      </span>
-      <span>
-        <span className="block text-xs font-black tracking-[0.1em] text-[#6a796f]">
-          {label}
-        </span>
-        <strong className="mt-2 block text-lg font-black text-[#19271e]">
-          {value}
-        </strong>
-      </span>
-    </GlassSurface>
-  )
+    <Drawer open={editingId !== null} onClose={() => setEditingId(null)} title={selected ? selected.knowledgePoint + " · 观察与安排" : "记录课堂观察"}>
+      {editingId && <div className="space-y-5 text-[#203027]">
+        {selected && <div className="rounded-2xl bg-[#f0f6ef] p-4 text-sm leading-6"><strong>观察来源</strong><p>{sourceLesson ? sourceLesson.title + " · " + formatDate(sourceLesson.date) : "教师记录"}</p>{sourceLesson && <button className="mt-2 font-bold text-[#315a3a] underline" onClick={() => navigate({ role: "teacher", page: "lesson-detail", lessonId: sourceLesson.id })} type="button">回看这节课</button>}</div>}
+        <form className="grid gap-4" onSubmit={saveObservation}>
+          <label className="grid gap-1 text-sm font-bold">学科<select aria-label="观察学科" className="planning-select" value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value as Subject })}><option value="数学">数学</option><option value="语文">语文</option><option value="英语">英语</option></select></label>
+          <label className="grid gap-1 text-sm font-bold">关联课堂（可选）<select aria-label="关联课堂" className="planning-select" value={form.sourceLessonId} onChange={(event) => { const id = event.target.value; const lesson = classLessons.find((item) => item.id === id); setForm((current) => ({ ...current, sourceLessonId: id, evidenceText: current.evidenceText || lesson?.evidence?.join("\n") || "" })) }}><option value="">教师现场观察</option>{classLessons.map((lesson) => <option key={lesson.id} value={lesson.id}>{lesson.title} · {formatDate(lesson.date)}</option>)}</select></label>
+          <label className="grid gap-1 text-sm font-bold">知识点<input aria-label="信号知识点" className="insight-input" value={form.knowledgePoint} onChange={(event) => setForm({ ...form, knowledgePoint: event.target.value })} /></label>
+          <label className="grid gap-1 text-sm font-bold">困难步骤<input aria-label="信号困难步骤" className="insight-input" value={form.step} onChange={(event) => setForm({ ...form, step: event.target.value })} /></label>
+          <label className="grid gap-1 text-sm font-bold">处理优先级<select aria-label="信号优先级" className="planning-select" value={form.severity} onChange={(event) => setForm({ ...form, severity: event.target.value as KnowledgeSignal["severity"] })}><option value="watch">持续观察</option><option value="attention">需要关注</option><option value="priority">优先处理</option></select></label>
+          <label className="grid gap-1 text-sm font-bold">受影响人数<input aria-label="信号受影响人数" className="insight-input" min={0} max={classStudents.length} type="number" disabled={knownIds.length > 0} value={knownIds.length || form.affectedCount} onChange={(event) => setForm({ ...form, affectedCount: Number(event.target.value) })} /></label>
+          <details className="rounded-xl border border-[#dce6dc] p-3"><summary className="cursor-pointer text-sm font-bold">关联学生（可选，选中后自动计数）</summary><div className="mt-3 grid max-h-40 grid-cols-2 gap-2 overflow-y-auto">{classStudents.map((student) => <label className="flex items-center gap-2 text-sm" key={student.id}><input checked={knownIds.includes(student.id)} onChange={(event) => setForm((current) => ({ ...current, affectedStudentIds: event.target.checked ? [...current.affectedStudentIds, student.id] : current.affectedStudentIds.filter((id) => id !== student.id) }))} type="checkbox" />{student.name}</label>)}</div></details>
+          <label className="grid gap-1 text-sm font-bold">可核对的证据（每行一条）<textarea aria-label="观察证据" className="insight-input min-h-28" placeholder="例如：随堂练习中 4 人在换算方向上停顿" value={form.evidenceText} onChange={(event) => setForm({ ...form, evidenceText: event.target.value })} /></label>
+          {formError && <p role="alert" className="rounded-xl bg-[#fff1ed] p-3 text-sm text-[#9a5138]">{formError}</p>}
+          <button className="min-h-11 rounded-xl bg-[#193422] px-4 text-sm font-bold text-white" type="submit">{selected ? "保存观察修改" : "保存观察"}</button>
+        </form>
+        {selected && <div className="space-y-3 border-t border-[#dce6dc] pt-5"><div><h3 className="font-black">安排下一步</h3><p className="mt-1 text-sm text-[#718076]">生成的内容会进入可编辑草稿，教师确认后再用于教学。</p></div><div className="grid gap-2 sm:grid-cols-2"><button className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#b7ccb7] px-3 text-sm font-bold text-[#315a3a]" disabled={busy !== null} onClick={() => void generatePlan(selected)} type="button"><Sparkles size={16} />{busy === "plan" ? "生成中" : "生成补讲教案"}</button><button className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#b7ccb7] px-3 text-sm font-bold text-[#315a3a]" disabled={busy !== null} onClick={() => void generateQuiz(selected)} type="button"><Sparkles size={16} />{busy === "quiz" ? "生成中" : "生成自检测验"}</button></div>{actionError && <p role="alert" className="rounded-xl bg-[#fff1ed] p-3 text-sm text-[#9a5138]">{actionError}</p>}<button className="text-sm font-bold text-[#9a5138] underline" onClick={() => removeObservation(selected)} type="button">移除这条观察</button></div>}
+      </div>}
+    </Drawer>
+  </main>
 }
 
 export default InsightsPage

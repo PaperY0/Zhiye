@@ -1,10 +1,10 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { Quiz, QuizQuestion } from "../../../app/prototype/types"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
 import { generateDraft } from "../../../services/localAi"
 import { toQuiz, type QuizGeneratorInput } from "./generators"
+import { getTeacherSettings } from "../settings/teacherSettings"
 
-const topics = ["分数基本性质", "单位换算", "小数乘法估算"]
 const difficulties: QuizGeneratorInput["difficulty"][] = [
   "基础",
   "递进",
@@ -21,7 +21,7 @@ function answerText(answer: QuizQuestion["answer"]) {
   return Array.isArray(answer) ? answer.join("、") : answer
 }
 
-function QuestionEditor({
+export function QuestionEditor({
   index,
   question,
   onChange,
@@ -33,17 +33,17 @@ function QuestionEditor({
   return (
     <fieldset
       aria-label={`第 ${index + 1} 题`}
-      className="rounded-[24px] border border-white/90 bg-white/60 p-4 shadow-[0_12px_36px_rgba(54,82,61,0.06)]"
+      className="min-w-0 rounded-[24px] border border-white/90 bg-white/60 p-4 shadow-[0_12px_36px_rgba(54,82,61,0.06)]"
     >
       <legend className="px-2 text-sm font-black text-[#526b57]">
         第 {index + 1} 题
       </legend>
       <div className="grid gap-4">
-        <label className="grid gap-2 text-sm font-bold">
+        <label className="grid min-w-0 gap-2 text-sm font-bold">
           题干
           <textarea
             aria-label="题干"
-            className="min-h-20 rounded-2xl border border-[#dfe8df] bg-white/80 px-4 py-3 font-normal outline-none focus:ring-4 focus:ring-[#64836a]/15"
+            className="min-h-20 min-w-0 w-full rounded-2xl border border-[#dfe8df] bg-white/80 px-4 py-3 font-normal outline-none focus:ring-4 focus:ring-[#64836a]/15"
             value={question.prompt}
             onChange={(event) =>
               onChange({ ...question, prompt: event.target.value })
@@ -51,11 +51,11 @@ function QuestionEditor({
           />
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2 text-sm font-bold">
+          <label className="grid min-w-0 gap-2 text-sm font-bold">
             题型
             <select
               aria-label="题型"
-              className="rounded-2xl border border-[#dfe8df] bg-white/80 px-4 py-3"
+              className="min-w-0 w-full rounded-2xl border border-[#dfe8df] bg-white/80 px-4 py-3"
               value={question.type}
               onChange={(event) => {
                 const type = event.target.value as QuizQuestion["type"]
@@ -71,11 +71,11 @@ function QuestionEditor({
               <option value="short-answer">简答题</option>
             </select>
           </label>
-          <label className="grid gap-2 text-sm font-bold">
+          <label className="grid min-w-0 gap-2 text-sm font-bold">
             分值
             <input
               aria-label="分值"
-              className="rounded-2xl border border-[#dfe8df] bg-white/80 px-4 py-3"
+              className="min-w-0 w-full rounded-2xl border border-[#dfe8df] bg-white/80 px-4 py-3"
               min="1"
               type="number"
               value={question.score}
@@ -86,11 +86,11 @@ function QuestionEditor({
           </label>
         </div>
         {question.type !== "short-answer" && (
-          <label className="grid gap-2 text-sm font-bold">
+          <label className="grid min-w-0 gap-2 text-sm font-bold">
             选项（每行一个）
             <textarea
               aria-label="选项"
-              className="min-h-20 rounded-2xl border border-[#dfe8df] bg-white/80 px-4 py-3 font-normal outline-none focus:ring-4 focus:ring-[#64836a]/15"
+              className="min-h-20 min-w-0 w-full rounded-2xl border border-[#dfe8df] bg-white/80 px-4 py-3 font-normal outline-none focus:ring-4 focus:ring-[#64836a]/15"
               value={question.options.join("\n")}
               onChange={(event) =>
                 onChange({
@@ -101,11 +101,11 @@ function QuestionEditor({
             />
           </label>
         )}
-        <label className="grid gap-2 text-sm font-bold">
+        <label className="grid min-w-0 gap-2 text-sm font-bold">
           答案
           <input
             aria-label="答案"
-            className="rounded-2xl border border-[#dfe8df] bg-white/80 px-4 py-3 font-normal"
+            className="min-w-0 w-full rounded-2xl border border-[#dfe8df] bg-white/80 px-4 py-3 font-normal"
             value={answerText(question.answer)}
             onChange={(event) =>
               onChange({
@@ -115,11 +115,11 @@ function QuestionEditor({
             }
           />
         </label>
-        <label className="grid gap-2 text-sm font-bold">
+        <label className="grid min-w-0 gap-2 text-sm font-bold">
           解析
           <textarea
             aria-label="解析"
-            className="min-h-20 rounded-2xl border border-[#dfe8df] bg-white/80 px-4 py-3 font-normal outline-none focus:ring-4 focus:ring-[#64836a]/15"
+            className="min-h-20 min-w-0 w-full rounded-2xl border border-[#dfe8df] bg-white/80 px-4 py-3 font-normal outline-none focus:ring-4 focus:ring-[#64836a]/15"
             value={question.explanation}
             onChange={(event) =>
               onChange({ ...question, explanation: event.target.value })
@@ -131,11 +131,12 @@ function QuestionEditor({
   )
 }
 
-export function QuizBuilder() {
-  const { addQuiz } = usePrototype()
+export function QuizBuilder({ selectedQuiz }: { selectedQuiz?: Quiz | null }) {
+  const { addQuiz, updateQuiz, plans } = usePrototype()
+  const settings = getTeacherSettings()
   const [input, setInput] = useState<QuizGeneratorInput>({
-    title: "三题课堂自检",
-    topic: topics[0],
+    title: `${settings.chapter}课堂自检`,
+    topic: settings.chapter,
     difficulty: "递进",
     focus: "概念、步骤与解释",
   })
@@ -144,6 +145,17 @@ export function QuizBuilder() {
   const [notice, setNotice] = useState("")
   const [generationError, setGenerationError] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
+  const [savedId, setSavedId] = useState<string | null>(null)
+  const [sourcePlanId, setSourcePlanId] = useState("")
+
+  useEffect(() => {
+    if (!selectedQuiz) return
+    setDraft(selectedQuiz)
+    setSavedId(selectedQuiz.id)
+    setSourcePlanId(selectedQuiz.sourcePlanId ?? "")
+    setInput((current) => ({ ...current, title: selectedQuiz.title, topic: plans.find((plan) => plan.id === selectedQuiz.sourcePlanId)?.chapter ?? selectedQuiz.title }))
+    setNotice("")
+  }, [selectedQuiz?.id])
 
   function updateQuestion(index: number, next: QuizQuestion) {
     setDraft((current) =>
@@ -164,7 +176,9 @@ export function QuizBuilder() {
     try {
       const response = await generateDraft("quiz", input)
       const payload = response as { content?: unknown }
-      setDraft(toQuiz(payload.content))
+      const generated = { ...toQuiz(payload.content), sourcePlanId: sourcePlanId || undefined }
+      setDraft(generated)
+      setSavedId(null)
       setNotice("")
     } catch (error) {
       setGenerationError(error instanceof Error ? error.message : "生成失败，请重试")
@@ -184,6 +198,7 @@ export function QuizBuilder() {
           固定三题结构，覆盖概念识别、步骤应用和学生解释。
         </p>
         <div className="mt-5 grid gap-4">
+          <label className="grid gap-2 text-sm font-bold">关联教案<select className="rounded-2xl border border-white bg-white/75 px-4 py-3" value={sourcePlanId} onChange={(event) => { const id = event.target.value; setSourcePlanId(id); const plan = plans.find((item) => item.id === id); if (plan) setInput((current) => ({ ...current, title: `${plan.chapter}课堂自检`, topic: plan.chapter, focus: plan.objective })) }}><option value="">不关联教案</option>{plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.title}</option>)}</select></label>
           <label className="grid gap-2 text-sm font-bold">
             测验标题
             <input
@@ -197,18 +212,14 @@ export function QuizBuilder() {
           </label>
           <label className="grid gap-2 text-sm font-bold">
             知识主题
-            <select
+            <input
               aria-label="知识主题"
               className="rounded-2xl border border-white bg-white/75 px-4 py-3"
               value={input.topic}
               onChange={(event) =>
                 setInput({ ...input, topic: event.target.value })
               }
-            >
-              {topics.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
+            />
           </label>
           <label className="grid gap-2 text-sm font-bold">
             难度结构
@@ -296,11 +307,17 @@ export function QuizBuilder() {
                 className="rounded-full bg-[#173021] px-5 py-3 font-black text-white"
                 type="button"
                 onClick={() => {
-                  addQuiz({ ...draft, status: "published" })
-                  setNotice("三题测验已发布")
+                  if (draft.questions.some((question) => {
+                    const answer = Array.isArray(question.answer) ? question.answer : question.answer.split("、").map((item) => item.trim())
+                    const options = question.options.map((item) => item.trim()).filter(Boolean)
+                    return !question.prompt.trim() || !question.explanation.trim() || !answer.length || answer.some((item) => !item) || question.score <= 0 || (question.type !== "short-answer" && (options.length < 2 || new Set(options).size !== options.length || answer.some((item) => !options.includes(item))))
+                  })) { setNotice("请检查每题的题干、选项、答案、解析和分值"); return }
+                  if (savedId) updateQuiz(savedId, { ...draft, sourcePlanId: sourcePlanId || undefined, status: "ready" })
+                  else { addQuiz({ ...draft, sourcePlanId: sourcePlanId || undefined, status: "ready" }); setSavedId(draft.id) }
+                  setNotice("测验已保存，可从上方创建任务并发布给学生")
                 }}
               >
-                发布测验
+                保存测验
               </button>
             </div>
           </div>

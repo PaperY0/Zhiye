@@ -1,4 +1,5 @@
 import type { PlanDraft, Quiz, QuizQuestion } from "../../../app/prototype/types"
+import { getGradeFromClassName, getTeacherSettings } from "../settings/teacherSettings"
 
 export type LessonPlanGeneratorInput = {
   textbook: string
@@ -6,6 +7,7 @@ export type LessonPlanGeneratorInput = {
   objective: string
   context: string
   evidence: string[]
+  teachingAid?: string
 }
 
 export type QuizGeneratorInput = {
@@ -132,7 +134,7 @@ export function toPlanDraft(
     ...content,
     id: crypto.randomUUID(),
     subject: "数学",
-    grade: "五年级",
+    grade: getGradeFromClassName(getTeacherSettings().currentClass),
     chapter: input.chapter,
     objective: input.objective,
     context: input.context,
@@ -155,7 +157,7 @@ export function toQuiz(value: unknown): Quiz {
       id: crypto.randomUUID(),
       type: "single-choice",
       explanation: "",
-      score: 0,
+      score: 10,
     })),
   }
 }

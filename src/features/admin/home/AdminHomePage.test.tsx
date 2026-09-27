@@ -16,7 +16,7 @@ function renderHome() {
 }
 
 describe("AdminHomePage", () => {
-  it("shows school operations, access codes, retention, and the simulated-data boundary", () => {
+  it("shows school operations, response contacts, and the simulated-data boundary", () => {
     renderHome()
 
     expect(
@@ -24,19 +24,10 @@ describe("AdminHomePage", () => {
     ).toBeInTheDocument()
     expect(screen.getByText("知野实验学校")).toBeInTheDocument()
     expect(screen.getAllByText("1", { selector: "strong" })).toHaveLength(2)
-    expect(screen.getByText("18", { selector: "strong" })).toBeInTheDocument()
+    expect(screen.getByText("12", { selector: "strong" })).toBeInTheDocument()
     expect(
-      screen.getByRole("region", { name: "邀请码与绑定码" }),
-    ).toHaveTextContent("ZY-SCHOOL-2026")
-    expect(
-      screen.getByRole("region", { name: "邀请码与绑定码" }),
-    ).toHaveTextContent("520826")
-    expect(
-      screen.getByRole("region", { name: "数据留存摘要" }),
-    ).toHaveTextContent("课堂原始音频")
-    expect(
-      screen.getByRole("region", { name: "数据留存摘要" }),
-    ).toHaveTextContent("7 天")
+      screen.getByRole("region", { name: "保护性反馈联系人" }),
+    ).toHaveTextContent("王老师 · 德育负责人")
     expect(
       screen.getByText(/所有学校、班级、教师与安全队列数据均为演示数据/),
     ).toBeInTheDocument()

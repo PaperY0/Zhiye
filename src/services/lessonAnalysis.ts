@@ -4,6 +4,7 @@ import { teacherSettingsForAi } from "../features/teacher/settings/teacherSettin
 
 export type LessonAnalysisResult = {
   title: string
+  chapter?: string | null
   transcript: TranscriptSegment[]
   recap: string
   recapTags: string[]
@@ -39,6 +40,7 @@ export function isCompleteLessonAnalysis(
   const analysis = value as Record<string, unknown>
   return (
     isNonBlankString(analysis.title) &&
+    (analysis.chapter == null || isNonBlankString(analysis.chapter)) &&
     Array.isArray(analysis.transcript) &&
     analysis.transcript.length > 0 &&
     analysis.transcript.every(isCompleteTranscriptSegment) &&
@@ -64,7 +66,8 @@ export async function analyzeLessonAudio(
 ): Promise<LessonAnalysisResult> {
   const body = new FormData()
   body.append("audio", audio, "lesson-recording.webm")
-  body.append("teacher_settings", JSON.stringify(teacherSettingsForAi()))
+  const { chapter: _savedChapter, ...preferences } = teacherSettingsForAi()
+  body.append("teacher_settings", JSON.stringify(preferences))
 
   const payload = await requestJson<LessonAnalysisResult>(localAiUrl, {
     body,

@@ -22,10 +22,10 @@ export default function WorkspaceScreen({
       data-testid="teacher-workspace"
     >
       <div className="workspace-page-frame mx-auto flex min-h-full max-w-[1500px] min-w-0 flex-col p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8 lg:pb-10">
-          <WorkspaceContextBar onNavigate={onNavigate} />
+          <WorkspaceContextBar />
           <div
             className={`workspace-content-row mt-5 ${
-              isEmptyData ? "grid xl:grid-cols-1" : "app-split-layout app-split-layout-fill"
+              isEmptyData ? "grid xl:grid-cols-1" : "app-split-layout"
             }`}
             data-testid="workspace-content-row"
           >

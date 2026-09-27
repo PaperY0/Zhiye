@@ -247,6 +247,7 @@ export const studentFixtures: Student[] = studentNames.map(
 export const knowledgeSignalFixtures: KnowledgeSignal[] = [
   {
     id: "signal-unit-calculation",
+    className: "五年级（2）班",
     subject: "数学",
     knowledgePoint: "单位换算",
     step: "判断乘除方向",
@@ -259,6 +260,7 @@ export const knowledgeSignalFixtures: KnowledgeSignal[] = [
   },
   {
     id: "signal-fraction-condition",
+    className: "五年级（2）班",
     subject: "数学",
     knowledgePoint: "分数基本性质",
     step: "理解同时变化条件",
@@ -271,6 +273,7 @@ export const knowledgeSignalFixtures: KnowledgeSignal[] = [
   },
   {
     id: "signal-decimal-estimation",
+    className: "五年级（2）班",
     subject: "数学",
     knowledgePoint: "小数乘法估算",
     step: "选择合理近似数",
@@ -379,6 +382,7 @@ export const taskFixtures: Task[] = [
     id: "task-review-01",
     title: "分数基本性质自检",
     type: "quiz",
+    sourceQuizId: "quiz-fractions-check",
     content: "完成三道自检题",
     audience: { kind: "class", label: "五年级（2）班", studentIds: [] },
     dueAt: "2026-07-25T20:00:00+08:00",

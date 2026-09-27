@@ -50,7 +50,8 @@ describe("LessonDetailPage", () => {
 
     await user.click(screen.getByRole("tab", { name: "教师课堂报告" }))
     expect(screen.getByText("学生在乘除方向上需要更多示范。")).toBeInTheDocument()
-    expect(screen.getByText("课堂中有两次关于乘除方向的提问。")).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "AI 对本节课的评价" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "AI 对下一节课的改进建议" })).toBeInTheDocument()
 
     await user.click(screen.getByRole("tab", { name: "课程进度" }))
     expect(screen.getByText("下节课先复盘单位阶梯。")).toBeInTheDocument()
@@ -92,7 +93,8 @@ describe("LessonDetailPage", () => {
     expect(screen.queryByText("补充不为零的条件")).not.toBeInTheDocument()
 
     await user.click(screen.getByRole("tab", { name: "课程进度" }))
-    expect(screen.getByText("暂无课程进度初稿")).toBeInTheDocument()
+    expect(screen.getByLabelText("课程完成进度")).toHaveValue(72)
+    expect(screen.queryByRole("button", { name: "采纳到下一步安排" })).not.toBeInTheDocument()
   })
 
   it("does not offer publishing before a complete AI analysis exists", () => {
@@ -112,11 +114,15 @@ describe("LessonDetailPage", () => {
     const nextStep = screen.getByLabelText("下一步教学内容")
     await user.clear(nextStep)
     await user.type(nextStep, "通分综合练习")
+    const chapter = screen.getByLabelText("当前章节")
+    await user.clear(chapter)
+    await user.type(chapter, "分数加减法")
     await user.click(screen.getByRole("button", { name: "保存课程进度" }))
 
     const dialog = screen.getByRole("dialog", { name: "课程进度已保存" })
     expect(within(dialog).getByText(/80%/)).toBeInTheDocument()
     expect(nextStep).toHaveValue("通分综合练习")
+    expect(chapter).toHaveValue("分数加减法")
   })
 
   it("reviews and publishes a complete lesson without leaving classroom detail", async () => {

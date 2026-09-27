@@ -19,6 +19,7 @@ from pydantic import (
 
 GenerationKind = Literal[
     "lesson-plan",
+    "task-draft",
     "quiz",
     "remedial-plan",
     "learning-reply",
@@ -138,6 +139,15 @@ class LessonPlanContext(ContextModel):
     objective: TextOnly = Field(max_length=1000)
     context: TextOnly = Field(max_length=2000)
     evidence: list[TextOnly] = Field(min_length=1, max_length=30)
+    teachingAid: TextOnly = Field(default="", max_length=1500)
+
+
+class TaskDraftContext(ContextModel):
+    title: TextOnly = Field(max_length=300)
+    objective: TextOnly = Field(max_length=1000)
+    sourcePlan: TextOnly = Field(max_length=2000)
+    learningEvidence: list[TextOnly] = Field(max_length=20)
+    taskType: Literal["practice", "review", "reading", "quiz"]
 
 
 class QuizContext(ContextModel):
@@ -188,6 +198,7 @@ class StudentCompanionContext(ContextModel):
 
 CONTEXT_MODELS: dict[GenerationKind, type[ContextModel]] = {
     "lesson-plan": LessonPlanContext,
+    "task-draft": TaskDraftContext,
     "quiz": QuizContext,
     "remedial-plan": RemedialPlanContext,
     "learning-reply": LearningReplyContext,
@@ -212,6 +223,7 @@ class GenerateRequest(BaseModel):
 
 class LessonAnalysisDraft(BaseModel):
     title: TextOnly = Field(max_length=40)
+    chapter: TextOnly | None = Field(default=None, max_length=80)
     recap: TextOnly
     recapTags: list[TextOnly] = Field(min_length=1, max_length=3)
     nextStep: TextOnly
@@ -332,6 +344,14 @@ class LessonPlanDraft(BaseModel):
     misconceptions: list[str] = Field(min_length=1)
     suggestions: list[str] = Field(min_length=1)
     extension: str
+
+
+class TaskDraft(BaseModel):
+    title: str = Field(min_length=1)
+    objective: str = Field(min_length=1)
+    successCriteria: str = Field(min_length=1, validation_alias=AliasChoices("successCriteria", "success_criteria"))
+    content: str = Field(min_length=1)
+    supportNote: str = Field(default="", validation_alias=AliasChoices("supportNote", "support_note"))
 
 
 class QuizQuestion(BaseModel):

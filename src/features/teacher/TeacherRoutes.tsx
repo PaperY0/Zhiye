@@ -9,7 +9,6 @@ const StudentsPage = lazy(() => import("./students/StudentsPage"))
 const TasksPage = lazy(() => import("./tasks/TasksPage"))
 const MessagesPage = lazy(() => import("./messages/MessagesPage"))
 const TeacherSettingsPage = lazy(() => import("./settings/TeacherSettingsPage"))
-const HistoryPage = lazy(() => import("../shared/HistoryPage"))
 const TeacherWorkspacePage = lazy(() => import("./workspace/TeacherWorkspacePage"))
 
 type TeacherRoute = Extract<AppRoute, { role: "teacher" }>
@@ -40,8 +39,6 @@ export default function TeacherRoutes({
       return <MessagesPage />
     case "settings":
       return <TeacherSettingsPage />
-    case "history":
-      return <HistoryPage role="teacher" onNavigate={onNavigate} />
     case "workspace":
       return <TeacherWorkspacePage onNavigate={onNavigate} />
   }

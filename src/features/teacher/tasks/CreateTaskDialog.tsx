@@ -1,30 +1,32 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react"
 import {
-  Bell,
   BookOpenCheck,
-  Camera,
   CheckCircle2,
   ClipboardCheck,
-  Clock3,
-  FileText,
-  MessageSquareText,
   Sparkles,
-  UserRound,
   Users,
 } from "lucide-react"
-import type { Student, Task } from "../../../app/prototype/types"
+import type { Lesson, PlanDraft, Quiz, QuizQuestion, Student, Task } from "../../../app/prototype/types"
 import { Dialog } from "../../../components/shared/Dialog"
 import { getTeacherSettings } from "../settings/teacherSettings"
+import { generateDraft } from "../../../services/localAi"
+import { toQuiz } from "../planning/generators"
+import { QuestionEditor } from "../planning/QuizBuilder"
 
 interface CreateTaskDialogProps {
   open: boolean
   students: Student[]
+  lessons?: Lesson[]
   taskCount: number
+  plans?: PlanDraft[]
+  quizzes?: Quiz[]
+  initialPlanId?: string | null
+  initialLessonId?: string | null
+  initialQuizId?: string | null
   onClose: () => void
-  onCreate: (task: Task) => void
+  onCreate: (task: Task, quiz?: Quiz) => void
 }
 
-type AudienceKind = Task["audience"]["kind"]
 type SubmissionMode = NonNullable<Task["submissionMode"]>
 
 const taskTypes: Array<{
@@ -46,68 +48,41 @@ const taskTypes: Array<{
     icon: <BookOpenCheck aria-hidden="true" size={19} />,
   },
   {
-    value: "quiz",
-    label: "学习自检",
-    description: "用可观察结果判断是否真正掌握",
-    icon: <CheckCircle2 aria-hidden="true" size={19} />,
-  },
-  {
     value: "reading",
-    label: "课前准备",
-    description: "带着明确问题阅读或观察材料",
+    label: "课堂热身",
+    description: "课前用一个问题唤起已有经验",
     icon: <Sparkles aria-hidden="true" size={19} />,
   },
-]
-
-const submissionModes: Array<{
-  value: SubmissionMode
-  label: string
-  description: string
-  icon: ReactNode
-}> = [
   {
-    value: "online",
-    label: "在线作答",
-    description: "适合选择题、自检题和简短回答",
-    icon: <CheckCircle2 aria-hidden="true" size={18} />,
-  },
-  {
-    value: "photo",
-    label: "拍照提交",
-    description: "适合演算过程、纸笔作品与实践记录",
-    icon: <Camera aria-hidden="true" size={18} />,
-  },
-  {
-    value: "text",
-    label: "文字说明",
-    description: "适合解释思路、反思和阅读回应",
-    icon: <MessageSquareText aria-hidden="true" size={18} />,
-  },
-  {
-    value: "no-submit",
-    label: "无需提交",
-    description: "只安排阅读、准备或线下完成",
-    icon: <FileText aria-hidden="true" size={18} />,
+    value: "quiz",
+    label: "三题自检",
+    description: "根据课堂内容完成三道测试题",
+    icon: <CheckCircle2 aria-hidden="true" size={19} />,
   },
 ]
-
-const reminderOptions = ["截止前 1 天", "截止前 2 小时", "不提醒"] as const
-const durationOptions = [10, 15, 20, 30] as const
 
 const inputClassName =
-  "min-h-12 w-full rounded-2xl border border-[#cfdbd0] bg-white/80 px-4 py-3 text-sm font-semibold text-[#17251b] shadow-[inset_0_1px_0_rgba(255,255,255,.95)] outline-none transition placeholder:text-[#87948b] focus:border-[#6f9275] focus:ring-4 focus:ring-[#6f9275]/15"
-const labelClassName = "grid gap-2 text-sm font-black text-[#344d3d]"
+  "min-h-12 min-w-0 w-full rounded-2xl border border-[#cfdbd0] bg-white/80 px-4 py-3 text-sm font-semibold text-[#17251b] shadow-[inset_0_1px_0_rgba(255,255,255,.95)] outline-none transition placeholder:text-[#87948b] focus:border-[#6f9275] focus:ring-4 focus:ring-[#6f9275]/15"
+const labelClassName = "grid min-w-0 gap-2 text-sm font-black text-[#344d3d]"
 
-function toLocalInputValue(date: Date) {
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-  return local.toISOString().slice(0, 16)
+function blankQuiz(title: string, lessonId?: string, subject: Quiz["subject"] = "数学"): Quiz {
+  return {
+    id: crypto.randomUUID(), title: title || "三题自检", subject, lessonId,
+    status: "ready", createdAt: new Date().toISOString(),
+    questions: Array.from({ length: 3 }, () => ({
+      id: crypto.randomUUID(), prompt: "", type: "single-choice" as const,
+      options: ["", "", "", ""], answer: "", explanation: "", score: 10,
+    })),
+  }
 }
 
-function getDefaultDueAt() {
-  const due = new Date()
-  due.setDate(due.getDate() + 2)
-  due.setHours(20, 0, 0, 0)
-  return toLocalInputValue(due)
+function validQuestion(question: QuizQuestion) {
+  const options = question.options.map((item) => item.trim()).filter(Boolean)
+  const answers = Array.isArray(question.answer) ? question.answer : question.type === "multiple-choice" ? question.answer.split("、") : [question.answer]
+  return Boolean(question.prompt.trim() && question.explanation.trim() && question.score > 0 &&
+    answers.length && answers.every((answer) => answer.trim()) &&
+    (question.type === "short-answer" ||
+      (options.length >= 2 && new Set(options).size === options.length && answers.every((answer) => options.includes(answer.trim())))))
 }
 
 function ChoiceCard({
@@ -185,7 +160,13 @@ function SectionHeading({
 export function CreateTaskDialog({
   open,
   students,
+  lessons = [],
   taskCount,
+  plans = [],
+  quizzes = [],
+  initialPlanId,
+  initialLessonId,
+  initialQuizId,
   onClose,
   onCreate,
 }: CreateTaskDialogProps) {
@@ -194,53 +175,149 @@ export function CreateTaskDialog({
   const [objective, setObjective] = useState("")
   const [successCriteria, setSuccessCriteria] = useState("")
   const [content, setContent] = useState("")
-  const [submissionMode, setSubmissionMode] = useState<SubmissionMode>("online")
-  const [estimatedMinutes, setEstimatedMinutes] = useState(15)
-  const [supportNote, setSupportNote] = useState("")
-  const [audienceKind, setAudienceKind] = useState<AudienceKind>("class")
-  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
-  const [dueAt, setDueAt] = useState(getDefaultDueAt)
-  const [reminder, setReminder] = useState<(typeof reminderOptions)[number]>(
-    "截止前 2 小时",
-  )
+  const [submissionMode, setSubmissionMode] = useState<SubmissionMode>("text")
+  const [selectedClass, setSelectedClass] = useState(getTeacherSettings().currentClass)
+  const reminder = "不提醒"
   const [error, setError] = useState("")
+  const [sourcePlanId, setSourcePlanId] = useState("")
+  const [sourceLessonId, setSourceLessonId] = useState("")
+  const [quizDraft, setQuizDraft] = useState<Quiz | null>(null)
+  const [generating, setGenerating] = useState(false)
+  const generationToken = useRef(0)
   const currentClass = getTeacherSettings().currentClass
+  const availableClasses = useMemo(() => [...new Set([currentClass, ...students.map((student) => student.className), ...lessons.map((lesson) => lesson.className)])].filter(Boolean), [currentClass, students, lessons])
 
   useEffect(() => {
-    if (!open) return
-    setType("practice")
-    setTitle("")
-    setObjective("")
-    setSuccessCriteria("")
-    setContent("")
-    setSubmissionMode("online")
-    setEstimatedMinutes(15)
-    setSupportNote("")
-    setAudienceKind("class")
-    setSelectedStudentIds([])
-    setDueAt(getDefaultDueAt())
-    setReminder("截止前 2 小时")
+    if (!open) { generationToken.current += 1; return }
+    const source = plans.find((item) => item.id === initialPlanId)
+    const lesson = lessons.find((item) => item.id === initialLessonId)
+    const quiz = quizzes.find((item) => item.id === initialQuizId)
+    setType(lesson || quiz ? "quiz" : source ? "reading" : "practice")
+    setSourcePlanId(source?.id ?? "")
+    setSourceLessonId(lesson?.id ?? "")
+    setSelectedClass(lesson?.className ?? currentClass)
+    setTitle(lesson ? `${lesson.title} · 课堂三题自检` : quiz?.title ?? (source ? `${source.chapter} · 课堂热身` : ""))
+    setObjective(lesson ? `检查学生对“${lesson.title}”的理解` : quiz ? `完成${quiz.title}，检查当前知识的掌握情况` : source?.objective ?? "")
+    setSuccessCriteria(lesson || quiz ? "完成三道题，并根据解析订正" : source?.assessment ?? "")
+    setContent(lesson || quiz ? "完成三道课堂自检题，并说明解题依据。" : source?.context || source?.outline[0] || "")
+    setSubmissionMode(lesson || quiz ? "online" : "text")
+    setQuizDraft(quiz ? { ...structuredClone(quiz), id: crypto.randomUUID(), questions: quiz.questions.map((question) => ({ ...structuredClone(question), id: crypto.randomUUID() })) } : lesson ? blankQuiz(`${lesson.title}课堂自检`, lesson.id, lesson.subject) : null)
     setError("")
-  }, [open])
+    if (lesson) void generateQuiz(lesson)
+  }, [open, initialPlanId, initialLessonId, initialQuizId])
 
-  const selectedStudentNames = useMemo(
-    () =>
-      students
-        .filter((student) => selectedStudentIds.includes(student.id))
-        .map((student) => student.name),
-    [selectedStudentIds, students],
-  )
-  const selectedType = taskTypes.find((option) => option.value === type)!
-  const selectedSubmission = submissionModes.find(
-    (option) => option.value === submissionMode,
-  )!
+  function choosePlan(id: string) {
+    generationToken.current += 1
+    setGenerating(false)
+    setError("")
+    const source = plans.find((item) => item.id === id)
+    setSourcePlanId(id)
+    setSourceLessonId("")
+    if (!source) {
+      setQuizDraft((current) => current ? { ...current, lessonId: undefined, sourcePlanId: undefined } : null)
+      return
+    }
+    setQuizDraft(null)
+    setSelectedClass(currentClass)
+    setType("reading")
+    setTitle(`${source.chapter} · 课堂热身`)
+    setObjective(source.objective)
+    setSuccessCriteria(source.assessment ?? "")
+    setContent(source.context || source.outline[0] || "")
+    setSubmissionMode("text")
+  }
 
-  function toggleStudent(studentId: string) {
-    setSelectedStudentIds((current) =>
-      current.includes(studentId)
-        ? current.filter((id) => id !== studentId)
-        : [...current, studentId],
-    )
+  function chooseQuiz(id: string) {
+    generationToken.current += 1
+    setGenerating(false)
+    setError("")
+    const quiz = quizzes.find((item) => item.id === id)
+    if (!quiz) return
+    setSourcePlanId("")
+    setSourceLessonId(quiz.lessonId ?? "")
+    setSelectedClass(lessons.find((lesson) => lesson.id === quiz.lessonId)?.className ?? currentClass)
+    setType("quiz")
+    setTitle(quiz.title)
+    setObjective(`完成${quiz.title}，检查当前知识的掌握情况`)
+    setSuccessCriteria(`完成 ${quiz.questions.length} 道题，并查看解析订正错误`)
+    setContent("完成三道题，并核对解题依据。")
+    setSubmissionMode("online")
+    setQuizDraft({ ...structuredClone(quiz), id: crypto.randomUUID(), questions: quiz.questions.map((question) => ({ ...structuredClone(question), id: crypto.randomUUID() })) })
+  }
+
+  function chooseLesson(id: string) {
+    generationToken.current += 1
+    setGenerating(false)
+    setError("")
+    const lesson = lessons.find((item) => item.id === id)
+    setSourceLessonId(id)
+    setSourcePlanId("")
+    if (!lesson) {
+      setQuizDraft((current) => current ? { ...current, lessonId: undefined, sourcePlanId: undefined } : null)
+      return
+    }
+    setSelectedClass(lesson.className)
+    setType("quiz")
+    setTitle(`${lesson.title} · 课堂三题自检`)
+    setObjective(`检查学生对“${lesson.title}”的理解`)
+    setSuccessCriteria("完成三道题，并根据解析订正")
+    setContent("完成三道课堂自检题，并说明解题依据。")
+    setSubmissionMode("online")
+    setQuizDraft(blankQuiz(`${lesson.title}课堂自检`, lesson.id, lesson.subject))
+    void generateQuiz(lesson)
+  }
+
+  async function generateQuiz(sourceLesson?: Lesson) {
+    const lesson = sourceLesson ?? lessons.find((item) => item.id === sourceLessonId)
+    const plan = lesson ? undefined : plans.find((item) => item.id === sourcePlanId)
+    const topic = lesson?.title ?? plan?.chapter ?? title.trim()
+    if (!topic) { setError("请先填写任务标题或选择课堂，再生成三道题。") ; return }
+    const requestId = ++generationToken.current
+    setGenerating(true)
+    setError("")
+    try {
+      const classroomContent = lesson ? [
+        ...lesson.transcript.map((segment) => segment.body), lesson.recap,
+        lesson.teacherReport ?? "", lesson.progressSuggestion ?? "",
+      ].filter(Boolean).join("；").slice(0, 5000) : ""
+      const focus = lesson
+        ? `仅依据以下课堂内容设计三道不同考查角度的题：${classroomContent || lesson.title}`
+        : plan ? `教学目标：${plan.objective}；教学流程：${plan.outline.join("；")}；课堂检验：${plan.assessment ?? ""}`
+          : objective || "检查概念、应用与解释"
+      const response = await generateDraft("quiz", { title: `${topic}课堂自检`, topic, difficulty: "递进", focus }) as { content?: unknown }
+      const generated = toQuiz(response.content)
+      if (requestId !== generationToken.current) return
+      setQuizDraft({ ...generated, subject: lesson?.subject ?? plan?.subject ?? "数学", lessonId: lesson?.id, sourcePlanId: plan?.id, status: "ready", questions: generated.questions.map((question) => ({ ...question, explanation: question.explanation || `参考答案：${Array.isArray(question.answer) ? question.answer.join("、") : question.answer}` })) })
+      setType("quiz")
+      setSubmissionMode("online")
+    } catch (cause) {
+      if (requestId === generationToken.current) setError(cause instanceof Error ? cause.message : "三题生成失败，请重试或手动编写")
+    } finally {
+      if (requestId === generationToken.current) setGenerating(false)
+    }
+  }
+
+  async function fillWithAi() {
+    if (!title.trim() || !objective.trim()) { setError("先填写标题和学习目标，再让 AI 补全任务。") ; return }
+    const requestId = ++generationToken.current
+    setGenerating(true)
+    setError("")
+    try {
+      const source = plans.find((item) => item.id === sourcePlanId)
+      const result = await generateDraft("task-draft", {
+        title, objective, taskType: type,
+        sourcePlan: source ? `${source.chapter}；${source.outline.join("；")}；${source.extension}` : "教师直接创建任务",
+        learningEvidence: getTeacherSettings().includeEvidence ? source?.evidence ?? [] : [],
+      }) as { content?: { title?: string; objective?: string; successCriteria?: string; content?: string } }
+      const draft = result.content
+      if (!draft?.title || !draft.objective || !draft.successCriteria || !draft.content) throw new Error("AI 返回的任务草稿不完整")
+      if (requestId !== generationToken.current) return
+      setTitle(draft.title); setObjective(draft.objective); setSuccessCriteria(draft.successCriteria); setContent(draft.content)
+    } catch (cause) {
+      if (requestId === generationToken.current) setError(cause instanceof Error ? cause.message : "生成失败，请重试")
+    } finally {
+      if (requestId === generationToken.current) setGenerating(false)
+    }
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -254,41 +331,41 @@ export function CreateTaskDialog({
       !normalizedTitle ||
       !normalizedObjective ||
       !normalizedCriteria ||
-      !normalizedContent ||
-      !dueAt
+      !normalizedContent
     ) {
-      setError("请补全任务标题、学习目标、达成标准、任务说明和截止时间。")
+      setError("请补全任务标题、学习目标、达成标准和任务说明。")
       return
     }
-    if (audienceKind === "students" && selectedStudentIds.length === 0) {
-      setError("请至少选择一名学生。")
+    if (!selectedClass) {
+      setError("请选择发布班级。")
       return
     }
-
-    const audienceStudentIds =
-      audienceKind === "class"
-        ? students.map((student) => student.id)
-        : selectedStudentIds
+    let quiz: Quiz | undefined
+    if (type === "quiz") {
+      if (!quizDraft || quizDraft.questions.length !== 3 || quizDraft.questions.some((question) => !validQuestion(question))) {
+        setError("请完善三道题的题干、选项、答案和解析后保存。")
+        return
+      }
+      quiz = { ...quizDraft, title: `${normalizedTitle} · 三题自检`, status: "ready", questions: quizDraft.questions.map((question) => ({ ...question, options: question.options.map((option) => option.trim()).filter(Boolean) })) }
+    }
+    const audienceStudentIds = students.filter((student) => student.className === selectedClass).map((student) => student.id)
 
     onCreate({
       id: `task-local-${Date.now()}-${taskCount + 1}`,
       title: normalizedTitle,
       type,
+      sourcePlanId: sourcePlanId || undefined,
+      sourceLessonId: sourceLessonId || undefined,
+      sourceQuizId: quiz?.id,
       objective: normalizedObjective,
       successCriteria: normalizedCriteria,
       content: normalizedContent,
-      submissionMode,
-      estimatedMinutes,
-      supportNote: supportNote.trim() || undefined,
+      submissionMode: type === "quiz" ? "online" : submissionMode,
       audience: {
-        kind: audienceKind,
-        label:
-          audienceKind === "class"
-            ? currentClass
-            : selectedStudentNames.join("、"),
-        studentIds: audienceKind === "class" ? [] : selectedStudentIds,
+        kind: "class",
+        label: selectedClass,
+        studentIds: [],
       },
-      dueAt: new Date(dueAt).toISOString(),
       reminder,
       status: "draft",
       completions: audienceStudentIds.map((studentId) => ({
@@ -296,7 +373,7 @@ export function CreateTaskDialog({
         status: "not-started",
       })),
       createdAt: new Date().toISOString(),
-    })
+    }, quiz)
   }
 
   return (
@@ -317,10 +394,11 @@ export function CreateTaskDialog({
             </button>
             <button
               className="min-h-11 rounded-full bg-[#183021] px-6 text-sm font-black text-white shadow-[0_12px_28px_rgba(20,40,27,.18)] transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#66886d]/30"
+              disabled={generating}
               form="create-teacher-task"
               type="submit"
             >
-              保存并预览
+              {generating ? "正在生成…" : "保存并预览"}
             </button>
           </div>
         </div>
@@ -331,11 +409,12 @@ export function CreateTaskDialog({
       title="新建任务"
     >
       <form
-        className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_280px]"
+        className="mx-auto grid w-full max-w-3xl min-w-0 gap-5"
         id="create-teacher-task"
         onSubmit={handleSubmit}
       >
         <div className="grid gap-5">
+          <section className="min-w-0 rounded-2xl border border-[#dce7da] bg-white p-4 sm:p-5"><h3 className="font-black">从课堂或教案开始</h3><p className="mt-1 text-sm text-[#718076]">课堂生成三题自检；教案带入课堂热身。也可直接填写。</p><div className="mt-3 grid min-w-0 gap-3 sm:grid-cols-2"><label className={labelClassName}>关联课堂<select aria-label="关联课堂" className={inputClassName} value={sourceLessonId} onChange={(event) => chooseLesson(event.target.value)}><option value="">不关联课堂</option>{lessons.map((lesson) => <option key={lesson.id} value={lesson.id}>{lesson.title} · {lesson.className}</option>)}</select></label><label className={labelClassName}>关联教案<select aria-label="关联教案" className={inputClassName} value={sourcePlanId} onChange={(event) => choosePlan(event.target.value)}><option value="">不关联教案</option>{plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.title}</option>)}</select></label></div>{quizzes.length > 0 && <details className="mt-3 min-w-0 rounded-xl border border-[#e0e8df] p-3"><summary className="cursor-pointer text-sm font-bold">使用已有三题题组</summary><label className={`${labelClassName} mt-3`}>已有题组<select aria-label="已有题组" className={inputClassName} defaultValue="" onChange={(event) => chooseQuiz(event.target.value)}><option value="">请选择题组</option>{quizzes.map((quiz) => <option key={quiz.id} value={quiz.id}>{quiz.title}</option>)}</select></label></details>}</section>
           <section className="rounded-[26px] border border-white/85 bg-white/58 p-5 shadow-[0_16px_38px_rgba(49,78,58,.06)]">
             <SectionHeading
               description="先写清任务完成后，学生应该能做什么。"
@@ -382,23 +461,7 @@ export function CreateTaskDialog({
               step="2"
               title="设计学习活动"
             />
-            <fieldset>
-              <legend className="mb-2 text-sm font-black text-[#344d3d]">任务形式</legend>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {taskTypes.map((option) => (
-                  <ChoiceCard
-                    checked={type === option.value}
-                    description={option.description}
-                    icon={option.icon}
-                    key={option.value}
-                    label={option.label}
-                    name="任务类型"
-                    onChange={() => setType(option.value)}
-                    value={option.value}
-                  />
-                ))}
-              </div>
-            </fieldset>
+             <label className={labelClassName}>任务形式<select aria-label="任务形式" className={inputClassName} value={type} onChange={(event) => { generationToken.current += 1; setGenerating(false); const next = event.target.value as Task["type"]; setType(next); setSubmissionMode(next === "quiz" ? "online" : "text"); if (next === "quiz" && !quizDraft) setQuizDraft(blankQuiz(title, sourceLessonId || undefined, lessons.find((lesson) => lesson.id === sourceLessonId)?.subject ?? "数学")) }}>{taskTypes.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
             <label className={`${labelClassName} mt-4`}>
               给学生的任务说明
               <textarea
@@ -409,156 +472,22 @@ export function CreateTaskDialog({
                 onChange={(event) => setContent(event.target.value)}
               />
             </label>
-            <fieldset className="mt-4">
-              <legend className="mb-2 text-sm font-black text-[#344d3d]">学习证据</legend>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {submissionModes.map((option) => (
-                  <ChoiceCard
-                    checked={submissionMode === option.value}
-                    description={option.description}
-                    icon={option.icon}
-                    key={option.value}
-                    label={option.label}
-                    name="提交方式"
-                    onChange={() => setSubmissionMode(option.value)}
-                    value={option.value}
-                  />
-                ))}
-              </div>
-            </fieldset>
+             {type !== "quiz" && <label className={`${labelClassName} mt-4`}>学生提交方式<select aria-label="学生提交方式" className={inputClassName} value={submissionMode} onChange={(event) => setSubmissionMode(event.target.value as SubmissionMode)}><option value="text">文字回答</option><option value="photo">拍照提交</option><option value="no-submit">无需提交（线下完成）</option></select></label>}
+             {type !== "quiz" && <button className="mt-4 min-h-11 rounded-xl border border-[#aec7b0] px-4 text-sm font-bold text-[#315a3a] disabled:opacity-50" disabled={generating} onClick={() => void fillWithAi()} type="button">{generating ? "AI 正在起草…" : "用 AI 补全任务草稿"}</button>}
           </section>
 
-          <section className="rounded-[26px] border border-white/85 bg-white/58 p-5 shadow-[0_16px_38px_rgba(49,78,58,.06)]">
-            <SectionHeading
-              description="控制任务负担、对象和提醒，只保留真正影响完成体验的设置。"
-              step="3"
-              title="安排对象与节奏"
-            />
-            <fieldset>
-              <legend className="mb-2 text-sm font-black text-[#344d3d]">发布对象</legend>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <ChoiceCard
-                  checked={audienceKind === "class"}
-                  description={`${currentClass}全班学生`}
-                  icon={<Users aria-hidden="true" size={18} />}
-                  label="全班"
-                  name="发布对象"
-                  onChange={() => setAudienceKind("class")}
-                  value="class"
-                />
-                <ChoiceCard
-                  checked={audienceKind === "students"}
-                  description="用于分层支持、补做或个别挑战"
-                  icon={<UserRound aria-hidden="true" size={18} />}
-                  label="指定学生"
-                  name="发布对象"
-                  onChange={() => setAudienceKind("students")}
-                  value="students"
-                />
-              </div>
-            </fieldset>
+          {type === "quiz" && <section className="min-w-0 rounded-[26px] border border-white/85 bg-white/58 p-4 shadow-[0_16px_38px_rgba(49,78,58,.06)] sm:p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><SectionHeading description="三题会随任务保存，发布前可逐题校对。" step="3" title="课堂三题自检" /><button className="min-h-11 rounded-xl border border-[#aec7b0] px-4 text-sm font-bold text-[#315a3a] disabled:opacity-50" disabled={generating} onClick={() => void generateQuiz()} type="button">{generating ? "正在生成三题…" : "重新生成三题"}</button></div>
+            {error && <p className="mb-4 rounded-xl border border-[#e8c7a7] bg-[#fff4e8] px-4 py-3 text-sm font-bold text-[#8a542f]" role="alert">{error}</p>}
+            <div className="grid min-w-0 gap-4">{quizDraft?.questions.map((question, index) => <QuestionEditor key={question.id} index={index} question={question} onChange={(next) => { generationToken.current += 1; setGenerating(false); setQuizDraft((current) => current ? { ...current, questions: current.questions.map((item, itemIndex) => itemIndex === index ? next : item) } : current) }} />)}</div>
+          </section>}
 
-            {audienceKind === "students" ? (
-              <fieldset className="mt-4 rounded-[22px] border border-[#d5dfd6] bg-white/55 p-4">
-                <legend className="px-2 text-sm font-black text-[#465c4d]">选择学生</legend>
-                <div className="mt-2 grid max-h-48 gap-2 overflow-auto pr-1 sm:grid-cols-2">
-                  {students.map((student) => (
-                    <label
-                      className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold transition hover:bg-white/80"
-                      key={student.id}
-                    >
-                      <input
-                        checked={selectedStudentIds.includes(student.id)}
-                        className="size-4 accent-[#56785e]"
-                        onChange={() => toggleStudent(student.id)}
-                        type="checkbox"
-                      />
-                      {student.name}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            ) : null}
-
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className={labelClassName}>
-                截止时间
-                <input
-                  aria-label="截止时间"
-                  className={inputClassName}
-                  min={toLocalInputValue(new Date())}
-                  type="datetime-local"
-                  value={dueAt}
-                  onChange={(event) => setDueAt(event.target.value)}
-                />
-              </label>
-              <fieldset>
-                <legend className="mb-2 text-sm font-black text-[#344d3d]">预计用时</legend>
-                <div className="grid grid-cols-4 gap-2">
-                  {durationOptions.map((minutes) => (
-                    <label
-                      className={`grid min-h-12 cursor-pointer place-items-center rounded-2xl border text-sm font-black transition focus-within:ring-4 focus-within:ring-[#6f9275]/18 ${
-                        estimatedMinutes === minutes
-                          ? "border-[#7f9f84] bg-[#e5eee2] text-[#274b31]"
-                          : "border-[#d6e1d7] bg-white/65 text-[#63736a]"
-                      }`}
-                      key={minutes}
-                    >
-                      <input
-                        checked={estimatedMinutes === minutes}
-                        className="sr-only"
-                        name="预计用时"
-                        onChange={() => setEstimatedMinutes(minutes)}
-                        type="radio"
-                        value={minutes}
-                      />
-                      {minutes} 分
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            </div>
-
-            <fieldset className="mt-4">
-              <legend className="mb-2 text-sm font-black text-[#344d3d]">提醒</legend>
-              <div className="flex flex-wrap gap-2">
-                {reminderOptions.map((option) => (
-                  <label
-                    className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border px-4 text-sm font-black transition focus-within:ring-4 focus-within:ring-[#6f9275]/18 ${
-                      reminder === option
-                        ? "border-[#7f9f84] bg-[#e5eee2] text-[#274b31]"
-                        : "border-[#d6e1d7] bg-white/65 text-[#63736a]"
-                    }`}
-                    key={option}
-                  >
-                    <input
-                      checked={reminder === option}
-                      className="sr-only"
-                      name="提醒设置"
-                      onChange={() => setReminder(option)}
-                      type="radio"
-                      value={option}
-                    />
-                    <Bell aria-hidden="true" size={15} />
-                    {option}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-
-            <label className={`${labelClassName} mt-4`}>
-              差异化支持 <span className="font-semibold text-[#87938b]">（可选）</span>
-              <textarea
-                aria-label="差异化支持"
-                className={`${inputClassName} min-h-20 resize-y leading-6`}
-                placeholder="例如：允许使用步骤卡；提前完成的学生补充一种解法。"
-                value={supportNote}
-                onChange={(event) => setSupportNote(event.target.value)}
-              />
-            </label>
+          <section className="min-w-0 rounded-[26px] border border-white/85 bg-white/58 p-4 shadow-[0_16px_38px_rgba(49,78,58,.06)] sm:p-5">
+            <SectionHeading description="只选择你授课的班级。保存后先预览，再决定是否发布。" step={type === "quiz" ? "4" : "3"} title="发布对象" />
+            <fieldset><legend className="sr-only">发布班级</legend><div className="grid gap-2 sm:grid-cols-2">{availableClasses.map((className) => <ChoiceCard key={className} checked={selectedClass === className} description="该班全体学生" icon={<Users aria-hidden="true" size={18} />} label={className} name="发布班级" onChange={() => setSelectedClass(className)} value={className} />)}</div></fieldset>
           </section>
 
-          {error ? (
+          {error && type !== "quiz" ? (
             <p
               className="rounded-2xl border border-[#e8c7a7] bg-[#fff4e8] px-4 py-3 text-sm font-bold text-[#8a542f]"
               role="alert"
@@ -568,51 +497,6 @@ export function CreateTaskDialog({
           ) : null}
         </div>
 
-        <aside className="sticky top-0 hidden rounded-[26px] border border-[#d7e1d7] bg-[#f3f7f0]/88 p-5 shadow-[0_18px_42px_rgba(45,74,54,.08)] lg:block">
-          <p className="text-xs font-black tracking-[0.15em] text-[#6a7d6f]">任务预览</p>
-          <h3 className="mt-3 text-xl font-black tracking-[-0.025em] text-[#17271c]">
-            {title.trim() || "未命名任务"}
-          </h3>
-          <p className="mt-2 text-sm leading-6 text-[#66776c]">
-            {objective.trim() || "填写学习目标后，学生会在这里看到这项任务的意义。"}
-          </p>
-          <div className="mt-5 grid gap-2 text-sm">
-            <div className="flex items-center gap-2 rounded-2xl bg-white/72 px-3 py-3 font-bold text-[#405747]">
-              {selectedType.icon}
-              {selectedType.label}
-            </div>
-            <div className="flex items-center gap-2 rounded-2xl bg-white/72 px-3 py-3 font-bold text-[#405747]">
-              {selectedSubmission.icon}
-              {selectedSubmission.label}
-            </div>
-            <div className="flex items-center gap-2 rounded-2xl bg-white/72 px-3 py-3 font-bold text-[#405747]">
-              <Clock3 aria-hidden="true" size={18} />
-              约 {estimatedMinutes} 分钟
-            </div>
-            <div className="flex items-center gap-2 rounded-2xl bg-white/72 px-3 py-3 font-bold text-[#405747]">
-              {audienceKind === "class" ? (
-                <Users aria-hidden="true" size={18} />
-              ) : (
-                <UserRound aria-hidden="true" size={18} />
-              )}
-              {audienceKind === "class"
-                ? currentClass
-                : selectedStudentNames.length > 0
-                  ? `${selectedStudentNames.length} 名学生`
-                  : "尚未选择学生"}
-            </div>
-          </div>
-          <div className="mt-5 rounded-2xl border border-[#d7e3d5] bg-white/62 p-4">
-            <p className="text-xs font-black text-[#627468]">达成标准</p>
-            <p className="mt-2 text-sm leading-6 text-[#405448]">
-              {successCriteria.trim() || "填写一条可以被学生和教师共同判断的标准。"}
-            </p>
-          </div>
-          <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-[#728077]">
-            <CheckCircle2 aria-hidden="true" className="mt-0.5 shrink-0" size={15} />
-            草稿保存后可从教师视角检查，再决定是否发布。
-          </p>
-        </aside>
       </form>
     </Dialog>
   )

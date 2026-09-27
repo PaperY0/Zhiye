@@ -215,18 +215,17 @@ describe("RoleShell", () => {
     const expectedLabels: Record<"teacher" | "student" | "parent" | "admin", string[]> = {
       teacher: [
         "工作台",
+        "备课",
         "课堂",
-        "班级洞察",
-        "备课与测验",
-        "学生档案",
         "任务",
+        "班级洞察",
+        "学生档案",
         "消息",
         "设置",
-        "历史记录",
       ],
-      student: ["首页", "任务", "错题本", "消息", "历史记录"],
-      parent: ["学习摘要", "联系老师", "历史记录"],
-      admin: ["管理概览", "保护性反馈", "审计记录", "学校设置", "历史记录"],
+      student: ["首页", "任务", "错题本", "消息"],
+      parent: ["学习摘要", "联系老师"],
+      admin: ["管理概览", "保护性反馈", "审计记录", "学校设置"],
     }
     const homeRoutes: Record<keyof typeof expectedLabels, AppRoute> = {
       teacher: { role: "teacher", page: "workspace" },

@@ -1,186 +1,43 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { beforeEach, describe, expect, it } from "vitest"
 import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
+import { getTeacherSettings } from "./teacherSettings"
 import { TeacherSettingsPage } from "./TeacherSettingsPage"
 
-function renderSettings() {
-  return render(
-    <PrototypeProvider>
-      <TeacherSettingsPage />
-    </PrototypeProvider>,
-  )
-}
-
-beforeEach(() => {
-  localStorage.clear()
-})
+function setup() { return render(<PrototypeProvider><TeacherSettingsPage /></PrototypeProvider>) }
 
 describe("TeacherSettingsPage", () => {
-  it("presents every teacher setting area and explains globally applied local state", () => {
-    renderSettings()
+  beforeEach(() => localStorage.clear())
 
-    expect(
-      screen.getByRole("heading", { name: "教师设置" }),
-    ).toBeInTheDocument()
-
-    for (const sectionName of [
-      "教师资料与班级",
-      "教材与教学范围",
-      "AI 生成偏好",
-      "语言与方言",
-      "通知",
-      "数据留存",
-      "隐私与角色切换",
-    ]) {
-      expect(
-        screen.getByRole("region", { name: sectionName }),
-      ).toBeInTheDocument()
-    }
-
-    expect(screen.getByText(/保存后会在当前浏览器全局生效/)).toBeInTheDocument()
-    expect(screen.getByText(/不会上传真实学校数据/)).toBeInTheDocument()
-    expect(
-      screen.getByText(/角色切换只用于体验不同端的原型页面/),
-    ).toBeInTheDocument()
+  it("shows only settings that feed the teacher workflow", () => {
+    setup()
+    expect(screen.getByRole("heading", { name: "身份与授课班级" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "教材与进度" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "AI 草稿偏好" })).toBeInTheDocument()
+    expect(screen.queryByText("数据留存")).not.toBeInTheDocument()
   })
 
-  it("edits textbook scope, AI detail, dialect, notifications, retention and privacy choices", async () => {
+  it("persists teacher name, chapter and AI preference", async () => {
     const user = userEvent.setup()
-    renderSettings()
-
+    const view = setup()
     await user.clear(screen.getByRole("textbox", { name: "教师姓名" }))
-    await user.type(screen.getByRole("textbox", { name: "教师姓名" }), "李敏")
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "当前班级" }),
-      "五年级（1）班",
-    )
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "数学教材版本" }),
-      "北师大版",
-    )
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "当前教学章节" }),
-      "分数加减法",
-    )
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "AI 内容详细程度" }),
-      "详细",
-    )
-    await user.click(screen.getByRole("checkbox", { name: "生成时附课堂证据" }))
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "语音识别语言" }),
-      "普通话与四川话",
-    )
-    await user.click(screen.getByRole("checkbox", { name: "任务到期提醒" }))
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "课堂录音留存时间" }),
-      "30 天",
-    )
-    await user.click(
-      screen.getByRole("checkbox", { name: "允许家长查看教师留言" }),
-    )
-
-    expect(screen.getByRole("textbox", { name: "教师姓名" })).toHaveValue(
-      "李敏",
-    )
-    expect(screen.getByRole("combobox", { name: "当前班级" })).toHaveValue(
-      "五年级（1）班",
-    )
-    expect(screen.getByRole("combobox", { name: "数学教材版本" })).toHaveValue(
-      "北师大版",
-    )
-    expect(screen.getByRole("combobox", { name: "当前教学章节" })).toHaveValue(
-      "分数加减法",
-    )
-    expect(
-      screen.getByRole("combobox", { name: "AI 内容详细程度" }),
-    ).toHaveValue("详细")
-    expect(
-      screen.getByRole("checkbox", { name: "生成时附课堂证据" }),
-    ).not.toBeChecked()
-    expect(screen.getByRole("combobox", { name: "语音识别语言" })).toHaveValue(
-      "普通话与四川话",
-    )
-    expect(
-      screen.getByRole("checkbox", { name: "任务到期提醒" }),
-    ).not.toBeChecked()
-    expect(
-      screen.getByRole("combobox", { name: "课堂录音留存时间" }),
-    ).toHaveValue("30 天")
-    expect(
-      screen.getByRole("checkbox", { name: "允许家长查看教师留言" }),
-    ).not.toBeChecked()
-  })
-
-  it("offers every primary grade and updates grade-aware guidance", async () => {
-    const user = userEvent.setup()
-    renderSettings()
-
-    const classSelect = screen.getByRole("combobox", { name: "当前班级" })
-    expect(within(classSelect).getByRole("option", { name: "一年级（1）班" })).toBeInTheDocument()
-    expect(within(classSelect).getByRole("option", { name: "六年级（3）班" })).toBeInTheDocument()
-
-    await user.selectOptions(classSelect, "六年级（3）班")
-
-    expect(screen.getByText(/适合六年级学生理解的真实生活情境/)).toBeInTheDocument()
-    expect(screen.getByRole("textbox", { name: "教师身份" })).toHaveValue("六年级数学教师")
-  })
-
-  it("saves the current local draft and shows a dismissible confirmation toast", async () => {
-    const user = userEvent.setup()
-    renderSettings()
-
-    await user.clear(screen.getByRole("textbox", { name: "教师姓名" }))
-    await user.type(screen.getByRole("textbox", { name: "教师姓名" }), "李敏")
+    await user.type(screen.getByRole("textbox", { name: "教师姓名" }), "张老师")
+    await user.clear(screen.getByRole("textbox", { name: "当前章节" }))
+    await user.type(screen.getByRole("textbox", { name: "当前章节" }), "小数乘法")
+    await user.selectOptions(screen.getByRole("combobox", { name: "内容详细程度" }), "详细")
     await user.click(screen.getByRole("button", { name: "保存设置" }))
-
-    const notifications = screen.getByRole("region", { name: "设置通知" })
-    expect(within(notifications).getByRole("status")).toHaveTextContent(
-      "设置已保存并全局生效",
-    )
-    expect(within(notifications).getByRole("status")).toHaveTextContent(
-      "刷新页面后仍会保留",
-    )
-
-    await user.click(
-      within(notifications).getByRole("button", {
-        name: "关闭通知：设置已保存并全局生效",
-      }),
-    )
-    expect(within(notifications).queryByRole("status")).not.toBeInTheDocument()
+    expect(getTeacherSettings()).toMatchObject({ teacherName: "张老师", chapter: "小数乘法", aiDetail: "详细" })
+    view.unmount()
+    setup()
+    expect(screen.getByRole("textbox", { name: "教师姓名" })).toHaveValue("张老师")
   })
 
-  it("restores saved teacher settings after remounting", async () => {
+  it("requires confirmation before resetting local data", async () => {
     const user = userEvent.setup()
-    const first = renderSettings()
-
-    await user.clear(screen.getByRole("textbox", { name: "教师姓名" }))
-    await user.type(screen.getByRole("textbox", { name: "教师姓名" }), "李敏")
-    await user.click(screen.getByRole("button", { name: "保存设置" }))
-    first?.unmount?.()
-
-    renderSettings()
-    expect(screen.getByRole("textbox", { name: "教师姓名" })).toHaveValue("李敏")
-  })
-
-  it("resets saved teacher settings with the prototype data reset", async () => {
-    const user = userEvent.setup()
-    renderSettings()
-
-    await user.clear(screen.getByRole("textbox", { name: "教师姓名" }))
-    await user.type(screen.getByRole("textbox", { name: "教师姓名" }), "李敏")
-    await user.click(screen.getByRole("button", { name: "保存设置" }))
+    setup()
     await user.click(screen.getByRole("button", { name: "重置演示数据" }))
-    await user.click(
-      within(screen.getByRole("dialog", { name: "确认重置演示数据" })).getByRole(
-        "button",
-        { name: "确认重置" },
-      ),
-    )
-
-    expect(screen.getByRole("textbox", { name: "教师姓名" })).toHaveValue("李老师")
-    expect(localStorage.getItem("zhiye-teacher-settings-v1")).toBeNull()
-    expect(localStorage.getItem("zhiye-admin-settings-v1")).toBeNull()
+    const dialog = screen.getByRole("dialog", { name: "重置所有演示数据" })
+    await user.click(within(dialog).getByRole("button", { name: "确认重置" }))
+    expect(getTeacherSettings().teacherName).toBe("李老师")
   })
 })

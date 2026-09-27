@@ -64,7 +64,7 @@ export function RoleSidebar({ route, onNavigate, showPinyin: showPinyinOverride,
   }
 
   return (
-    <aside className="role-sidebar hidden h-[calc(100dvh-24px)] w-[216px] shrink-0 self-start rounded-[28px] border border-white/75 bg-white/42 px-3 py-5 shadow-[0_20px_60px_rgba(47,78,55,0.12)] backdrop-blur-2xl lg:sticky lg:top-3 lg:flex lg:flex-col">
+    <aside className="role-sidebar hidden h-[calc(100dvh-24px)] w-[216px] shrink-0 self-start overflow-y-auto rounded-[20px] border border-[#dce6db] bg-[#f9fbf8] px-3 py-4 lg:sticky lg:top-3 lg:flex lg:flex-col">
       <div className="flex items-center gap-3 px-2">
         <span className="grid size-11 place-items-center rounded-[16px] bg-[#dfeee1] text-[#52745a] shadow-[0_10px_24px_rgba(72,110,79,0.12)]">
           <MarkIcon aria-hidden="true" size={21} strokeWidth={2.2} />
@@ -83,7 +83,7 @@ export function RoleSidebar({ route, onNavigate, showPinyin: showPinyinOverride,
       <div className="mb-3">
         <RoleSearch role={route.role} onNavigate={onNavigate} />
       </div>
-      <nav aria-label={`${metadata.label}端主导航`} className="space-y-1.5">
+      <nav aria-label={`${metadata.label}端主导航`} className="shrink-0 space-y-1.5">
         <p className="px-3 pb-1 text-[10px] font-black tracking-[0.16em] text-[#9aa69d]">主要工作</p>
         {renderItems(primaryItems)}
         {secondaryItems.length > 0 ? (

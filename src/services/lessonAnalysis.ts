@@ -14,6 +14,14 @@ export type LessonAnalysisResult = {
   evidence: string[]
 }
 
+export function lessonTopicFromContent(title: string, recapTags: string[]): string {
+  const normalizedTitle = title.trim().replace(/(?:课堂复盘|课堂记录)$/, "").trim()
+  const matchingTag = recapTags
+    .map((tag) => tag.trim())
+    .find((tag) => tag.length >= 3 && normalizedTitle.includes(tag))
+  return matchingTag || normalizedTitle
+}
+
 function isNonBlankString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0
 }
@@ -66,8 +74,15 @@ export async function analyzeLessonAudio(
 ): Promise<LessonAnalysisResult> {
   const body = new FormData()
   body.append("audio", audio, "lesson-recording.webm")
-  const { chapter: _savedChapter, ...preferences } = teacherSettingsForAi()
-  body.append("teacher_settings", JSON.stringify(preferences))
+  const settings = teacherSettingsForAi()
+  body.append("teacher_settings", JSON.stringify({
+    teacherName: settings.teacherName,
+    currentClass: settings.currentClass,
+    detail: settings.detail,
+    includeEvidence: settings.includeEvidence,
+    includeLifeExamples: settings.includeLifeExamples,
+    speechLanguage: settings.speechLanguage,
+  }))
 
   const payload = await requestJson<LessonAnalysisResult>(localAiUrl, {
     body,

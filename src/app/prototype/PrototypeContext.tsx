@@ -22,7 +22,7 @@ import {
 } from "./fixtures"
 import { acceptanceFixtureSet } from "./acceptanceFixtures"
 import { emptyFixtureSet } from "./emptyFixtures"
-import { isCompleteLessonAnalysis } from "../../services/lessonAnalysis"
+import { isCompleteLessonAnalysis, lessonTopicFromContent } from "../../services/lessonAnalysis"
 import { listenForPrototypeSync, publishPrototypeSync } from "./prototypeSync"
 import { unreadForRole } from "./conversationOrder"
 import {
@@ -485,7 +485,7 @@ export function PrototypeProvider({
                   progress: {
                     ...lesson.progress,
                     chapter: lesson.progress.chapter === "待确认" || lesson.progress.chapter === "待识别"
-                      ? chapter?.trim() || recapTags[0]?.trim() || title.trim()
+                      ? chapter?.trim() || lessonTopicFromContent(title, recapTags)
                       : lesson.progress.chapter,
                     nextStep,
                   },

@@ -385,6 +385,7 @@ def test_analyze_keeps_teacher_fields_returned_by_the_model(monkeypatch):
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
     model_result = {
         "title": "单位换算中的乘除方向",
+        "chapter": "单位换算",
         "recap": "先判断单位变化方向。",
         "recapTags": ["单位换算"],
         "nextStep": "完成随堂自检",
@@ -474,6 +475,7 @@ def test_analyze_response_contains_the_model_teacher_fields(monkeypatch):
     client = TestClient(server.app)
     generated = {
         "title": "单位换算中的乘除方向",
+        "chapter": "单位换算",
         "recap": "先判断单位变化方向。",
         "recapTags": ["单位换算"],
         "nextStep": "完成随堂自检",
@@ -488,6 +490,7 @@ def test_analyze_response_contains_the_model_teacher_fields(monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["title"] == generated["title"]
+    assert response.json()["chapter"] == generated["chapter"]
     assert response.json()["teacherReport"] == generated["teacherReport"]
     assert response.json()["progressSuggestion"] == generated["progressSuggestion"]
     assert response.json()["evidence"] == generated["evidence"]

@@ -19,7 +19,7 @@ import {
   type StatusTone,
 } from "../../../components/shared/StatusChip"
 import { RecordingPanel } from "./RecordingPanel"
-import type { LessonAnalysisResult } from "../../../services/lessonAnalysis"
+import { lessonTopicFromContent, type LessonAnalysisResult } from "../../../services/lessonAnalysis"
 import { useTeacherSettings } from "../settings/teacherSettings"
 
 type LessonFilter =
@@ -375,7 +375,7 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
             result.progressSuggestion,
             result.evidence,
             result.title,
-            result.chapter?.trim() || result.recapTags[0]?.trim() || result.title.trim(),
+            result.chapter?.trim() || lessonTopicFromContent(result.title, result.recapTags),
           )
           if (teacherSettings.lessonReadyNotification) {
             setToasts([{

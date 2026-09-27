@@ -11,6 +11,7 @@ import { EmptyState } from "../../../components/shared/EmptyState"
 import { Dialog } from "../../../components/shared/Dialog"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { StatusChip } from "../../../components/shared/StatusChip"
+import { lessonTopicFromContent } from "../../../services/lessonAnalysis"
 
 type LessonTab = "transcript" | "recap" | "report" | "progress"
 type SaveResult = { title: string; description: string } | null
@@ -117,7 +118,8 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
 
   const hasAnalysis = hasCompleteLessonAnalysis(lesson)
   const canPublish = hasCompleteAiDraft(lesson)
-  const contentChapter = hasAnalysis ? (lesson.recapTags[0]?.trim() || lesson.title.trim()) : ""
+  const contentChapter = hasAnalysis ? lessonTopicFromContent(lesson.title, lesson.recapTags) : ""
+  const chapterMayDiffer = contentChapter && !lesson.progress.chapter.includes(contentChapter.slice(0, 2))
 
   return (
     <div className="mx-auto grid w-full max-w-[1500px] gap-5 p-4 sm:p-6 xl:p-8">
@@ -323,7 +325,7 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
                 <p className="mt-2 text-sm leading-6 text-[#69776d]">先核对这节课实际讲到的章节或主题，再记录完成进度和下一步安排。</p>
               </div>
               {hasAnalysis && <details className="rounded-2xl border border-[#d4dfd2] bg-[#f5f8f2] p-4"><summary className="cursor-pointer font-bold text-[#294530]">查看 AI 的进度建议（可选）</summary><p className="mt-3 leading-7 text-[#526157]">{lesson.progressSuggestion}</p><button className="mt-3 rounded-xl border border-[#9ab59b] px-3 py-2 text-sm font-bold" onClick={() => setNextStep(lesson.progressSuggestion ?? "")} type="button">采纳到下一步安排</button></details>}
-              {contentChapter && contentChapter !== chapter.trim() && <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#d4dfd2] bg-[#f5f8f2] p-4 text-sm"><div><p className="font-bold text-[#294530]">本节课堂内容：{contentChapter}</p><p className="mt-1 text-[#69776d]">转写生成的主题仅供参考，请核对后保存。</p></div><button className="min-h-10 rounded-full border border-[#9ab59b] bg-white px-4 font-bold text-[#294530]" onClick={() => setChapter(contentChapter)} type="button">填入当前章节</button></div>}
+              {chapterMayDiffer && contentChapter !== chapter.trim() && <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#d4dfd2] bg-[#f5f8f2] p-4 text-sm"><div><p className="font-bold text-[#294530]">本节课堂主题：{contentChapter}</p><p className="mt-1 text-[#69776d]">当前章节可能与本节课不符。请核对，必要时补充单元名称后保存。</p></div><button className="min-h-10 rounded-full border border-[#9ab59b] bg-white px-4 font-bold text-[#294530]" onClick={() => setChapter(contentChapter)} type="button">填入当前章节</button></div>}
               <label className="grid gap-2 font-black text-[#2b4633]">当前章节<input className="min-w-0 rounded-2xl border border-[#d4dfd2] bg-white px-4 py-3 font-medium" onChange={(event) => setChapter(event.target.value)} placeholder="根据本节课填写章节或主题" value={chapter} /></label>
               <label className="grid gap-2 font-black text-[#2b4633]">
                 课程完成进度

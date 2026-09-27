@@ -29,6 +29,7 @@ function renderClassroom(onNavigate = vi.fn<(route: AppRoute) => void>()) {
       <ClassroomPage onNavigate={onNavigate} />
       <DraftReadyLessonIds />
       <LessonStatuses />
+      <LessonChapters />
     </PrototypeProvider>,
   )
   return { onNavigate }
@@ -109,7 +110,7 @@ afterEach(() => {
 })
 
 describe("ClassroomPage", () => {
-  it("uses the saved class and chapter for a new recording", () => {
+  it("uses the saved class but waits for this lesson's content before choosing a chapter", () => {
     saveTeacherSettings({
       ...defaultTeacherSettings,
       currentClass: "五年级（1）班",
@@ -120,6 +121,8 @@ describe("ClassroomPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "开始新课堂录音" }))
 
     expect(screen.getByText(/五年级（1）班 · \d{4}-\d{2}-\d{2}/)).toBeInTheDocument()
+    expect(screen.getByTestId("lesson-chapters")).toHaveTextContent(/lesson-recording-\d+:待确认/)
+    expect(screen.getByTestId("lesson-chapters")).not.toHaveTextContent(/lesson-recording-\d+:小数乘法/)
   })
 
   it("filters lessons by status and exposes duration, sync, and student visibility", async () => {
@@ -189,6 +192,7 @@ describe("ClassroomPage", () => {
   it("writes a completed local AI analysis into the newly recorded lesson", async () => {
     lessonAnalysis.analyzeLessonAudio.mockResolvedValue({
       title: "单位换算中的乘除方向",
+      chapter: "单位换算",
       transcript: [{ id: "live-01", speaker: "李老师", startSeconds: 0, endSeconds: 10, body: "单位换算" }],
       recap: "先判断单位变化方向。",
       recapTags: ["单位换算"],
@@ -216,6 +220,7 @@ describe("ClassroomPage", () => {
       expect(within(dialog).getByText("AI 初稿已就绪")).toBeInTheDocument()
     })
     expect(screen.getByText("单位换算中的乘除方向")).toBeInTheDocument()
+    expect(screen.getByTestId("lesson-chapters")).toHaveTextContent(/lesson-recording-\d+:单位换算/)
 
     fireEvent.click(
       within(dialog).getByRole("button", { name: "查看 AI 初稿" }),

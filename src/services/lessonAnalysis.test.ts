@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { analyzeLessonAudio, isCompleteLessonAnalysis } from "./lessonAnalysis"
+import { analyzeLessonAudio, isCompleteLessonAnalysis, lessonTopicFromContent } from "./lessonAnalysis"
 import {
   defaultTeacherSettings,
   resetTeacherSettings,
@@ -12,6 +12,10 @@ beforeEach(() => {
 })
 
 describe("lesson analysis integrity", () => {
+  it("derives a legacy classroom topic from its title and matching knowledge tag", () => {
+    expect(lessonTopicFromContent("整数加减法与苹果情境", ["整数加减法"])).toBe("整数加减法")
+    expect(lessonTopicFromContent("分数的基本性质", ["约分"])).toBe("分数的基本性质")
+  })
   it("rejects whitespace-only text and incomplete transcript segments", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
@@ -73,8 +77,11 @@ describe("lesson analysis integrity", () => {
     const body = request.body as FormData
     expect(JSON.parse(String(body.get("teacher_settings")))).toMatchObject({
       currentClass: "五年级（1）班",
-      chapter: "小数乘法",
       detail: "详细",
     })
+    const settingsSent = JSON.parse(String(body.get("teacher_settings")))
+    expect(settingsSent).not.toHaveProperty("chapter")
+    expect(settingsSent).not.toHaveProperty("additionalScope")
+    expect(settingsSent).not.toHaveProperty("textbook")
   })
 })

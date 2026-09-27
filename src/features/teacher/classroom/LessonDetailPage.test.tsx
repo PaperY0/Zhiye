@@ -56,6 +56,9 @@ describe("LessonDetailPage", () => {
     await user.click(screen.getByRole("tab", { name: "课程进度" }))
     expect(screen.getByText("下节课先复盘单位阶梯。")).toBeInTheDocument()
     expect(screen.getByLabelText("课程完成进度")).toHaveValue(72)
+    expect(screen.getByText("本节课堂主题：单位换算")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "填入当前章节" }))
+    expect(screen.getByLabelText("当前章节")).toHaveValue("单位换算")
   })
 
   it("edits and saves the current AI recap through PrototypeContext", async () => {

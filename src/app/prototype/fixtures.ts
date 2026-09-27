@@ -136,7 +136,7 @@ export const lessonFixtures: Lesson[] = [
       },
     ],
     progress: {
-      chapter: "第三单元 · 小数乘除法",
+      chapter: "单位换算",
       completedPercent: 88,
       nextStep: "单位换算综合应用",
     },

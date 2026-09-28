@@ -50,8 +50,6 @@ const studentIds = [
   "student-wu-jiaqi",
   "student-xu-ziyan",
   "student-guo-haoran",
-  "student-he-yuchen",
-  "student-tang-ruoxi",
 ] as const
 
 export const lessonFixtures: Lesson[] = [
@@ -175,8 +173,6 @@ const studentNames = [
   ["student-wu-jiaqi", "吴佳琪", "吴妈妈", "母亲"],
   ["student-xu-ziyan", "徐子言", "徐爸爸", "父亲"],
   ["student-guo-haoran", "郭浩然", "郭妈妈", "母亲"],
-  ["student-he-yuchen", "何雨辰", "何爸爸", "父亲"],
-  ["student-tang-ruoxi", "唐若曦", "唐妈妈", "母亲"],
 ] as const
 
 export const studentFixtures: Student[] = studentNames.map(
@@ -184,7 +180,7 @@ export const studentFixtures: Student[] = studentNames.map(
     id,
     name,
     avatarText: name.slice(-1),
-    className: "五年级（2）班",
+    className: index < 5 ? "五年级（2）班" : "五年级（1）班",
     grade: "五年级",
     guardianName,
     guardianRelation,
@@ -252,9 +248,9 @@ export const knowledgeSignalFixtures: KnowledgeSignal[] = [
     knowledgePoint: "单位换算",
     step: "判断乘除方向",
     severity: "priority",
-    affectedStudentIds: studentIds.slice(0, 12) as unknown as string[],
-    affectedCount: 12,
-    trend: [4, 6, 8, 10, 12],
+    affectedStudentIds: [...studentIds.slice(0, 5)],
+    affectedCount: 5,
+    trend: [2, 3, 4, 4, 5],
     evidence: ["随堂练习第 3 题停顿时间增加", "课堂中 5 次询问乘还是除"],
     observedAt: "2026-07-25T08:40:00+08:00",
   },
@@ -265,10 +261,10 @@ export const knowledgeSignalFixtures: KnowledgeSignal[] = [
     knowledgePoint: "分数基本性质",
     step: "理解同时变化条件",
     severity: "attention",
-    affectedStudentIds: studentIds.slice(0, 7) as unknown as string[],
-    affectedCount: 7,
-    trend: [3, 5, 6, 7, 7],
-    evidence: ["7 名学生忽略“不为零”条件"],
+    affectedStudentIds: [...studentIds.slice(0, 3)],
+    affectedCount: 3,
+    trend: [1, 2, 2, 3, 3],
+    evidence: ["3 名学生忽略“不为零”条件"],
     observedAt: "2026-07-24T15:30:00+08:00",
   },
   {
@@ -278,10 +274,10 @@ export const knowledgeSignalFixtures: KnowledgeSignal[] = [
     knowledgePoint: "小数乘法估算",
     step: "选择合理近似数",
     severity: "watch",
-    affectedStudentIds: studentIds.slice(8, 12) as unknown as string[],
-    affectedCount: 4,
-    trend: [2, 3, 3, 4, 4],
-    evidence: ["预习自检中 4 名学生选择不合理近似值"],
+    affectedStudentIds: [...studentIds.slice(3, 5)],
+    affectedCount: 2,
+    trend: [1, 1, 2, 2, 2],
+    evidence: ["预习自检中 2 名学生选择不合理近似值"],
     observedAt: "2026-07-25T07:50:00+08:00",
   },
 ]
@@ -295,7 +291,7 @@ export const planFixtures: PlanDraft[] = [
     chapter: "单位换算",
     objective: "先判断单位变化方向，再确定乘除进率",
     context: "校园菜园长度测量",
-    evidence: ["12 名学生在“单位换算 × 计算”步骤停下来"],
+    evidence: ["5 名学生在“单位换算 × 计算”步骤停下来"],
     outline: ["回顾单位关系", "单位阶梯示范", "同伴解释", "出口练习"],
     examples: ["2.5 米换算成厘米", "4800 克换算成千克"],
     misconceptions: ["只改单位名称不改数值", "乘除方向颠倒"],
@@ -346,11 +342,11 @@ export const quizFixtures: Quiz[] = [
   },
 ]
 
-const baseCompletions = studentIds.map((studentId, index) => ({
+const baseCompletions = studentIds.slice(0, 5).map((studentId, index) => ({
   studentId,
-  status: index < 8 ? ("reviewed" as const) : index < 10 ? ("submitted" as const) : ("in-progress" as const),
-  submittedAt: index < 10 ? `2026-07-24T${18 + (index % 3)}:20:00+08:00` : undefined,
-  score: index < 8 ? 80 + (index % 4) * 5 : undefined,
+  status: index === 0 ? ("not-started" as const) : index <= 3 ? ("reviewed" as const) : ("in-progress" as const),
+  submittedAt: index > 0 && index <= 3 ? `2026-07-24T${18 + (index % 3)}:20:00+08:00` : undefined,
+  score: index > 0 && index <= 3 ? 80 + (index % 4) * 5 : undefined,
 }))
 
 export const taskFixtures: Task[] = [
@@ -390,7 +386,7 @@ export const taskFixtures: Task[] = [
     status: "review",
     completions: baseCompletions.map((item, index) => ({
       ...item,
-      status: index < 10 ? ("submitted" as const) : ("in-progress" as const),
+      status: index < 4 ? ("submitted" as const) : ("in-progress" as const),
       score: undefined,
     })),
     createdAt: "2026-07-23T15:40:00+08:00",
@@ -404,7 +400,7 @@ export const taskFixtures: Task[] = [
     dueAt: "2026-07-23T20:00:00+08:00",
     reminder: "不提醒",
     status: "completed",
-    completions: studentIds.map((studentId) => ({
+    completions: studentIds.slice(0, 5).map((studentId) => ({
       studentId,
       status: "reviewed" as const,
       submittedAt: "2026-07-23T19:30:00+08:00",
@@ -466,7 +462,7 @@ export const conversationFixtures: Conversation[] = [
     id: "conversation-group-class-2",
     kind: "group",
     title: "五年级（2）班学习群",
-    participantIds: ["teacher-li", ...studentIds],
+    participantIds: ["teacher-li", ...studentIds.slice(0, 5)],
     participantNames: ["李老师", "五年级（2）班学生"],
     unreadCount: 0,
     unreadByRole: { teacher: 0, student: 1 },
@@ -550,8 +546,8 @@ export const safetyCaseFixtures: SafetyCase[] = [
     source: "system-pattern",
     status: "resolved",
     priority: "normal",
-    studentAlias: "六年级学生 C",
-    className: "六年级（3）班",
+    studentAlias: "五年级学生 C",
+    className: "五年级（2）班",
     limitedContext: "仅提供入口使用次数和时间，不展示普通学习对话。",
     guidance: ["确认学生是否需要学习或生活支持", "由人工记录核实结果"],
     assignee: "陈老师 · 年级负责人",

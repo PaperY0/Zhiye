@@ -1,186 +1,97 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
-import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
-import { parentSummaryFixture } from "../../../app/prototype/fixtures"
+import { PrototypeProvider, usePrototype } from "../../../app/prototype/PrototypeContext"
+import { parentSummaryFixture, taskFixtures } from "../../../app/prototype/fixtures"
 import type { AppRoute } from "../../../app/routes"
 import { StudentDetailPage } from "../../teacher/students/StudentDetailPage"
 import { generateDraft } from "../../../services/localAi"
 import { ParentHomePage } from "./ParentHomePage"
 
-vi.mock("../../../services/localAi", () => ({
-  generateDraft: vi.fn(),
-}))
+vi.mock("../../../services/localAi", () => ({ generateDraft: vi.fn() }))
 
-function renderHome() {
+function renderHome(extra?: React.ReactNode) {
   const onNavigate = vi.fn<(route: AppRoute) => void>()
-  render(
-    <PrototypeProvider>
-      <ParentHomePage onNavigate={onNavigate} />
-    </PrototypeProvider>,
-  )
+  render(<PrototypeProvider>{extra}<ParentHomePage onNavigate={onNavigate} /></PrototypeProvider>)
   return { onNavigate }
 }
 
+function UpdateLearning() {
+  const { addTask, updateTaskCompletion, addTaskInquiry, addMistake, sendMessage } = usePrototype()
+  return <button onClick={() => {
+    addTask({ ...taskFixtures[1], id: "task-parent-live", title: "最新的三题自检", type: "quiz", sourceQuizId: "quiz-fractions-check", completions: [], inquiries: [], createdAt: "2026-09-28T08:00:00+08:00" })
+    updateTaskCompletion("task-active-01", "student-lin-xiaoyu", "submitted", { score: 8 })
+    addTaskInquiry("task-active-01", { id: "inquiry-parent-live", studentId: "student-lin-xiaoyu", subject: "数学", question: "私密提问内容", answer: "私密 AI 解答", focus: "单位换算", status: "answered", createdAt: "2026-09-28T08:15:00+08:00" })
+    addMistake("student-lin-xiaoyu", { id: "mistake-parent-live", subject: "数学", knowledgePoint: "单位换算", prompt: "私密错题内容", cause: "混淆进率", explanation: "私密解析", mastery: "new", source: "task", createdAt: "2026-09-28T08:20:00+08:00" })
+    sendMessage("conversation-parent-li", "请家长关注最近的单位换算复习。")
+  }} type="button">写入新进展</button>
+}
+
 describe("ParentHomePage", () => {
-  it("shows a calm weekly summary with learning topics and personal activity without rankings", () => {
+  it("shows the bound student's live tasks and keeps the approved summary as a dated record", () => {
     renderHome()
-
-    expect(
-      screen.getByRole("heading", { name: "林晓雨的本周学习摘要" }),
-    ).toBeInTheDocument()
-    expect(screen.getByText("林晓雨 · 五年级（2）班")).toBeInTheDocument()
-    expect(screen.getByText("7 月 20 日—7 月 26 日")).toBeInTheDocument()
-    expect(screen.getByRole("region", { name: "最近学习记录" })).toHaveTextContent(
-      "完成教师任务",
-    )
-
-    const topics = screen.getByRole("region", { name: "本周学习主题" })
-    expect(topics).toHaveTextContent("分数的基本性质")
-    expect(topics).toHaveTextContent("约分")
-    expect(topics).toHaveTextContent("单位换算")
-
-    const activity = screen.getByRole("region", { name: "本周学习脚印" })
-    expect(activity).toHaveTextContent("主动提问")
-    expect(activity).toHaveTextContent("4 次")
-    expect(activity).toHaveTextContent("完成练习")
-    expect(activity).toHaveTextContent("7 次")
-
-    expect(
-      screen.queryByText(/排名|第\s*\d+\s*名|超过.*同学/),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByText(/完整对话|题目图片|同学记录/),
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "林晓雨的学习近况" })).toBeInTheDocument()
+    expect(screen.getByText(/五年级（2）班 · 任务和学习记录更新后/)).toBeInTheDocument()
+    const live = screen.getByRole("region", { name: "当前学习动态" })
+    expect(live).toHaveTextContent("待完成任务")
+    expect(live).toHaveTextContent("已提交任务")
+    expect(screen.getByRole("region", { name: "孩子的任务" })).toHaveTextContent("单位换算巩固练习")
+    expect(screen.queryByText("小数乘法预习")).not.toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "已确认的学习摘要" })).toHaveTextContent("7 月 20 日—7 月 26 日")
+    expect(screen.getByRole("region", { name: "已确认的学习摘要" })).toHaveTextContent(parentSummaryFixture.teacherMessage)
+    expect(screen.queryByText(/模拟音频|播放语音家书/)).not.toBeInTheDocument()
   })
 
-  it("shows encouragement, the teacher message, and a clearly simulated audio letter", async () => {
+  it("updates tasks, scores, inquiries, review topics, and teacher messages without exposing raw work", async () => {
     const user = userEvent.setup()
-    renderHome()
-
-    expect(
-      screen.getByRole("region", { name: "给家长的陪伴建议" }),
-    ).toHaveTextContent("孩子愿意把不明白的地方说出来，这份主动很珍贵。")
-    expect(
-      screen.getByRole("region", { name: "李老师留言" }),
-    ).toHaveTextContent(
-      "本周可以陪孩子用生活里的比例例子复述分数基本性质，不需要额外刷题。",
-    )
-
-    expect(screen.getByText("李老师的本周语音信")).toBeInTheDocument()
-    expect(screen.getByText("48 秒 · 模拟音频")).toBeInTheDocument()
-    expect(screen.getByText(/不会播放、采集或上传真实音频/)).toBeInTheDocument()
-
-    await user.click(screen.getByRole("button", { name: "播放模拟语音家书" }))
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "正在模拟播放李老师的本周语音信",
-    )
-    expect(
-      screen.getByRole("button", { name: "停止模拟语音家书" }),
-    ).toBeInTheDocument()
-
-    await user.click(screen.getByRole("button", { name: "停止模拟语音家书" }))
-    expect(screen.getByRole("status")).toHaveTextContent("模拟语音家书已停止")
+    renderHome(<UpdateLearning />)
+    await user.click(screen.getByRole("button", { name: "写入新进展" }))
+    const tasks = screen.getByRole("region", { name: "孩子的任务" })
+    expect(within(tasks).getByText("最新的三题自检")).toBeInTheDocument()
+    expect(tasks).toHaveTextContent("已记录成绩 8 分")
+    expect(screen.getByRole("region", { name: "学习支持" })).toHaveTextContent("最近关注：单位换算")
+    expect(screen.getByRole("region", { name: "复习方向" })).toHaveTextContent("最近的复习主题：单位换算")
+    expect(screen.getByRole("region", { name: "联系老师" })).toHaveTextContent("请家长关注最近的单位换算复习。")
+    expect(screen.getByRole("region", { name: "最近学习记录" })).toHaveTextContent("任务疑问已获得解答")
+    expect(screen.queryByText(/私密提问内容|私密 AI 解答|私密错题内容|私密解析/)).not.toBeInTheDocument()
+    expect(screen.queryByText("周子墨")).not.toBeInTheDocument()
   })
 
-  it("opens the private parent-teacher conversation", async () => {
+  it("opens the bound parent-teacher conversation", async () => {
     const user = userEvent.setup()
     const { onNavigate } = renderHome()
-
-    const contact = screen.getByRole("region", { name: "联系老师" })
-    expect(contact).toHaveTextContent(/仅展示与林晓雨学习陪伴相关的教师沟通/)
-    await user.click(
-      within(contact).getByRole("button", { name: "联系李老师" }),
-    )
-
-    expect(onNavigate).toHaveBeenCalledWith({
-      role: "parent",
-      page: "messages",
-    })
+    await user.click(within(screen.getByRole("region", { name: "联系老师" })).getByRole("button", { name: "查看家校消息" }))
+    expect(onNavigate).toHaveBeenCalledWith({ role: "parent", page: "messages" })
   })
 
-  it("keeps the published parent summary unchanged while a teacher draft is awaiting approval", async () => {
+  it("keeps a teacher draft private and generates it from current task evidence", async () => {
     const user = userEvent.setup()
-    vi.mocked(generateDraft).mockResolvedValue({
-      content: {
-        topics: ["单位换算"],
-        encouragement: "愿意解释自己的想法。",
-        teacher_message: "完成单位换算自检。",
-      },
-    })
-    const onNavigate = vi.fn<(route: AppRoute) => void>()
-    render(
-      <PrototypeProvider>
-        <StudentDetailPage studentId="student-lin-xiaoyu" />
-        <ParentHomePage onNavigate={onNavigate} />
-      </PrototypeProvider>,
-    )
-
+    vi.mocked(generateDraft).mockResolvedValue({ content: { topics: ["单位换算"], encouragement: "愿意解释自己的想法。", teacher_message: "完成单位换算自检。" } })
+    renderHome(<StudentDetailPage studentId="student-lin-xiaoyu" />)
     await user.click(screen.getByRole("button", { name: "生成本周摘要草稿" }))
-
     expect(await screen.findByText("AI 草稿 · 待教师审核")).toBeInTheDocument()
-    expect(screen.getByText("愿意解释自己的想法。")).toBeInTheDocument()
-    expect(screen.getByText("孩子愿意把不明白的地方说出来，这份主动很珍贵。")).toBeInTheDocument()
-    expect(screen.getByRole("region", { name: "李老师留言" })).not.toHaveTextContent(
-      "完成单位换算自检。",
-    )
-    expect(generateDraft).toHaveBeenCalledWith(
-      "parent-summary",
-      { facts: expect.arrayContaining(["本周主动提问 4 次"]) },
-    )
+    expect(screen.getByRole("region", { name: "已确认的学习摘要" })).toHaveTextContent(parentSummaryFixture.teacherMessage)
+    expect(screen.getByRole("region", { name: "已确认的学习摘要" })).not.toHaveTextContent("完成单位换算自检。")
+    expect(generateDraft).toHaveBeenCalledWith("parent-summary", { facts: expect.arrayContaining([expect.stringContaining("任务“单位换算巩固练习”")]) })
+    expect(JSON.stringify(vi.mocked(generateDraft).mock.calls[0][1])).not.toContain("本周主动提问 4 次")
   })
 
-  it("does not render an unconfirmed parent summary", () => {
-    localStorage.setItem(
-      "zhiye-prototype-state-v1",
-      JSON.stringify({
-        parentSummary: {
-          ...parentSummaryFixture,
-          source: "deepseek",
-          confirmedAt: "",
-          evidence: ["课堂练习记录"],
-        },
-      }),
-    )
+  it("shows live learning when the teacher summary has not been confirmed", () => {
+    localStorage.setItem("zhiye-prototype-state-v1", JSON.stringify({ parentSummary: { ...parentSummaryFixture, confirmedAt: "" } }))
     const onNavigate = vi.fn<(route: AppRoute) => void>()
-    render(
-      <PrototypeProvider persist>
-        <ParentHomePage onNavigate={onNavigate} />
-      </PrototypeProvider>,
-    )
-
-    expect(screen.getByRole("heading", { name: "本周摘要尚未发布" })).toBeInTheDocument()
-    expect(screen.queryByText("林晓雨的本周学习摘要")).not.toBeInTheDocument()
+    render(<PrototypeProvider persist><ParentHomePage onNavigate={onNavigate} /></PrototypeProvider>)
+    expect(screen.getByRole("region", { name: "孩子的任务" })).toHaveTextContent("单位换算巩固练习")
+    expect(screen.getByRole("region", { name: "已确认的学习摘要" })).toHaveTextContent("等待教师确认")
+    expect(screen.getByRole("region", { name: "已确认的学习摘要" })).not.toHaveTextContent(parentSummaryFixture.teacherMessage)
     localStorage.clear()
   })
 
-  it("shows evidence and confirmation metadata for a published AI summary", () => {
-    renderHome()
-
-    expect(screen.getByRole("region", { name: "摘要发布依据" })).toHaveTextContent(
-      "来源：deepseek",
-    )
-    expect(screen.getByRole("region", { name: "摘要发布依据" })).toHaveTextContent(
-      "课堂练习记录",
-    )
-  })
-
-  it("keeps an approved parent summary visible when a new draft generation fails", async () => {
+  it("retains the approved summary when a new generation fails", async () => {
     const user = userEvent.setup()
     vi.mocked(generateDraft).mockRejectedValue(new Error("本地 AI 服务未启动，请运行 start-local-ai.ps1"))
-    const onNavigate = vi.fn<(route: AppRoute) => void>()
-    render(
-      <PrototypeProvider>
-        <StudentDetailPage studentId="student-lin-xiaoyu" />
-        <ParentHomePage onNavigate={onNavigate} />
-      </PrototypeProvider>,
-    )
-
+    renderHome(<StudentDetailPage studentId="student-lin-xiaoyu" />)
     await user.click(screen.getByRole("button", { name: "生成本周摘要草稿" }))
-
     expect(await screen.findByRole("alert")).toHaveTextContent("本地 AI 服务未启动")
-    expect(screen.getByRole("region", { name: "李老师留言" })).toHaveTextContent(
-      "本周可以陪孩子用生活里的比例例子复述分数基本性质，不需要额外刷题。",
-    )
+    expect(screen.getByRole("region", { name: "已确认的学习摘要" })).toHaveTextContent(parentSummaryFixture.teacherMessage)
   })
 })

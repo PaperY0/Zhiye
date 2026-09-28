@@ -56,6 +56,13 @@ describe("typed hash routes", () => {
       role: "teacher",
       page: "classroom",
     })
+    expect(parseHash("#/student/ask/task%2F42")).toEqual({
+      role: "student",
+      page: "task-inquiry",
+      taskId: "task/42",
+    })
+    expect(parseHash("#/student/ask")).toEqual({ role: "student", page: "ask" })
+    expect(formatRoute({ role: "student", page: "task-inquiry", taskId: "task/42" })).toBe("#/student/ask/task%2F42")
     expect(parseHash("#/teacher/classroom/%E0%A4%A")).toEqual({
       page: "welcome",
     })

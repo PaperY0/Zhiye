@@ -12,6 +12,7 @@ export type GenerationKind =
   | "student-inference"
   | "tutoring"
   | "student-companion"
+  | "task-inquiry"
 
 export type CompanionAction =
   | "none"
@@ -55,10 +56,17 @@ export async function requestJson<T>(
   }
 
   const payload = (await response.json().catch(() => null)) as
-    | (T & { detail?: string })
+    | (T & { detail?: unknown })
     | null
   if (!response.ok) {
-    throw new Error(payload?.detail ?? `本地 AI 服务返回 ${response.status}`)
+    const detail = payload?.detail
+    throw new Error(
+      typeof detail === "string" && detail.trim()
+        ? detail
+        : Array.isArray(detail)
+          ? "输入内容未通过校验，请检查必填项和输入长度后重试。"
+          : `本地 AI 服务返回 ${response.status}`,
+    )
   }
   if (!payload) {
     throw new Error("本地 AI 服务返回的数据不完整")

@@ -108,4 +108,14 @@ describe("StudentDetailPage AI drafts", () => {
     expect(screen.getByText("证据：随堂练习第 3 题停顿时间增加")).toBeInTheDocument()
     expect(screen.getByText(/来源：deepseek/)).toBeInTheDocument()
   })
+
+  it("accepts camelCase fields from a generated observation", async () => {
+    const user = userEvent.setup()
+    vi.mocked(generateDraft).mockResolvedValue({ content: {
+      evidence: ["课堂练习已完成"], observation: "继续观察换算步骤", suggestedSupport: "下次核对步骤",
+    } })
+    renderDetail()
+    await user.click(screen.getByRole("button", { name: "生成观察草稿" }))
+    expect(await screen.findByDisplayValue("下次核对步骤")).toBeInTheDocument()
+  })
 })

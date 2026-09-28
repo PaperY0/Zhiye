@@ -134,6 +134,19 @@
   background-color: #f4f7f3;
 }
 
+/* Teacher content uses one stable card surface across planning, class data and profiles. */
+.role-shell-teacher .role-shell-main .prototype-glass,
+.role-shell-teacher .role-shell-main .prototype-glass--light,
+.role-shell-teacher .role-shell-main .prototype-glass--card {
+  border-color: #dce6dc;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(49, 75, 55, 0.055);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.role-shell-teacher .role-shell-main .prototype-glass::before { display: none; }
+
 .role-shell-main > main > * {
   width: 100%;
   max-width: 1440px;

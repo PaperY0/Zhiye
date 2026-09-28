@@ -28,7 +28,7 @@ export function StudentMessagesPage() {
       orderConversations(conversations)
         .filter(
           (conversation) =>
-            conversation.id === "conversation-student-xiaoyu" ||
+            (conversation.kind === "student" && conversation.participantIds.includes(STUDENT_ID) && conversation.participantIds.includes("teacher-li")) ||
             (conversation.kind === "group" &&
               conversation.participantIds.includes(STUDENT_ID) &&
               conversation.participantIds.includes("teacher-li")),

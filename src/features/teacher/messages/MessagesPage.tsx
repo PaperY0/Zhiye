@@ -20,8 +20,11 @@ import { Dialog } from "../../../components/shared/Dialog"
 import { FilterBar } from "../../../components/shared/FilterBar"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { StatusChip } from "../../../components/shared/StatusChip"
+import { schoolClasses, useTeacherSettings } from "../settings/teacherSettings"
+import { navigate } from "../../../app/routes"
 
 type ConversationFilter = "all" | Conversation["kind"]
+type ConversationDraft = { id?: string; title: string; kind: Conversation["kind"]; studentId: string; className: string }
 
 type SimulatedAttachment = {
   name: string
@@ -80,7 +83,8 @@ function previewSender(message: Message) {
 }
 
 export function MessagesPage() {
-  const { addConversation, conversations, deleteConversation, markConversationRead, sendMessage, updateConversationTitle } = usePrototype()
+  const { addConversation, conversations, deleteConversation, markConversationRead, sendMessage, students, updateConversationTitle } = usePrototype()
+  const { currentClass } = useTeacherSettings()
   const [filter, setFilter] = useState<ConversationFilter>("all")
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState(() => conversations[0]?.id ?? "")
@@ -89,7 +93,7 @@ export function MessagesPage() {
   const [protectionOpen, setProtectionOpen] = useState(false)
   const [statusMessage, setStatusMessage] = useState("")
   const [conversationEditorOpen, setConversationEditorOpen] = useState(false)
-  const [conversationDraft, setConversationDraft] = useState<{ id?: string; title: string; kind: Conversation["kind"]; participants: string } | null>(null)
+  const [conversationDraft, setConversationDraft] = useState<ConversationDraft | null>(null)
   const messageLogRef = useRef<HTMLDivElement>(null)
 
   const filteredConversations = useMemo(() => {
@@ -113,6 +117,75 @@ export function MessagesPage() {
   const selectedConversation =
     conversations.find((conversation) => conversation.id === selectedId) ??
     conversations[0]
+
+  const selectedStudent = students.find((student) => student.id === conversationDraft?.studentId)
+
+  useEffect(() => {
+    const studentId = window.sessionStorage.getItem("zhiye-message-student-id")
+    if (!studentId) return
+    window.sessionStorage.removeItem("zhiye-message-student-id")
+    if (!students.some((student) => student.id === studentId)) return
+    const existing = conversations.find((conversation) => conversation.kind === "student" && (conversation.boundStudentId === studentId || conversation.participantIds.includes(studentId)))
+    if (existing) setSelectedId(existing.id)
+    else {
+      setConversationDraft({ title: "", kind: "student", studentId, className: currentClass })
+      setConversationEditorOpen(true)
+    }
+  }, [conversations, currentClass, students])
+
+  function saveConversation() {
+    if (!conversationDraft) return
+    if (conversationDraft.id) {
+      if (conversationDraft.title.trim()) updateConversationTitle(conversationDraft.id, conversationDraft.title)
+      setConversationEditorOpen(false)
+      return
+    }
+    if (conversationDraft.kind !== "group" && !selectedStudent) return
+    const kind = conversationDraft.kind
+    const title = kind === "group" ? `${conversationDraft.className}学习群` : kind === "parent" ? `${selectedStudent!.name}家长` : selectedStudent!.name
+    const existing = conversations.find((conversation) => kind === "group"
+      ? conversation.kind === "group" && conversation.title === title
+      : conversation.kind === kind && conversation.boundStudentId === selectedStudent!.id)
+    if (existing) {
+      setSelectedId(existing.id)
+      markConversationRead(existing.id, "teacher")
+    } else {
+      const id = `conversation-${Date.now()}`
+      const classRoster = students.filter((student) => student.className === conversationDraft.className)
+      addConversation({
+        id,
+        kind,
+        title,
+        participantIds: kind === "group" ? ["teacher-li", ...classRoster.map((student) => student.id)] : ["teacher-li", kind === "student" ? selectedStudent!.id : `parent-${selectedStudent!.id.replace(/^student-/, "")}`],
+        participantNames: kind === "group" ? ["李老师", `${conversationDraft.className}学生`] : ["李老师", kind === "student" ? selectedStudent!.name : selectedStudent!.guardianName],
+        ...(kind === "group" ? {} : { boundStudentId: selectedStudent!.id }),
+        unreadCount: 0,
+        messages: [],
+      })
+      setSelectedId(id)
+    }
+    setFilter("all")
+    setQuery("")
+    setConversationEditorOpen(false)
+  }
+
+  function openParentChat(studentId: string) {
+    const student = students.find((item) => item.id === studentId)
+    if (!student) return
+    if (!student.guardianName.trim() || student.guardianName === "待填写") {
+      setStatusMessage("请先在学生档案完善监护人姓名")
+      return
+    }
+    const existing = conversations.find((conversation) => conversation.kind === "parent" && conversation.boundStudentId === studentId)
+    if (existing) { setSelectedId(existing.id); markConversationRead(existing.id, "teacher") }
+    else {
+      const id = `conversation-parent-${Date.now()}`
+      addConversation({ id, kind: "parent", title: `${student.name}家长`, participantIds: ["teacher-li", `parent-${student.id.replace(/^student-/, "")}`], participantNames: ["李老师", student.guardianName], boundStudentId: student.id, unreadCount: 0, messages: [] })
+      setSelectedId(id)
+    }
+    setFilter("all")
+    setQuery("")
+  }
 
   useEffect(() => {
     const log = messageLogRef.current
@@ -153,7 +226,7 @@ export function MessagesPage() {
           <p className="text-xs font-bold tracking-[0.18em] text-[#66806d]">
             教师沟通中心
           </p>
-          <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-[#15231a]">
+          <h1 className="role-page-title">
             消息
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[#64746a]">
@@ -162,7 +235,7 @@ export function MessagesPage() {
         </div>
         <div className="flex items-center gap-3">
           <StatusChip tone="success">本地持久化</StatusChip>
-          <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#173022] px-4 text-sm font-black text-white" onClick={() => { setConversationDraft({ title: "新会话", kind: "student", participants: "新联系人" }); setConversationEditorOpen(true) }} type="button"><Plus aria-hidden="true" size={16} />新建会话</button>
+          <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#173022] px-4 text-sm font-black text-white" onClick={() => { setConversationDraft({ title: "", kind: "student", studentId: "", className: currentClass }); setConversationEditorOpen(true) }} type="button"><Plus aria-hidden="true" size={16} />新建会话</button>
         </div>
       </header>
 
@@ -315,10 +388,15 @@ export function MessagesPage() {
                 <StatusChip tone="neutral">
                   {conversationKindLabel(selectedConversation.kind)}
                 </StatusChip>
-                <button aria-label="编辑当前会话" className="grid size-9 place-items-center rounded-full bg-white/70 text-[#46624d]" onClick={() => { setConversationDraft({ id: selectedConversation.id, title: selectedConversation.title, kind: selectedConversation.kind, participants: selectedConversation.participantNames.join("、") }); setConversationEditorOpen(true) }} type="button"><Pencil aria-hidden="true" size={15} /></button>
+                <button aria-label="编辑当前会话" className="grid size-9 place-items-center rounded-full bg-white/70 text-[#46624d]" onClick={() => { setConversationDraft({ id: selectedConversation.id, title: selectedConversation.title, kind: selectedConversation.kind, studentId: selectedConversation.boundStudentId ?? "", className: currentClass }); setConversationEditorOpen(true) }} type="button"><Pencil aria-hidden="true" size={15} /></button>
                 <button aria-label="删除当前会话" className="grid size-9 place-items-center rounded-full bg-[#fff4f1] text-[#934f43]" onClick={() => { if (window.confirm(`确认删除“${selectedConversation.title}”会话吗？`)) { deleteConversation(selectedConversation.id); setSelectedId(conversations.find((item) => item.id !== selectedConversation.id)?.id ?? "") } }} type="button"><Trash2 aria-hidden="true" size={15} /></button>
               </div>
             </header>
+
+            {selectedConversation.kind === "student" && selectedConversation.boundStudentId && students.some((student) => student.id === selectedConversation.boundStudentId) ? <div className="flex flex-wrap gap-2 border-b border-[#34583d]/10 bg-white/35 px-5 py-3 sm:px-6">
+              <button className="min-h-10 rounded-full border border-[#cbdaca] bg-white/80 px-4 text-sm font-bold text-[#3f5d46] transition hover:bg-white" onClick={() => openParentChat(selectedConversation.boundStudentId!)} type="button">联系家长</button>
+              <button className="min-h-10 rounded-full bg-[#e8f0e6] px-4 text-sm font-bold text-[#33583b] transition hover:bg-[#dce9d9]" onClick={() => { window.sessionStorage.setItem("zhiye-task-source-student", selectedConversation.boundStudentId!); navigate({ role: "teacher", page: "tasks" }) }} type="button">给学生布置任务</button>
+            </div> : null}
 
             <div
               aria-label={`${selectedConversation.title}的消息记录`}
@@ -505,22 +583,19 @@ export function MessagesPage() {
         </div>
       </Dialog>
       <Dialog
-        description="会话会同步到教师、学生或家长端，并保存在当前浏览器。"
-        footer={conversationDraft ? <div className="flex justify-end gap-3"><button className="rounded-full border border-[#cbdaca] px-4 py-2.5 text-sm font-black" onClick={() => setConversationEditorOpen(false)} type="button">取消</button><button className="rounded-full bg-[#173022] px-5 py-2.5 text-sm font-black text-white" onClick={() => {
-          if (!conversationDraft.title.trim()) return
-          if (conversationDraft.id) updateConversationTitle(conversationDraft.id, conversationDraft.title)
-          else {
-            const id = `conversation-${Date.now()}`
-            addConversation({ id, kind: conversationDraft.kind, title: conversationDraft.title, participantIds: [], participantNames: conversationDraft.participants.split(/[、,，]/).map((item) => item.trim()).filter(Boolean), unreadCount: 0, messages: [] })
-            setSelectedId(id)
-          }
-          setConversationEditorOpen(false)
-        }} type="button">保存会话</button></div> : null}
+        description="从学生档案选择联系人。会话保存在当前浏览器，并关联所选学生。"
+        footer={conversationDraft ? <div className="flex justify-end gap-3"><button className="rounded-full border border-[#cbdaca] px-4 py-2.5 text-sm font-black" onClick={() => setConversationEditorOpen(false)} type="button">取消</button><button className="rounded-full bg-[#173022] px-5 py-2.5 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40" disabled={conversationDraft.id ? !conversationDraft.title.trim() : conversationDraft.kind !== "group" && (!selectedStudent || (conversationDraft.kind === "parent" && (!selectedStudent.guardianName.trim() || selectedStudent.guardianName === "待填写")))} onClick={saveConversation} type="button">{conversationDraft.id ? "保存名称" : "创建会话"}</button></div> : null}
         onClose={() => setConversationEditorOpen(false)}
         open={conversationEditorOpen}
         title={conversationDraft?.id ? "编辑会话" : "新建会话"}
       >
-        {conversationDraft ? <div className="grid gap-4"><label className="grid gap-2 text-sm font-black">名称<input aria-label="会话名称" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setConversationDraft({ ...conversationDraft, title: event.target.value })} value={conversationDraft.title} /></label><label className="grid gap-2 text-sm font-black">类型<select aria-label="会话类型" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" disabled={Boolean(conversationDraft.id)} onChange={(event) => setConversationDraft({ ...conversationDraft, kind: event.target.value as Conversation["kind"] })} value={conversationDraft.kind}><option value="student">学生</option><option value="parent">家长</option><option value="group">班级群</option></select></label><label className="grid gap-2 text-sm font-black">参与者<input aria-label="会话参与者" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" disabled={Boolean(conversationDraft.id)} onChange={(event) => setConversationDraft({ ...conversationDraft, participants: event.target.value })} value={conversationDraft.participants} /></label></div> : null}
+        {conversationDraft ? <div className="grid gap-4">
+          {conversationDraft.id ? <label className="grid gap-2 text-sm font-black">会话名称<input aria-label="会话名称" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setConversationDraft({ ...conversationDraft, title: event.target.value })} value={conversationDraft.title} /></label> : <>
+            <label className="grid gap-2 text-sm font-black">会话类型<select aria-label="新会话类型" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setConversationDraft({ ...conversationDraft, kind: event.target.value as Conversation["kind"], studentId: "" })} value={conversationDraft.kind}><option value="student">学生</option><option value="parent">家长</option><option value="group">班级群</option></select></label>
+            {conversationDraft.kind === "group" ? <label className="grid gap-2 text-sm font-black">授课班级<select aria-label="选择班级" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setConversationDraft({ ...conversationDraft, className: event.target.value })} value={conversationDraft.className}>{schoolClasses.map((className) => <option key={className} value={className}>{className}</option>)}</select></label> : <label className="grid gap-2 text-sm font-black">{conversationDraft.kind === "parent" ? "关联学生" : "新联系人"}<select aria-label="选择学生联系人" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setConversationDraft({ ...conversationDraft, studentId: event.target.value })} value={conversationDraft.studentId}><option value="">请选择学生</option>{schoolClasses.map((className) => <optgroup key={className} label={className}>{students.filter((student) => student.className === className).map((student) => <option key={student.id} value={student.id}>{student.name}</option>)}</optgroup>)}</select></label>}
+            {selectedStudent && conversationDraft.kind !== "group" ? <p className="rounded-xl bg-[#edf4eb] px-4 py-3 text-sm text-[#526d58]">{selectedStudent.className} · {conversationDraft.kind === "parent" ? `监护人：${selectedStudent.guardianName}` : selectedStudent.name}</p> : null}
+          </>}
+        </div> : null}
       </Dialog>
     </div>
   )

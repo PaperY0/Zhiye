@@ -6,6 +6,8 @@ const TutoringPage = lazy(() => import("./tutoring/TutoringPage"))
 const LearningPage = lazy(() => import("./learning/LearningPage"))
 const MistakesPage = lazy(() => import("./mistakes/MistakesPage"))
 const StudentTasksPage = lazy(() => import("./tasks/StudentTasksPage"))
+const TaskInquiryPage = lazy(() => import("./tasks/TaskInquiryPage"))
+const StudentInquiryHubPage = lazy(() => import("./tasks/StudentInquiryHubPage"))
 const StudentMessagesPage = lazy(() => import("./messages/StudentMessagesPage"))
 
 type StudentRoute = Extract<AppRoute, { role: "student" }>
@@ -24,6 +26,8 @@ export default function StudentRoutes({
     case "learning": return <LearningPage />
     case "mistakes": return <MistakesPage />
     case "tasks": return <StudentTasksPage />
+    case "ask": return <StudentInquiryHubPage />
+    case "task-inquiry": return <TaskInquiryPage taskId={route.taskId} />
     case "messages": return <StudentMessagesPage />
   }
 }

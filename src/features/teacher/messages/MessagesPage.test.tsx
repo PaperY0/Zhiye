@@ -1,8 +1,9 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
-import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
+import { PrototypeProvider, usePrototype } from "../../../app/prototype/PrototypeContext"
 import { StudentMessagesPage } from "../../student/messages/StudentMessagesPage"
+import { ParentMessagesPage } from "../../parent/messages/ParentMessagesPage"
 import { MessagesPage } from "./MessagesPage"
 
 function renderMessages() {
@@ -14,6 +15,63 @@ function renderMessages() {
 }
 
 describe("MessagesPage", () => {
+  it("shows a teacher message to the linked guardian in the parent conversation", async () => {
+    const user = userEvent.setup()
+    render(<PrototypeProvider><MessagesPage /><ParentMessagesPage /></PrototypeProvider>)
+    await user.click(screen.getByRole("button", { name: "联系家长" }))
+    expect(screen.getByRole("heading", { name: "林晓雨家长" })).toBeInTheDocument()
+    await user.type(screen.getByRole("textbox", { name: "输入消息" }), "今晚请和孩子复习分数基本性质。")
+    await user.click(screen.getByRole("button", { name: "发送消息" }))
+    const parentLog = screen.getByRole("log", { name: "与李老师的家校消息记录" })
+    expect(within(parentLog).getByText("今晚请和孩子复习分数基本性质。")).toBeInTheDocument()
+  })
+
+  it("passes the selected student to task creation", async () => {
+    const user = userEvent.setup()
+    renderMessages()
+    await user.click(screen.getByRole("button", { name: "给学生布置任务" }))
+    expect(window.location.hash).toBe("#/teacher/tasks")
+    expect(window.sessionStorage.getItem("zhiye-task-source-student")).toBe("student-lin-xiaoyu")
+  })
+
+  it("prefills a new conversation when opened from a student profile", () => {
+    window.sessionStorage.setItem("zhiye-message-student-id", "student-guo-haoran")
+    renderMessages()
+    const dialog = screen.getByRole("dialog", { name: "新建会话" })
+    expect(within(dialog).getByRole("combobox", { name: "选择学生联系人" })).toHaveValue("student-guo-haoran")
+    expect(window.sessionStorage.getItem("zhiye-message-student-id")).toBeNull()
+  })
+
+  it("creates a student conversation from the student roster with a linked student ID", async () => {
+    const user = userEvent.setup()
+    function LinkedConversation() {
+      const { conversations } = usePrototype()
+      const linked = conversations.find((item) => item.kind === "student" && item.boundStudentId === "student-guo-haoran")
+      return <output data-testid="linked-conversation">{linked ? `${linked.participantIds.join(",")}|${linked.participantNames.join(",")}` : ""}</output>
+    }
+    render(<PrototypeProvider><MessagesPage /><LinkedConversation /></PrototypeProvider>)
+
+    await user.click(screen.getByRole("button", { name: "新建会话" }))
+    const dialog = screen.getByRole("dialog", { name: "新建会话" })
+    expect(within(dialog).queryByRole("textbox", { name: "会话参与者" })).not.toBeInTheDocument()
+    await user.selectOptions(within(dialog).getByRole("combobox", { name: "选择学生联系人" }), "student-guo-haoran")
+    await user.click(within(dialog).getByRole("button", { name: "创建会话" }))
+
+    expect(screen.getByRole("heading", { name: "郭浩然" })).toBeInTheDocument()
+    expect(screen.getByTestId("linked-conversation")).toHaveTextContent("teacher-li,student-guo-haoran|李老师,郭浩然")
+  })
+
+  it("opens the existing student conversation instead of creating a duplicate", async () => {
+    const user = userEvent.setup()
+    renderMessages()
+    await user.click(screen.getByRole("button", { name: "新建会话" }))
+    const dialog = screen.getByRole("dialog", { name: "新建会话" })
+    await user.selectOptions(within(dialog).getByRole("combobox", { name: "选择学生联系人" }), "student-lin-xiaoyu")
+    await user.click(within(dialog).getByRole("button", { name: "创建会话" }))
+    expect(screen.getAllByRole("button", { name: "打开林晓雨会话" })).toHaveLength(1)
+    expect(screen.getByRole("heading", { name: "林晓雨" })).toBeInTheDocument()
+  })
+
   it("selects a parent conversation and sends a normal message through shared state", async () => {
     const user = userEvent.setup()
     renderMessages()

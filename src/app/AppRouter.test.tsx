@@ -52,7 +52,7 @@ describe("AppRouter", () => {
     expect(window.location.hash).toBe("#/parent/home")
     expect(screen.getByRole("navigation", { name: "家长端主导航" })).toBeInTheDocument()
     expect(
-      await screen.findByRole("heading", { name: "林晓雨的本周学习摘要" }),
+      await screen.findByRole("heading", { name: "林晓雨的学习近况" }),
     ).toBeInTheDocument()
   })
 
@@ -64,7 +64,7 @@ describe("AppRouter", () => {
     expect(screen.getByRole("navigation", { name: "教师端主导航" })).toBeInTheDocument()
     const main = screen.getByRole("main")
     expect(await within(main).findByRole("heading", { name: "班级洞察" })).toBeInTheDocument()
-    expect(within(main).getByText("单位换算 × 计算")).toBeInTheDocument()
+    expect(within(main).getByRole("heading", { name: "任务全局预览" })).toBeInTheDocument()
   })
 
 
@@ -126,8 +126,10 @@ describe("AppRouter", () => {
       ["#/student/review/lesson-fractions", "学生端主导航", "首页"],
       ["#/student/mistakes", "学生端主导航", "错题本"],
       ["#/student/tasks", "学生端主导航", "任务"],
+      ["#/student/ask", "学生端主导航", "询问"],
+      ["#/student/ask/task-active-01", "学生端主导航", "询问"],
       ["#/student/messages", "学生端主导航", "消息"],
-      ["#/parent/home", "家长端主导航", "学习摘要"],
+      ["#/parent/home", "家长端主导航", "学习近况"],
       ["#/parent/messages", "家长端主导航", "联系老师"],
       ["#/admin/home", "管理端主导航", "管理概览"],
       ["#/admin/safety", "管理端主导航", "保护性反馈"],

@@ -1,7 +1,10 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
-import { PrototypeProvider } from "../../../app/prototype/PrototypeContext"
+import { PrototypeProvider, usePrototype } from "../../../app/prototype/PrototypeContext"
+import { taskFixtures } from "../../../app/prototype/fixtures"
+import { StudentTasksPage } from "../../student/tasks/StudentTasksPage"
+import { StudentMessagesPage } from "../../student/messages/StudentMessagesPage"
 import { TasksPage } from "./TasksPage"
 
 function renderTasks() {
@@ -13,6 +16,31 @@ function renderTasks() {
 }
 
 describe("TasksPage", () => {
+  it("opens the class and task selected from insights", () => {
+    window.sessionStorage.setItem("zhiye-task-class-filter", "五年级（2）班")
+    window.sessionStorage.setItem("zhiye-task-open-id", "task-active-01")
+    renderTasks()
+    expect(within(screen.getByRole("navigation", { name: "任务班级" })).getByRole("button", { name: "五年级（2）班" })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByRole("dialog", { name: "单位换算巩固练习" })).toBeInTheDocument()
+  })
+
+  it("publishes a task for a student from messages and synchronizes the task announcement", async () => {
+    const user = userEvent.setup()
+    window.sessionStorage.setItem("zhiye-task-source-student", "student-lin-xiaoyu")
+    render(<PrototypeProvider><TasksPage /><StudentTasksPage /><StudentMessagesPage /></PrototypeProvider>)
+    const dialog = screen.getByRole("dialog", { name: "新建任务" })
+    expect(within(dialog).getByRole("radio", { name: /林晓雨/ })).toBeChecked()
+    await user.type(within(dialog).getByRole("textbox", { name: "任务标题" }), "晓雨的换算练习")
+    await user.type(within(dialog).getByRole("textbox", { name: "学习目标" }), "掌握换算方向")
+    await user.type(within(dialog).getByRole("textbox", { name: "达成标准" }), "独立完成三题")
+    await user.type(within(dialog).getByRole("textbox", { name: "任务内容" }), "完成三道单位换算题")
+    await user.click(within(dialog).getByRole("button", { name: "保存并预览" }))
+    const preview = screen.getByRole("dialog", { name: "晓雨的换算练习" })
+    await user.click(within(preview).getByRole("button", { name: "发布任务" }))
+    expect(screen.getByRole("button", { name: "打开晓雨的换算练习" })).toBeInTheDocument()
+    expect(within(screen.getByRole("log", { name: "与李老师的消息记录" })).getByText("已布置任务“晓雨的换算练习”。请到任务页查看并完成。")).toBeInTheDocument()
+  })
+
   it("filters 草稿、进行中、待查看和已完成 tasks and opens completion details", async () => {
     const user = userEvent.setup()
     renderTasks()
@@ -38,10 +66,10 @@ describe("TasksPage", () => {
     )
     const drawer = screen.getByRole("dialog", { name: "分数基本性质自检" })
     expect(within(drawer).getByRole("region", { name: "三道测试题预览" })).toBeInTheDocument()
-    expect(within(drawer).getByText("10 / 12")).toBeInTheDocument()
-    expect(within(drawer).getByText("83%")).toBeInTheDocument()
-    expect(within(drawer).getByText("待教师查看 10 人")).toBeInTheDocument()
-    expect(within(drawer).getByText("进行中 2 人")).toBeInTheDocument()
+    expect(within(drawer).getByText("4 / 5")).toBeInTheDocument()
+    expect(within(drawer).getByText("80%")).toBeInTheDocument()
+    expect(within(drawer).getByText("待教师查看 4 人")).toBeInTheDocument()
+    expect(within(drawer).getByText("进行中 1 人")).toBeInTheDocument()
     expect(within(drawer).getAllByText(/林晓雨|陈浩/).length).toBeGreaterThan(0)
   })
 
@@ -119,5 +147,33 @@ describe("TasksPage", () => {
 
     const notifications = screen.getByRole("region", { name: "任务操作通知" })
     expect(within(notifications).getByRole("status")).toHaveTextContent(/已通过消息提醒|暂无可发送的学生会话/)
+  })
+
+  it("moves a task from active to review on student submission and to completed after teacher review", async () => {
+    function Seed() {
+      const { addTask } = usePrototype()
+      return <button onClick={() => addTask({ ...taskFixtures[0], id: "linked-task", title: "联动练习", status: "active", submissionMode: "text", audience: { kind: "students", label: "林晓雨", studentIds: ["student-lin-xiaoyu"] }, completions: [{ studentId: "student-lin-xiaoyu", status: "not-started" }] })} type="button">准备联动任务</button>
+    }
+    const user = userEvent.setup()
+    render(<PrototypeProvider><Seed /><TasksPage /><StudentTasksPage /></PrototypeProvider>)
+    await user.click(screen.getByRole("button", { name: "准备联动任务" }))
+    const taskNav = screen.getByRole("navigation", { name: "任务状态" })
+    expect(within(taskNav).getByRole("button", { name: /进行中.*2/ })).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "打开联动练习" }))
+    const studentDialog = screen.getByRole("dialog", { name: "联动练习" })
+    await user.click(within(studentDialog).getByRole("button", { name: "开始任务" }))
+    await user.type(within(studentDialog).getByRole("textbox", { name: "我的回答" }), "完成并解释步骤")
+    await user.click(within(studentDialog).getByRole("button", { name: "标记为已完成" }))
+    expect(within(taskNav).getByRole("button", { name: /待查看.*2/ })).toBeInTheDocument()
+    expect(within(taskNav).getByRole("button", { name: /进行中.*1/ })).toBeInTheDocument()
+
+    await user.click(within(taskNav).getByRole("button", { name: /待查看.*2/ }))
+    await user.click(screen.getByRole("button", { name: "查看联动练习" }))
+    const teacherDialog = screen.getAllByRole("dialog", { name: "联动练习" }).find((dialog) => within(dialog).queryByText("完成情况"))!
+    expect(within(teacherDialog).getByText("待教师查看 1 人")).toBeInTheDocument()
+    await user.click(within(teacherDialog).getByRole("button", { name: "完成查看" }))
+    expect(within(taskNav).getByRole("button", { name: /已完成.*2/ })).toBeInTheDocument()
+    expect(within(studentDialog).getByText("老师已查看")).toBeInTheDocument()
   })
 })

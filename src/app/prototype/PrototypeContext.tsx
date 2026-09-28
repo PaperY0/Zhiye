@@ -24,10 +24,12 @@ import { acceptanceFixtureSet } from "./acceptanceFixtures"
 import { emptyFixtureSet } from "./emptyFixtures"
 import { isCompleteLessonAnalysis, lessonTopicFromContent } from "../../services/lessonAnalysis"
 import { listenForPrototypeSync, publishPrototypeSync } from "./prototypeSync"
+import { reconcileTaskStatus } from "./taskStatus"
 import { unreadForRole } from "./conversationOrder"
 import {
   getGradeFromClassName,
   getTeacherSettings,
+  isSchoolClass,
   resetTeacherSettings,
 } from "../../features/teacher/settings/teacherSettings"
 import type {
@@ -47,6 +49,7 @@ import type {
   Student,
   StudentTimelineEvent,
   Task,
+  TaskInquiry,
 } from "./types"
 
 export type PrototypeContextValue = {
@@ -118,6 +121,8 @@ export type PrototypeContextValue = {
     body: string,
     sender?: Pick<Message, "senderId" | "senderName" | "senderRole">,
   ): void
+  addTaskInquiry(taskId: string, inquiry: TaskInquiry): void
+  updateTaskInquiry(taskId: string, inquiryId: string, patch: Partial<TaskInquiry>): void
   markConversationRead(id: string, role: "teacher" | "student" | "parent"): void
   updateConversationTitle(id: string, title: string): void
   deleteConversation(id: string): void
@@ -223,44 +228,83 @@ export function PrototypeProvider({
     window.localStorage.removeItem(acceptancePrototypeStorageKey)
   }
   const persisted = persist && dataset !== "empty" ? readPrototypeSnapshot(storageKey) : null
+  const demoStudentClasses = new Map(studentFixtures.map((student) => [student.id, student.className]))
+  const removedDemoStudentIds = new Set(["student-he-yuchen", "student-tang-ruoxi"])
+  const normalizeClass = (className?: string): string => className && isSchoolClass(className) ? className : "五年级（2）班"
+  const normalizeStudents = (items: Student[]) => (dataset === "acceptance" && items.length === 1 && demoStudentClasses.has(items[0].id)
+    ? [...items, ...cloneFixture(studentFixtures).filter((student) => student.id !== items[0].id)]
+    : items)
+    .filter((student) => !removedDemoStudentIds.has(student.id))
+    .map((student) => {
+      const className = demoStudentClasses.get(student.id) ?? normalizeClass(student.className)
+      return { ...student, className, grade: "五年级" }
+    })
+  const initialStudents = normalizeStudents(cloneFixture(persisted?.students ?? fixtureSet?.students ?? studentFixtures))
+  const normalizeTasks = (items: Task[], roster: Student[]) => items.map((task) => {
+    if (task.audience.kind !== "class") return reconcileTaskStatus(task)
+    const className = normalizeClass(task.audience.label)
+    const studentIds = new Set(roster.filter((student) => student.className === className).map((student) => student.id))
+    const completions = task.completions.filter((completion) => studentIds.has(completion.studentId))
+    if (dataset === "acceptance") {
+      for (const studentId of studentIds) {
+        if (!completions.some((completion) => completion.studentId === studentId)) completions.push({ studentId, status: "not-started" })
+      }
+    }
+    return reconcileTaskStatus({
+      ...task,
+      status: task.status === "completed" && completions.some((completion) => completion.status !== "reviewed") ? "active" : task.status,
+      audience: { ...task.audience, label: className },
+      completions,
+    })
+  })
+  const normalizePlan = (plan: PlanDraft): PlanDraft => ({
+    ...plan,
+    grade: "五年级",
+    evidence: plan.id === "plan-units-remedial"
+      ? plan.evidence.map((item) => item === "12 名学生在“单位换算 × 计算”步骤停下来" ? "5 名学生在“单位换算 × 计算”步骤停下来" : item)
+      : plan.evidence,
+  })
   if (persist && dataset === "acceptance") {
     window.localStorage.removeItem(fullPrototypeStorageKey)
   }
-  const [lessons, setLessons] = useState(() =>
-    cloneFixture(persisted?.lessons ?? fixtureSet?.lessons ?? lessonFixtures),
+  const [lessons, setLessons] = useState<Lesson[]>(() =>
+    cloneFixture(persisted?.lessons ?? fixtureSet?.lessons ?? lessonFixtures).map((lesson) => {
+      const className = normalizeClass(lesson.className)
+      return { ...lesson, className, grade: "五年级" }
+    }),
   )
-  const [students, setStudents] = useState(() =>
-    cloneFixture(persisted?.students ?? fixtureSet?.students ?? studentFixtures),
+  const [students, setStudents] = useState<Student[]>(() =>
+    initialStudents,
   )
-  const [signals, setSignals] = useState(() =>
-    cloneFixture(persisted?.signals ?? fixtureSet?.signals ?? knowledgeSignalFixtures),
+  const [signals, setSignals] = useState<KnowledgeSignal[]>(() =>
+    cloneFixture(persisted?.signals ?? fixtureSet?.signals ?? knowledgeSignalFixtures).map((signal) => ({ ...signal, className: normalizeClass(signal.className) })),
   )
   const [learningTopics, setLearningTopics] = useState(() =>
     cloneFixture(persisted?.learningTopics ?? fixtureSet?.learningTopics ?? learningTopicFixtures),
   )
-  const [plans, setPlans] = useState(() =>
-    cloneFixture(persisted?.plans ?? fixtureSet?.plans ?? planFixtures),
+  const [plans, setPlans] = useState<PlanDraft[]>(() =>
+    cloneFixture(persisted?.plans ?? fixtureSet?.plans ?? planFixtures).map(normalizePlan),
   )
   const [quizzes, setQuizzes] = useState(() =>
     cloneFixture(persisted?.quizzes ?? fixtureSet?.quizzes ?? quizFixtures),
   )
-  const [tasks, setTasks] = useState(() =>
-    cloneFixture(persisted?.tasks ?? fixtureSet?.tasks ?? taskFixtures),
+  const [tasks, setTasks] = useState<Task[]>(() =>
+    normalizeTasks(cloneFixture(persisted?.tasks ?? fixtureSet?.tasks ?? taskFixtures), initialStudents),
   )
   const [conversations, setConversations] = useState(() =>
     cloneFixture(
       persisted?.conversations ?? fixtureSet?.conversations ?? conversationFixtures,
     ),
   )
-  const [parentSummary, setParentSummary] = useState(() =>
-    cloneFixture(
+  const [parentSummary, setParentSummary] = useState<ParentSummary | null>(() =>
+    (() => { const summary = cloneFixture(
       dataset === "empty"
         ? null
         : persisted?.parentSummary ?? fixtureSet?.parentSummary ?? parentSummaryFixture,
-    ),
+    ); return summary ? { ...summary, className: normalizeClass(summary.className) } : null })(),
   )
-  const [safetyCases, setSafetyCases] = useState(() =>
-    cloneFixture(persisted?.safetyCases ?? fixtureSet?.safetyCases ?? safetyCaseFixtures),
+  const [safetyCases, setSafetyCases] = useState<SafetyCase[]>(() =>
+    cloneFixture(persisted?.safetyCases ?? fixtureSet?.safetyCases ?? safetyCaseFixtures).map((item) => ({ ...item, className: normalizeClass(item.className), studentAlias: item.studentAlias.replace("六年级", "五年级") })),
   )
   const [auditEvents, setAuditEvents] = useState(() =>
     cloneFixture(persisted?.auditEvents ?? fixtureSet?.auditEvents ?? auditEventFixtures),
@@ -305,16 +349,17 @@ export function PrototypeProvider({
     return listenForPrototypeSync(storageKey, (incoming) => {
       const snapshot = incoming as Partial<PrototypeSnapshot>
       skipNextSyncPublishRef.current = true
-      if (snapshot.lessons) setLessons(cloneFixture(snapshot.lessons))
-      if (snapshot.students) setStudents(cloneFixture(snapshot.students))
-      if (snapshot.signals) setSignals(cloneFixture(snapshot.signals))
+      if (snapshot.lessons) setLessons(cloneFixture(snapshot.lessons).map((lesson) => ({ ...lesson, className: normalizeClass(lesson.className), grade: "五年级" })))
+      const incomingStudents = snapshot.students ? normalizeStudents(cloneFixture(snapshot.students)) : initialStudents
+      if (snapshot.students) setStudents(incomingStudents)
+      if (snapshot.signals) setSignals(cloneFixture(snapshot.signals).map((signal) => ({ ...signal, className: normalizeClass(signal.className) })))
       if (snapshot.learningTopics) setLearningTopics(cloneFixture(snapshot.learningTopics))
-      if (snapshot.plans) setPlans(cloneFixture(snapshot.plans))
+      if (snapshot.plans) setPlans(cloneFixture(snapshot.plans).map(normalizePlan))
       if (snapshot.quizzes) setQuizzes(cloneFixture(snapshot.quizzes))
-      if (snapshot.tasks) setTasks(cloneFixture(snapshot.tasks))
+      if (snapshot.tasks) setTasks(normalizeTasks(cloneFixture(snapshot.tasks), incomingStudents))
       if (snapshot.conversations) setConversations(cloneFixture(snapshot.conversations))
-      if ("parentSummary" in snapshot) setParentSummary(cloneFixture(snapshot.parentSummary ?? null))
-      if (snapshot.safetyCases) setSafetyCases(cloneFixture(snapshot.safetyCases))
+      if ("parentSummary" in snapshot) { const summary = cloneFixture(snapshot.parentSummary ?? null); setParentSummary(summary ? { ...summary, className: normalizeClass(summary.className) } : null) }
+      if (snapshot.safetyCases) setSafetyCases(cloneFixture(snapshot.safetyCases).map((item) => ({ ...item, className: normalizeClass(item.className), studentAlias: item.studentAlias.replace("六年级", "五年级") })))
       if (snapshot.auditEvents) setAuditEvents(cloneFixture(snapshot.auditEvents))
       if (snapshot.recapJobs) setRecapJobs(cloneFixture(snapshot.recapJobs))
     })
@@ -554,7 +599,7 @@ export function PrototypeProvider({
         setQuizzes((current) => current.filter((quiz) => quiz.id !== id))
       },
       addTask(task) {
-        setTasks((current) => [...current, cloneFixture(task)])
+        setTasks((current) => [...current, reconcileTaskStatus(cloneFixture(task))])
       },
       updateTaskTitle(id, title) {
         const normalized = title.trim()
@@ -568,7 +613,7 @@ export function PrototypeProvider({
       },
       updateTaskStatus(id, status) {
         setTasks((current) =>
-          current.map((task) => (task.id === id ? { ...task, status } : task)),
+          current.map((task) => (task.id === id ? reconcileTaskStatus({ ...task, status }) : task)),
         )
       },
       updateTaskCompletion(taskId, studentId, status, result) {
@@ -579,7 +624,7 @@ export function PrototypeProvider({
             const hasCompletion = task.completions.some(
               (completion) => completion.studentId === studentId,
             )
-            return {
+            return reconcileTaskStatus({
               ...task,
               completions: hasCompletion
                 ? task.completions.map((completion) =>
@@ -591,16 +636,17 @@ export function PrototypeProvider({
                           updatedAt,
                           submittedAt:
                             status === "submitted" || status === "reviewed"
-                              ? updatedAt
+                              ? completion.submittedAt ?? updatedAt
                               : completion.submittedAt,
                         }
                       : completion,
                   )
                 : [
                     ...task.completions,
-                    { studentId, status, ...(result ?? {}) },
+                    { studentId, status, ...(result ?? {}), updatedAt,
+                      ...(status === "submitted" || status === "reviewed" ? { submittedAt: updatedAt } : {}) },
                   ],
-            }
+            })
           }),
         )
       },
@@ -655,7 +701,9 @@ export function PrototypeProvider({
             student.id === studentId
               ? {
                   ...student,
-                  mistakes: [...student.mistakes, cloneFixture(mistake)],
+                  mistakes: student.mistakes.some((item) => item.id === mistake.id)
+                    ? student.mistakes
+                    : [...student.mistakes, cloneFixture(mistake)],
                 }
               : student,
           ),
@@ -672,6 +720,18 @@ export function PrototypeProvider({
       },
       deleteConversation(id) {
         setConversations((current) => current.filter((conversation) => conversation.id !== id))
+      },
+      addTaskInquiry(taskId, inquiry) {
+        setTasks((current) => current.map((task) => task.id === taskId
+          ? { ...task, inquiries: [...(task.inquiries ?? []), cloneFixture(inquiry)] }
+          : task))
+      },
+      updateTaskInquiry(taskId, inquiryId, patch) {
+        setTasks((current) => current.map((task) => task.id === taskId
+          ? { ...task, inquiries: (task.inquiries ?? []).map((inquiry) => inquiry.id === inquiryId
+            ? { ...inquiry, ...cloneFixture(patch), id: inquiry.id, studentId: inquiry.studentId }
+            : inquiry) }
+          : task))
       },
       markConversationRead(id, role) {
         setConversations((current) =>

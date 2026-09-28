@@ -24,7 +24,7 @@ type LessonPlanContent = Pick<
 
 type QuizContent = {
   title: string
-  questions: Array<Pick<QuizQuestion, "prompt" | "options" | "answer">>
+  questions: Array<Pick<QuizQuestion, "prompt" | "type" | "options" | "answer">>
 }
 
 type RemedialPlanContent = {
@@ -76,15 +76,17 @@ function readLessonPlanContent(value: unknown): LessonPlanContent {
 
 function readQuizContent(value: unknown): QuizContent {
   const content = requireObject(value)
-  if (!Array.isArray(content.questions) || content.questions.length !== 3) {
+  if (!Array.isArray(content.questions) || content.questions.length < 3) {
     throw new Error("本地 AI 返回的草稿格式不正确，请重试")
   }
   return {
     title: requireString(content.title),
-    questions: content.questions.map((question) => {
+    questions: content.questions.slice(0, 3).map((question) => {
       const item = requireObject(question)
-      const options = isStringList(item.options)
-        ? item.options.map((option) => option.trim())
+      const rawOptions = isStringList(item.options) ? item.options.map((option) => option.trim()) : null
+      const judgment = item.type === "true-false" || item.type === "judgment" || item.type === "判断题" || (rawOptions?.length === 2 && (["正确", "错误"].every((option) => rawOptions.includes(option)) || ["对", "错"].every((option) => rawOptions.includes(option))))
+      const options = judgment ? ["正确", "错误"] : rawOptions
+        ? rawOptions
         : null
       if (
         !options ||
@@ -94,12 +96,14 @@ function readQuizContent(value: unknown): QuizContent {
       ) {
         throw new Error("本地 AI 返回的草稿格式不正确，请重试")
       }
-      const answer = requireString(item.answer).trim()
+      const rawAnswer = typeof item.answer === "boolean" ? (item.answer ? "正确" : "错误") : requireString(item.answer).trim()
+      const answer = judgment ? ({ "对": "正确", "错": "错误", "true": "正确", "false": "错误" }[rawAnswer] ?? rawAnswer) : rawAnswer
       if (!options.includes(answer)) {
         throw new Error("本地 AI 返回的草稿格式不正确，请重试")
       }
       return {
         prompt: requireString(item.prompt),
+        type: judgment ? "true-false" as const : "single-choice" as const,
         options,
         answer,
       }
@@ -155,7 +159,6 @@ export function toQuiz(value: unknown): Quiz {
     questions: content.questions.map((question) => ({
       ...question,
       id: crypto.randomUUID(),
-      type: "single-choice",
       explanation: "",
       score: 10,
     })),

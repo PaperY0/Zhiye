@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ListChecks,
   MessageCircle,
+  MessageCircleQuestion,
   MessagesSquare,
   NotebookPen,
   School,
@@ -50,7 +51,7 @@ export const ROLE_METADATA: Record<Role, RoleMetadata> = {
   parent: {
     label: "家长",
     productLabel: "知野家校空间",
-    description: "学习摘要与教师沟通",
+    description: "学习近况与教师沟通",
   },
   admin: {
     label: "管理",
@@ -80,11 +81,12 @@ export const ROLE_NAVIGATION: Record<Role, readonly RoleNavigationItem[]> = {
   student: [
     { label: "首页", icon: Home, route: { role: "student", page: "home" }, mobilePrimary: true },
     { label: "任务", icon: ListChecks, route: { role: "student", page: "tasks" }, mobilePrimary: true },
+    { label: "询问", icon: MessageCircleQuestion, route: { role: "student", page: "ask" }, mobilePrimary: true },
     { label: "错题本", icon: ClipboardCheck, route: { role: "student", page: "mistakes" }, mobilePrimary: true },
     { label: "消息", icon: MessageCircle, route: { role: "student", page: "messages" }, mobilePrimary: true },
   ],
   parent: [
-    { label: "学习摘要", shortLabel: "摘要", icon: GraduationCap, route: { role: "parent", page: "home" }, mobilePrimary: true },
+    { label: "学习近况", shortLabel: "近况", icon: GraduationCap, route: { role: "parent", page: "home" }, mobilePrimary: true },
     { label: "联系老师", shortLabel: "消息", icon: MessagesSquare, route: { role: "parent", page: "messages" }, mobilePrimary: true },
   ],
   admin: [
@@ -99,6 +101,7 @@ const DETAIL_PARENT_PAGES: Partial<Record<RoleRoute["page"], RoleRoute["page"]>>
   "lesson-detail": "classroom",
   "student-detail": "students",
   review: "home",
+  "task-inquiry": "ask",
 }
 
 export function isNavigationItemCurrent(

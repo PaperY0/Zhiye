@@ -11,29 +11,21 @@ function renderPrototype(ui: React.ReactNode) {
   return render(<PrototypeProvider>{ui}</PrototypeProvider>)
 }
 
-it("searches and filters student records, then opens 林晓雨", async () => {
+it("shows all records for the chosen class without a search bar, then opens 林晓雨", async () => {
   const user = userEvent.setup()
   const onNavigate = vi.fn()
 
   renderPrototype(<StudentsPage onNavigate={onNavigate} />)
 
   expect(screen.getByRole("heading", { name: "学生档案" })).toBeInTheDocument()
-  expect(screen.getByText("12 名学生")).toBeInTheDocument()
+  expect(screen.getByText("5 名学生")).toBeInTheDocument()
+  await user.click(screen.getByRole("button", { name: "全部班级" }))
 
-  const search = screen.getByRole("searchbox", { name: "搜索学生" })
-  await user.type(search, "唐若曦")
-
-  expect(screen.getByText("唐若曦")).toBeInTheDocument()
-  expect(screen.queryByText("林晓雨")).not.toBeInTheDocument()
-
-  await user.clear(search)
-  await user.selectOptions(
-    screen.getByRole("combobox", { name: "关注知识点" }),
-    "单位换算",
-  )
-
+  expect(screen.getByText("郭浩然")).toBeInTheDocument()
   expect(screen.getByText("林晓雨")).toBeInTheDocument()
-  expect(screen.queryByText("唐若曦")).not.toBeInTheDocument()
+  expect(screen.queryByRole("searchbox", { name: "搜索学生" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("combobox", { name: "关注知识点" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("combobox", { name: "档案状态" })).not.toBeInTheDocument()
 
   await user.click(screen.getByRole("button", { name: "查看林晓雨档案" }))
   expect(onNavigate).toHaveBeenCalledWith({
@@ -43,19 +35,29 @@ it("searches and filters student records, then opens 林晓雨", async () => {
   })
 })
 
+it("keeps student cards within the selected class", async () => {
+  const user = userEvent.setup()
+  renderPrototype(<StudentsPage onNavigate={vi.fn()} />)
+  expect(screen.getByText("林晓雨")).toBeInTheDocument()
+  await user.click(screen.getByRole("button", { name: /五年级（1）班/ }))
+  expect(screen.queryByText("林晓雨")).not.toBeInTheDocument()
+  expect(screen.getByText("郭浩然")).toBeInTheDocument()
+  expect(screen.getByText("5 名学生")).toBeInTheDocument()
+})
+
 it("imports a local CSV into the live student records", async () => {
   const user = userEvent.setup()
   renderPrototype(<StudentsPage onNavigate={vi.fn()} />)
 
   await user.click(screen.getByRole("button", { name: "导入学生名单" }))
   const file = new File(
-    ["姓名,班级,监护人,关系,当前关注\n陈小满,五年级（3）班,陈女士,母亲,分数运算；单位换算"],
+    ["姓名,班级,监护人,关系,当前关注\n陈小满,五年级（1）班,陈女士,母亲,分数运算；单位换算"],
     "students.csv",
     { type: "text/csv" },
   )
   if (!file.text) {
     Object.defineProperty(file, "text", {
-      value: async () => "姓名,班级,监护人,关系,当前关注\n陈小满,五年级（3）班,陈女士,母亲,分数运算；单位换算",
+      value: async () => "姓名,班级,监护人,关系,当前关注\n陈小满,五年级（1）班,陈女士,母亲,分数运算；单位换算",
     })
   }
   await user.upload(screen.getByLabelText("选择 CSV 文件"), file)
@@ -63,11 +65,12 @@ it("imports a local CSV into the live student records", async () => {
   expect(await screen.findByText(/已读取：students.csv · 1 名学生/)).toBeInTheDocument()
   await user.click(screen.getByRole("button", { name: "导入 1 名学生" }))
 
+  await user.click(screen.getByRole("button", { name: /五年级（1）班/ }))
   expect(screen.getByText("陈小满")).toBeInTheDocument()
-  expect(screen.getByText("13 名学生")).toBeInTheDocument()
+  expect(screen.getByText("6 名学生")).toBeInTheDocument()
 })
 
-it("shows 林晓雨 timeline, evidence, facts and clearly separated AI inference", () => {
+it("shows 林晓雨 timeline, evidence and facts without unreviewed AI labels", () => {
   renderPrototype(<StudentDetailPage studentId="student-lin-xiaoyu" />)
 
   expect(screen.getByRole("heading", { name: "林晓雨" })).toBeInTheDocument()
@@ -88,17 +91,10 @@ it("shows 林晓雨 timeline, evidence, facts and clearly separated AI inference
   expect(within(facts).getByText("本周主动提问 4 次")).toBeInTheDocument()
   expect(within(facts).getByText("完成练习 7 次")).toBeInTheDocument()
 
-  const inference = screen.getByRole("region", {
-    name: "AI 推断 · 需教师判断",
-  })
-  expect(
-    within(inference).getByText(
-      "可能需要更多单位换算步骤提示，需结合后续练习人工确认。",
-    ),
-  ).toBeInTheDocument()
+  expect(screen.queryByRole("region", { name: "AI 推断 · 需教师判断" })).not.toBeInTheDocument()
 })
 
-it("saves a teacher note and submits a correction request", async () => {
+it("saves a teacher note without showing a nonfunctional correction request", async () => {
   const user = userEvent.setup()
   renderPrototype(<StudentDetailPage studentId="student-lin-xiaoyu" />)
 
@@ -113,16 +109,5 @@ it("saves a teacher note and submits a correction request", async () => {
     screen.getByText("下节课观察晓雨能否独立判断单位换算方向。"),
   ).toBeInTheDocument()
 
-  await user.click(screen.getByRole("button", { name: "申请更正档案" }))
-  const dialog = screen.getByRole("dialog", { name: "申请更正学生档案" })
-  await user.type(
-    within(dialog).getByRole("textbox", { name: "更正说明" }),
-    "监护人称谓应改为家长。",
-  )
-  await user.click(within(dialog).getByRole("button", { name: "提交更正申请" }))
-
-  expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
-  expect(screen.getByRole("status")).toHaveTextContent(
-    "更正申请已提交，等待人工核实",
-  )
+  expect(screen.queryByRole("button", { name: "申请更正档案" })).not.toBeInTheDocument()
 })

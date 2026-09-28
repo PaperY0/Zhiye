@@ -19,6 +19,7 @@ from schemas import (
     TutoringDraft,
     LearningReplyDraft,
     StudentCompanionDraft,
+    TaskInquiryDraft,
 )
 
 
@@ -45,6 +46,7 @@ RESPONSE_MODELS: dict[str, type[BaseModel]] = {
     "student-inference": StudentInferenceDraft,
     "tutoring": TutoringDraft,
     "student-companion": StudentCompanionDraft,
+    "task-inquiry": TaskInquiryDraft,
 }
 
 
@@ -56,6 +58,22 @@ def build_request_body(request: GenerateRequest) -> dict[str, Any]:
         "successCriteria 是可观察的完成标准。不要把文字字段写成数组或嵌套对象。"
         if request.kind == "task-draft" else ""
     )
+    if request.kind == "task-inquiry":
+        task_instruction = (
+            "当 task 为 task-inquiry 时，根据任务内容和学生当前疑问，用简明、循序渐进的中文回答；"
+            "若 context 提供 quizQuestions，直接结合其中的题干、选项、标准答案和解析讲解学生指定的题目；"
+            "标准答案只依据 quizQuestions，不自行改动；若学生询问全部题目，可逐题简要解答。"
+            "answer 给出解释和下一步提示，focus 是一个简短的疑问点名称，reviewTip 是复习建议。"
+            "不得声称学生已经答错或掌握某知识点。"
+        )
+    if request.kind == "quiz":
+        task_instruction = (
+            "当 task 为 quiz 时，必须返回 title 和恰好 3 道 questions。"
+            "每题包含非空 prompt、type、options、answer；"
+            "type 只能是 single-choice 或 true-false。"
+            "单选题的 answer 必须与一个 options 完全一致；判断题的 options 固定为 [\"正确\",\"错误\"]，"
+            "answer 只能是其中一个。题目应来自提供的课堂内容，简短清晰。"
+        )
     return {
         "model": os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash"),
         "messages": [
@@ -86,7 +104,7 @@ def build_request_body(request: GenerateRequest) -> dict[str, Any]:
         ],
         "response_format": {"type": "json_object"},
         "temperature": 0.2,
-        "max_tokens": 3200 if request.kind == "lesson-plan" else 2000 if request.kind == "task-draft" else 1200,
+        "max_tokens": 3200 if request.kind == "lesson-plan" else 2000 if request.kind in ("task-draft", "quiz") else 1200,
     }
 
 
@@ -127,7 +145,7 @@ def generate_draft(request: GenerateRequest) -> dict[str, Any]:
     try:
         return RESPONSE_MODELS[request.kind].model_validate_json(raw).model_dump()
     except (ValidationError, ValueError, TypeError) as error:
-        if request.kind not in ("lesson-plan", "task-draft"):
+        if request.kind not in ("lesson-plan", "task-draft", "quiz", "parent-summary", "student-inference", "task-inquiry"):
             raise GenerationValidationError() from error
         # Retry a truncated or incomplete draft once using the same approved context.
         retry_body = build_request_body(request)
@@ -139,6 +157,17 @@ def generate_draft(request: GenerateRequest) -> dict[str, Any]:
             "任务草稿必须返回 title、objective、successCriteria、content、"
             "supportNote 五个字符串字段；如果没有支持提示，supportNote 填空字符串。"
             "只返回完整 JSON，不得省略字段。"
+            if request.kind == "task-draft" else
+            "课堂自检必须返回 title 和恰好 3 道 questions；每题有 prompt、type、options、answer。"
+            "type 为 single-choice 或 true-false，answer 必须是 options 中的一个。只返回完整 JSON。"
+            if request.kind == "quiz" else
+            "家长摘要必须返回 topics 字符串数组、encouragement 和 teacher_message 字符串。"
+            "只返回完整 JSON，不得省略字段。"
+            if request.kind == "parent-summary" else
+            "学生观察必须返回 evidence 字符串数组、observation 和 suggested_support 字符串。"
+            "只能依据提供的事实，不得诊断或贴标签。只返回完整 JSON。"
+            if request.kind == "student-inference" else
+            "任务询问必须返回 answer、focus、reviewTip 三个非空字符串字段。只返回完整 JSON。"
         )
         retry_body["temperature"] = 0
         try:

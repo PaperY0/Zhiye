@@ -1,13 +1,10 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import {
-  ArrowUpRight,
   BookOpenCheck,
   CheckCircle2,
   ChevronRight,
-  Search,
   Pencil,
   Plus,
-  SlidersHorizontal,
   Sparkles,
   UsersRound,
   Trash2,
@@ -18,14 +15,13 @@ import type { Student } from "../../../app/prototype/types"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { StatusChip } from "../../../components/shared/StatusChip"
 import { Dialog } from "../../../components/shared/Dialog"
+import { isSchoolClass, schoolClasses, useTeacherSettings } from "../settings/teacherSettings"
 
 export interface StudentsPageProps {
   onNavigate: (route: AppRoute) => void
 }
 
-type AttentionFilter = "all" | "needs-review" | "steady"
-
-function studentAttention(student: Student): Exclude<AttentionFilter, "all"> {
+function studentAttention(student: Student): "needs-review" | "steady" {
   return student.taskCompletionRate < 85 || student.currentFocus.length > 1
     ? "needs-review"
     : "steady"
@@ -67,8 +63,7 @@ function StudentCard({
   const needsReview = studentAttention(student) === "needs-review"
 
   return (
-    <article className="group relative overflow-hidden rounded-[26px] border border-white/80 bg-white/64 p-5 shadow-[0_18px_44px_rgba(48,74,56,.07)] backdrop-blur-xl transition duration-200 hover:-translate-y-0.5 hover:bg-white/78 hover:shadow-[0_22px_52px_rgba(48,74,56,.11)]">
-      <div className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full bg-[radial-gradient(circle,rgba(201,220,199,.55),transparent_68%)]" />
+    <article className="group rounded-[22px] border border-[#dce6dc] bg-white p-5 transition hover:border-[#a9c2ac]">
       <div className="relative flex items-start gap-4">
         <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[17px] border border-white/90 bg-[linear-gradient(145deg,rgba(238,231,199,.95),rgba(215,229,211,.86))] text-lg font-black text-[#426049] shadow-inner">
           {student.avatarText}
@@ -79,45 +74,17 @@ function StudentCard({
               <h2 className="text-lg font-black tracking-[-.02em] text-[#17271c]">
                 {student.name}
               </h2>
-              <p className="mt-0.5 text-xs font-semibold text-[#819086]">
-                {student.className} · {student.guardianRelation}{" "}
-                {student.guardianName}
-              </p>
+              <p className="mt-0.5 text-xs font-semibold text-[#819086]">{student.className}</p>
             </div>
             <StatusChip tone={needsReview ? "warning" : "success"}>
               {needsReview ? "建议关注" : "节奏稳定"}
             </StatusChip>
           </div>
 
-          <div className="mt-5 grid grid-cols-3 gap-2">
-            <div className="rounded-[15px] bg-[#f5f7f1]/90 px-3 py-3 text-center">
-              <strong className="block text-lg font-black text-[#263c2b]">
-                {student.voluntaryQuestions}
-              </strong>
-              <span className="text-[11px] font-semibold text-[#7c8b81]">
-                主动提问
-              </span>
-            </div>
-            <div className="rounded-[15px] bg-[#f5f7f1]/90 px-3 py-3 text-center">
-              <strong className="block text-lg font-black text-[#263c2b]">
-                {student.practiceCount}
-              </strong>
-              <span className="text-[11px] font-semibold text-[#7c8b81]">
-                完成练习
-              </span>
-            </div>
-            <div className="rounded-[15px] bg-[#f5f7f1]/90 px-3 py-3 text-center">
-              <strong className="block text-lg font-black text-[#263c2b]">
-                {student.taskCompletionRate}%
-              </strong>
-              <span className="text-[11px] font-semibold text-[#7c8b81]">
-                任务完成
-              </span>
-            </div>
-          </div>
+          <p className="mt-5 text-sm text-[#617266]">任务完成 <strong className="text-[#263c2b]">{student.taskCompletionRate}%</strong> · {student.mistakes.length} 道在学错题</p>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            {student.currentFocus.map((focus) => (
+            {student.currentFocus.slice(0, 1).map((focus) => (
               <span
                 className="rounded-full border border-[#dce6d8] bg-[#edf3ea] px-3 py-1 text-xs font-bold text-[#58705d]"
                 key={focus}
@@ -125,6 +92,7 @@ function StudentCard({
                 {focus}
               </span>
             ))}
+            {student.currentFocus.length > 1 && <span className="text-xs text-[#718076]">另有 {student.currentFocus.length - 1} 项关注</span>}
           </div>
 
           <button
@@ -147,10 +115,9 @@ function StudentCard({
 }
 
 export function StudentsPage({ onNavigate }: StudentsPageProps) {
-  const { addStudent, deleteStudent, students, tasks, updateStudent } = usePrototype()
-  const [query, setQuery] = useState("")
-  const [focus, setFocus] = useState("all")
-  const [attention, setAttention] = useState<AttentionFilter>("all")
+  const { currentClass } = useTeacherSettings()
+  const { addStudent, deleteStudent, students, updateStudent } = usePrototype()
+  const [selectedClass, setSelectedClass] = useState<string>(currentClass)
   const [importOpen, setImportOpen] = useState(false)
   const [importFileName, setImportFileName] = useState("")
   const [importStudents, setImportStudents] = useState<Student[]>([])
@@ -164,8 +131,8 @@ export function StudentsPage({ onNavigate }: StudentsPageProps) {
       id,
       name: "新学生",
       avatarText: "新",
-      className: students[0]?.className ?? "五年级（2）班",
-      grade: students[0]?.grade ?? "五年级",
+      className: selectedClass === "all" ? currentClass : selectedClass,
+      grade: "五年级",
       guardianName: "待填写",
       guardianRelation: "监护人",
       voluntaryQuestions: 0,
@@ -211,12 +178,13 @@ export function StudentsPage({ onNavigate }: StudentsPageProps) {
       const name = cells[nameColumn]?.trim()
       if (!name) return []
       const draft = createStudentDraft()
+      const className = cells[classColumn]?.trim() || draft.className
       return [{
         ...draft,
         id: `student-import-${timestamp}-${index}`,
         name,
         avatarText: name.slice(0, 1),
-        className: cells[classColumn]?.trim() || draft.className,
+        className,
         guardianName: cells[guardianColumn]?.trim() || draft.guardianName,
         guardianRelation: cells[relationColumn]?.trim() || draft.guardianRelation,
         currentFocus: (cells[focusColumn] ?? "").split(/[、;；|]/).map((item) => item.trim()).filter(Boolean),
@@ -226,77 +194,45 @@ export function StudentsPage({ onNavigate }: StudentsPageProps) {
       setImportError("没有读取到有效学生，请检查姓名列。")
       return
     }
+    if (parsed.some((student) => !isSchoolClass(student.className))) {
+      setImportError("班级只支持五年级（1）班和五年级（2）班，请修改 CSV 后重试。")
+      return
+    }
     setImportStudents(parsed)
   }
 
-  const focusOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(students.flatMap((student) => student.currentFocus)),
-      ).sort(),
-    [students],
-  )
-
-  const filteredStudents = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase("zh-CN")
-    return students.filter((student) => {
-      const matchesQuery =
-        normalizedQuery.length === 0 ||
-        `${student.name}${student.guardianName}${student.currentFocus.join("")}`
-          .toLocaleLowerCase("zh-CN")
-          .includes(normalizedQuery)
-      const matchesFocus =
-        focus === "all" || student.currentFocus.includes(focus)
-      const matchesAttention =
-        attention === "all" || studentAttention(student) === attention
-      return matchesQuery && matchesFocus && matchesAttention
-    })
-  }, [attention, focus, query, students])
+  const classStudents = students.filter((student) => selectedClass === "all" || student.className === selectedClass)
 
   const averageCompletion = Math.round(
-    students.reduce((sum, student) => {
-      const trackedTasks = tasks.filter(
-        (task) =>
-          task.status !== "draft" &&
-          (task.audience.kind === "class" ||
-            task.audience.studentIds.includes(student.id)),
-      )
-      if (trackedTasks.length === 0) return sum + student.taskCompletionRate
-      const completed = trackedTasks.filter((task) =>
-        task.completions.some(
-          (completion) =>
-            completion.studentId === student.id &&
-            (completion.status === "submitted" || completion.status === "reviewed"),
-        ),
-      ).length
-      return sum + Math.round((completed / trackedTasks.length) * 100)
-    }, 0) / Math.max(students.length, 1),
+    classStudents.reduce((sum, student) => sum + student.taskCompletionRate, 0) /
+      Math.max(classStudents.length, 1),
   )
-  const reviewCount = students.filter(
+  const reviewCount = classStudents.filter(
     (student) => studentAttention(student) === "needs-review",
   ).length
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8">
+    <div className="role-page">
       <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs font-black tracking-[.14em] text-[#6b816f]">
             <UsersRound aria-hidden="true" size={16} />
             班级学习档案
           </div>
-          <h1 className="mt-3 text-3xl font-black tracking-[-.045em] text-[#15251a] sm:text-4xl">
+          <h1 className="role-page-title">
             学生档案
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[#708078]">
-            以可核实学习记录为主线查看成长轨迹，AI 只提供待教师判断的辅助线索。
+            按班级查看学生的任务完成、学习证据与教师跟进记录。
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <StatusChip tone="info">实时本地数据</StatusChip>
           <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#cbdaca] bg-white/70 px-5 text-sm font-black text-[#3f5d46]" onClick={() => setImportOpen(true)} type="button">导入学生名单</button>
           <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#173022] px-5 text-sm font-black text-white" onClick={() => { setStudentDraft(createStudentDraft()); setStudentEditorOpen(true) }} type="button"><Plus aria-hidden="true" size={17} />新增学生</button>
         </div>
       </header>
+
+      <nav aria-label="学生班级" className="mt-6 flex flex-wrap gap-2">{schoolClasses.map((className) => <button aria-current={selectedClass === className ? "page" : undefined} className={selectedClass === className ? "role-action-primary" : "role-action-secondary"} key={className} onClick={() => setSelectedClass(className)} type="button">{className}<span className="text-xs opacity-75">{students.filter((student) => student.className === className).length} 人</span></button>)}<button aria-current={selectedClass === "all" ? "page" : undefined} className={selectedClass === "all" ? "role-action-primary" : "role-action-secondary"} onClick={() => setSelectedClass("all")} type="button">全部班级</button></nav>
 
       <section
         aria-label="班级档案概览"
@@ -308,11 +244,11 @@ export function StudentsPage({ onNavigate }: StudentsPageProps) {
           </div>
           <div>
             <strong className="text-2xl font-black text-[#203427]">
-              {students.length}
+              {classStudents.length}
             </strong>
             <p className="text-xs font-bold text-[#77877d]">名学生</p>
           </div>
-          <span className="sr-only">{students.length} 名学生</span>
+          <span className="sr-only">{classStudents.length} 名学生</span>
         </GlassSurface>
         <GlassSurface className="flex items-center gap-4 p-5" weight="light">
           <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#eef0d9] text-[#73753d]">
@@ -338,85 +274,12 @@ export function StudentsPage({ onNavigate }: StudentsPageProps) {
         </GlassSurface>
       </section>
 
-      <GlassSurface className="mt-5 p-4 sm:p-5" weight="light">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <label className="relative min-w-0 flex-1">
-            <span className="sr-only">搜索学生</span>
-            <Search
-              aria-hidden="true"
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#7d8d82]"
-              size={18}
-            />
-            <input
-              aria-label="搜索学生"
-              className="h-12 w-full rounded-[17px] border border-white/90 bg-white/72 pl-11 pr-4 text-sm font-semibold text-[#203427] outline-none transition placeholder:text-[#a0aba4] focus:border-[#a9c0aa] focus:ring-4 focus:ring-[#afc7b0]/25"
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜索姓名、监护人或知识点"
-              type="search"
-              value={query}
-            />
-          </label>
-          <div className="flex items-center gap-2 text-xs font-black text-[#718177]">
-            <SlidersHorizontal aria-hidden="true" size={16} />
-            筛选
-          </div>
-          <label className="grid gap-1 text-xs font-bold text-[#65776a]">
-            <span className="sr-only">关注知识点</span>
-            <select
-              aria-label="关注知识点"
-              className="h-12 min-w-40 rounded-[17px] border border-white/90 bg-white/72 px-4 text-sm font-bold text-[#334b38] outline-none focus:ring-4 focus:ring-[#afc7b0]/25"
-              onChange={(event) => setFocus(event.target.value)}
-              value={focus}
-            >
-              <option value="all">全部知识点</option>
-              {focusOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span className="sr-only">档案状态</span>
-            <select
-              aria-label="档案状态"
-              className="h-12 min-w-36 rounded-[17px] border border-white/90 bg-white/72 px-4 text-sm font-bold text-[#334b38] outline-none focus:ring-4 focus:ring-[#afc7b0]/25"
-              onChange={(event) =>
-                setAttention(event.target.value as AttentionFilter)
-              }
-              value={attention}
-            >
-              <option value="all">全部状态</option>
-              <option value="needs-review">建议关注</option>
-              <option value="steady">节奏稳定</option>
-            </select>
-          </label>
-        </div>
-      </GlassSurface>
-
-      <div className="mt-5 flex items-center justify-between gap-4">
-        <p aria-live="polite" className="text-sm font-bold text-[#68796e]">
-          显示 {filteredStudents.length} / {students.length} 名学生
-        </p>
-        <button
-          className="hidden items-center gap-2 text-sm font-black text-[#52705a] hover:text-[#263e2c] sm:flex"
-          onClick={() => {
-            setQuery("")
-            setFocus("all")
-            setAttention("all")
-          }}
-          type="button"
-        >
-          清除筛选 <ArrowUpRight aria-hidden="true" size={15} />
-        </button>
-      </div>
-
-      {filteredStudents.length > 0 ? (
+      {classStudents.length > 0 ? (
         <section
           aria-label="学生列表"
           className="mt-4 grid gap-4 md:grid-cols-2 2xl:grid-cols-3"
         >
-          {filteredStudents.map((student) => (
+          {classStudents.map((student) => (
             <StudentCard
               key={student.id}
               onOpen={() =>
@@ -446,12 +309,12 @@ export function StudentsPage({ onNavigate }: StudentsPageProps) {
               size={28}
             />
             <h2 className="mt-4 text-xl font-black text-[#243a2a]">
-              {students.length === 0 ? "还没有学生" : "没有符合条件的学生"}
+              {students.length === 0 ? "还没有学生" : "当前班级还没有学生"}
             </h2>
             <p className="mt-2 text-sm text-[#75847b]">
               {students.length === 0
                 ? "先去导入学生名单，之后这里会出现学生档案。"
-                : "尝试清除关键词或切换关注知识点。"}
+                : "可切换班级，或为当前班级新增学生。"}
             </p>
             {students.length === 0 ? (
               <button
@@ -533,7 +396,7 @@ export function StudentsPage({ onNavigate }: StudentsPageProps) {
       >
         {studentDraft ? <div className="grid gap-4 sm:grid-cols-2">
           <label className="grid gap-2 text-sm font-black">姓名<input aria-label="学生姓名" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setStudentDraft({ ...studentDraft, name: event.target.value, avatarText: event.target.value.slice(0, 1) || "新" })} value={studentDraft.name} /></label>
-          <label className="grid gap-2 text-sm font-black">班级<input aria-label="学生班级" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setStudentDraft({ ...studentDraft, className: event.target.value })} value={studentDraft.className} /></label>
+          <label className="grid gap-2 text-sm font-black">班级<select aria-label="学生班级" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setStudentDraft({ ...studentDraft, className: event.target.value, grade: "五年级" })} value={studentDraft.className}>{schoolClasses.map((className) => <option key={className} value={className}>{className}</option>)}</select></label>
           <label className="grid gap-2 text-sm font-black">监护人<input aria-label="监护人姓名" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setStudentDraft({ ...studentDraft, guardianName: event.target.value })} value={studentDraft.guardianName} /></label>
           <label className="grid gap-2 text-sm font-black">关系<input aria-label="监护人关系" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" onChange={(event) => setStudentDraft({ ...studentDraft, guardianRelation: event.target.value })} value={studentDraft.guardianRelation} /></label>
           <label className="grid gap-2 text-sm font-black">任务完成率<input aria-label="任务完成率" className="min-h-11 rounded-2xl border border-[#d9e4d7] bg-white/80 px-4" max="100" min="0" onChange={(event) => setStudentDraft({ ...studentDraft, taskCompletionRate: Number(event.target.value) })} type="number" value={studentDraft.taskCompletionRate} /></label>

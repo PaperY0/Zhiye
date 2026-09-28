@@ -23,7 +23,9 @@ export function StudentReviewPage({ lessonId, onNavigate }: StudentReviewPagePro
   const reviewTags = lesson.recapTags
   const linkedTask = tasks.find((task) => {
     if (task.status === "draft" || task.status === "completed") return false
-    const assigned = task.audience.kind === "class" || task.audience.studentIds.includes(student.id)
+    const assigned = task.audience.kind === "class"
+      ? task.audience.label === student.className
+      : task.audience.studentIds.includes(student.id)
     const related = task.title.includes(reviewTitle.replace("的", "")) || reviewTags.some((tag) => task.title.includes(tag))
     return assigned && related
   })

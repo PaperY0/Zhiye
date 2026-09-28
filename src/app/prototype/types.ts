@@ -69,6 +69,19 @@ export type Mistake = {
   reminderAt?: string
   note?: string
   imageUrl?: string
+  taskId?: string
+  inquiryId?: string
+}
+
+export type TaskInquiry = {
+  id: string
+  studentId: string
+  subject: Subject
+  question: string
+  answer?: string
+  focus?: string
+  status: "asking" | "answered" | "failed"
+  createdAt: string
 }
 
 export type StudentTimelineEvent = {
@@ -160,7 +173,7 @@ export type PlanDraft = {
 export type QuizQuestion = {
   id: string
   prompt: string
-  type: "single-choice" | "multiple-choice" | "short-answer"
+  type: "single-choice" | "multiple-choice" | "true-false" | "short-answer"
   options: string[]
   answer: string | string[]
   explanation: string
@@ -192,6 +205,7 @@ export type TaskCompletion = {
 
 export type Task = {
   id: string
+  inquiries?: TaskInquiry[]
   title: string
   type: "review" | "practice" | "quiz" | "reading"
   sourcePlanId?: string

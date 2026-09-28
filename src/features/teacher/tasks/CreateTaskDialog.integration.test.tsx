@@ -10,6 +10,20 @@ vi.mock("../../../services/localAi", () => ({ generateDraft: vi.fn() }))
 describe("CreateTaskDialog teaching flow", () => {
   beforeEach(() => { localStorage.clear(); vi.mocked(generateDraft).mockReset() })
 
+  it("uses the student selected in messages as the sole task recipient", async () => {
+    const user = userEvent.setup()
+    const onCreate = vi.fn()
+    render(<CreateTaskDialog open students={studentFixtures} initialStudentId="student-lin-xiaoyu" taskCount={0} onClose={() => {}} onCreate={onCreate} />)
+    const dialog = screen.getByRole("dialog", { name: "新建任务" })
+    expect(within(dialog).getByRole("radio", { name: /林晓雨/ })).toBeChecked()
+    await user.type(within(dialog).getByRole("textbox", { name: "任务标题" }), "针对性练习")
+    await user.type(within(dialog).getByRole("textbox", { name: "学习目标" }), "独立判断单位换算方向")
+    await user.type(within(dialog).getByRole("textbox", { name: "达成标准" }), "完成并解释三道题")
+    await user.type(within(dialog).getByRole("textbox", { name: "任务内容" }), "完成三道单位换算题")
+    await user.click(within(dialog).getByRole("button", { name: "保存并预览" }))
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ audience: { kind: "students", label: "林晓雨", studentIds: ["student-lin-xiaoyu"] }, completions: [{ studentId: "student-lin-xiaoyu", status: "not-started" }] }), undefined)
+  })
+
   it("brings a saved plan into the task and lets AI complete an editable draft", async () => {
     const user = userEvent.setup()
     const onCreate = vi.fn()
@@ -33,11 +47,15 @@ describe("CreateTaskDialog teaching flow", () => {
       { prompt: "第一题", options: ["正确", "错误"], answer: "正确" },
       { prompt: "第二题", options: ["正确", "错误"], answer: "错误" },
       { prompt: "第三题", options: ["正确", "错误"], answer: "正确" },
+      { prompt: "多余的第四题", options: ["甲", "乙"], answer: "甲" },
+      { prompt: "多余的第五题", options: ["甲", "乙"], answer: "乙" },
     ] } })
     render(<CreateTaskDialog open students={studentFixtures} lessons={[lesson]} initialLessonId={lesson.id} taskCount={0} onClose={() => {}} onCreate={onCreate} />)
     const dialog = screen.getByRole("dialog", { name: "新建任务" })
     expect(await within(dialog).findByDisplayValue("第一题")).toBeInTheDocument()
     expect(within(dialog).getAllByRole("group", { name: /第 .* 题/ })).toHaveLength(3)
+    expect(within(dialog).getAllByRole("combobox", { name: "题型" })[0]).toHaveValue("true-false")
+    expect(within(dialog).getAllByRole("radio", { name: "正确" })[0]).toBeChecked()
     expect(vi.mocked(generateDraft)).toHaveBeenCalledWith("quiz", expect.objectContaining({ focus: expect.stringContaining(lesson.transcript[0].body) }))
     await user.click(within(dialog).getByRole("button", { name: "保存并预览" }))
     expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ sourceLessonId: lesson.id, sourceQuizId: expect.any(String), audience: expect.objectContaining({ label: lesson.className }) }), expect.objectContaining({ questions: expect.arrayContaining([expect.objectContaining({ prompt: "第一题" })]) }))

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import {
   BookMarked,
@@ -86,6 +86,13 @@ export function MistakesPage() {
       reminderChoice: "3-days",
     })),
   )
+  useEffect(() => {
+    setRecords((current) => (currentStudent?.mistakes ?? []).map((mistake) => ({
+      ...mistake,
+      note: mistake.note ?? "",
+      reminderChoice: current.find((item) => item.id === mistake.id)?.reminderChoice ?? "3-days",
+    })))
+  }, [currentStudent?.mistakes])
 
   const [subject, setSubject] = useState<SubjectFilter>("all")
 
@@ -178,7 +185,7 @@ export function MistakesPage() {
               错题本
             </h1>
             <p className="role-page-description">
-              这里记录林晓雨在课堂、答疑和任务中主动保存的题目。掌握状态和提醒只在当前原型页面中更新。
+              这里汇集课堂练习、拍照答疑和任务询问中的复习记录。任务中的疑问会在 AI 回答后自动加入。
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:min-w-72">
@@ -304,7 +311,7 @@ export function MistakesPage() {
                 </div>
                 <div className="mt-4 flex items-center justify-between gap-3 text-xs font-bold text-[#6d7a72]">
                   <span className="inline-flex items-center gap-1.5">
-                    <CalendarDays aria-hidden="true" size={14} />7 月 22 日加入
+                    <CalendarDays aria-hidden="true" size={14} />{new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric" }).format(new Date(mistake.createdAt))}加入
                   </span>
                   {mistake.note ? (
                     <span className="inline-flex items-center gap-1.5 text-[#496950]">

@@ -4,13 +4,15 @@ import {
   CalendarClock,
   CheckCircle2,
   Play,
-  X,
+  MessageCircleQuestion,
 } from "lucide-react"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
+import { isCorrectAnswer, isObjectiveQuestion, scoreQuiz } from "../../../app/prototype/quizScoring"
 import type { Task } from "../../../app/prototype/types"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { StatusChip } from "../../../components/shared/StatusChip"
 import { PinyinText } from "../../../components/pinyin/PinyinText"
+import { Dialog } from "../../../components/shared/Dialog"
 
 const STUDENT_ID = "student-lin-xiaoyu"
 
@@ -33,14 +35,13 @@ const submissionLabels: Record<NonNullable<Task["submissionMode"]>, string> = {
 
 function initialStudentState(task: Task): StudentTaskState {
   const completion = task.completions.find(
-    (item) => item.studentId === STUDENT_ID && item.updatedAt,
+    (item) => item.studentId === STUDENT_ID,
   )
   if (completion?.status === "submitted" || completion?.status === "reviewed") {
     return "completed"
   }
   if (completion?.status === "in-progress") return "in-progress"
   if (task.status === "completed") return "completed"
-  if (task.status === "review") return "completed"
   return "not-started"
 }
 
@@ -65,8 +66,18 @@ function stateTone(state: StudentTaskState) {
   return "warning" as const
 }
 
+function instructionLines(value: string) {
+  return value
+    .replace(/\s*(?=第[一二三四五六七八九十]+步[：:]?)/g, "\n")
+    .replace(/(?<![\d.])\s*(?=[1-9]\d*[.、．](?!\d))/g, "\n")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+}
+
 export function StudentTasksPage() {
-  const { tasks, quizzes, updateTaskCompletion } = usePrototype()
+  const { tasks, quizzes, students, updateTaskCompletion, addMistake } = usePrototype()
+  const studentClass = students.find((student) => student.id === STUDENT_ID)?.className
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [responses, setResponses] = useState<Record<string, string>>({})
   const visibleTasks = useMemo(
@@ -74,31 +85,29 @@ export function StudentTasksPage() {
       tasks.filter(
         (task) =>
           task.status !== "draft" &&
-          (task.audience.kind === "class" ||
+          (task.audience.kind === "class" && task.audience.label === studentClass ||
             task.audience.studentIds.includes(STUDENT_ID)),
       ),
-    [tasks],
+    [tasks, studentClass],
   )
   const [filter, setFilter] = useState<TaskFilter>("all")
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => {
+    const taskId = window.sessionStorage.getItem("zhiye-student-task-open-id")
+    window.sessionStorage.removeItem("zhiye-student-task-open-id")
+    return taskId
+  })
   const [notice, setNotice] = useState("")
-  const [progress, setProgress] = useState<Record<string, StudentTaskState>>(
-    () =>
-      Object.fromEntries(
-        visibleTasks.map((task) => [task.id, initialStudentState(task)]),
-      ),
-  )
-
   const selectedTask = visibleTasks.find((task) => task.id === selectedTaskId)
+  const selectedState = selectedTask ? initialStudentState(selectedTask) : null
   const selectedQuiz = quizzes.find((quiz) => quiz.id === selectedTask?.sourceQuizId)
   const filteredTasks = visibleTasks.filter((task) => {
-    const state = progress[task.id] ?? initialStudentState(task)
+    const state = initialStudentState(task)
     if (filter === "pending") return state !== "completed"
     if (filter === "completed") return state === "completed"
     return true
   })
   const pendingCount = visibleTasks.filter(
-    (task) => (progress[task.id] ?? initialStudentState(task)) !== "completed",
+    (task) => initialStudentState(task) !== "completed",
   ).length
   const completedCount = visibleTasks.length - pendingCount
 
@@ -146,7 +155,7 @@ export function StudentTasksPage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {filteredTasks.map((task) => {
-          const state = progress[task.id] ?? initialStudentState(task)
+          const state = initialStudentState(task)
           return (
             <GlassSurface className="flex min-h-64 flex-col p-5" key={task.id}>
               <div className="flex items-start justify-between gap-3">
@@ -175,7 +184,7 @@ export function StudentTasksPage() {
               <button
                 aria-label={`打开${task.title}`}
                 className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-4 py-3 text-sm font-black text-[#416449] shadow-lg shadow-[#527a5a]/10 transition hover:-translate-y-0.5"
-                onClick={() => setSelectedTaskId(task.id)}
+                onClick={() => { setNotice(""); setSelectedTaskId(task.id) }}
                 type="button"
               >
                 {state === "completed" ? "查看任务" : "继续任务"}
@@ -201,44 +210,70 @@ export function StudentTasksPage() {
       ) : null}
 
       {selectedTask ? (
-        <div
-          className="fixed inset-0 z-50 grid place-items-center bg-[#0e1c14]/30 p-4 backdrop-blur-sm"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setSelectedTaskId(null)
-          }}
+        <Dialog
+          description="李老师布置"
+          footer={
+            <>
+              {notice ? (
+                <p aria-live="polite" className="w-full rounded-xl bg-[#e7f1e5] px-4 py-2 text-sm font-bold text-[#36563d]" role="status">
+                  {selectedTask.completions.find((item) => item.studentId === STUDENT_ID)?.status === "reviewed" && notice.includes("等待老师") ? "老师已查看这份任务" : notice}
+                </p>
+              ) : null}
+              {selectedState === "not-started" ? (
+                <button
+                  className="min-h-12 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-5 font-black text-[#416449]"
+                  onClick={() => {
+                    updateTaskCompletion(selectedTask.id, STUDENT_ID, "in-progress")
+                    setNotice("任务已开始，进度已同步")
+                  }}
+                  type="button"
+                >
+                  开始任务
+                </button>
+              ) : null}
+              {selectedState === "in-progress" ? (
+                <button
+                  className="min-h-12 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-5 font-black text-[#416449]"
+                  onClick={() => {
+                    if (selectedQuiz && selectedQuiz.questions.some((question) => !answers[question.id]?.trim())) { setNotice("请先完成所有测验题目"); return }
+                    if (selectedTask.sourceQuizId && !selectedQuiz) { setNotice("测验题目暂不可用，请联系老师"); return }
+                    if (!selectedQuiz && selectedTask.submissionMode === "text" && !responses[selectedTask.id]?.trim()) { setNotice("请先写下回答再提交"); return }
+                    const result = selectedQuiz ? { answers, score: scoreQuiz(selectedQuiz, answers) } : selectedTask.submissionMode === "text" ? { responseText: responses[selectedTask.id].trim() } : undefined
+                    updateTaskCompletion(selectedTask.id, STUDENT_ID, "submitted", result)
+                    if (selectedQuiz) selectedQuiz.questions.filter((question) => isObjectiveQuestion(question) && !isCorrectAnswer(question, answers[question.id])).forEach((question) => addMistake(STUDENT_ID, {
+                      id: `mistake-quiz-${selectedTask.id}-${question.id}`,
+                      subject: selectedQuiz.subject,
+                      knowledgePoint: selectedQuiz.title,
+                      prompt: question.prompt,
+                      cause: `我的回答：${answers[question.id] ?? "未作答"}`,
+                      explanation: `正确答案：${Array.isArray(question.answer) ? question.answer.join("、") : question.answer}${question.explanation ? `\n${question.explanation}` : ""}`,
+                      mastery: "new", source: "quiz", taskId: selectedTask.id,
+                      createdAt: new Date().toISOString(),
+                    }))
+                    setNotice("任务已提交，等待老师查看")
+                  }}
+                  type="button"
+                >
+                  标记为已完成
+                </button>
+              ) : null}
+              {selectedState === "completed" ? (
+                <p className="inline-flex min-h-12 items-center gap-2 rounded-2xl bg-[#e2efe1] px-5 font-black text-[#315b3b]">
+                  <CheckCircle2 aria-hidden="true" size={19} />
+                  {selectedTask.completions.find((item) => item.studentId === STUDENT_ID)?.status === "reviewed" ? "老师已查看" : "已完成，等待老师查看"}
+                </p>
+              ) : null}
+            </>
+          }
+          onClose={() => setSelectedTaskId(null)}
+          open
+          title={selectedTask.title}
         >
-          <section
-            aria-labelledby="student-task-detail-title"
-            aria-modal="true"
-            className="prototype-glass prototype-glass--sheet relative w-full max-w-xl overflow-hidden rounded-[28px] p-6 shadow-2xl sm:p-8"
-            role="dialog"
-          >
-            <button
-              aria-label={`关闭${selectedTask.title}`}
-              className="absolute right-5 top-5 grid size-10 place-items-center rounded-full border border-white/80 bg-white/60 text-[#34483a]"
-              onClick={() => setSelectedTaskId(null)}
-              type="button"
-            >
-              <X aria-hidden="true" size={18} />
-            </button>
-            <p className="text-sm font-bold text-[#66806b]">李老师布置</p>
-            <h2
-              className="mt-2 max-w-[85%] text-2xl font-black text-[#142319]"
-              id="student-task-detail-title"
-            >
-              {selectedTask.title}
-            </h2>
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               <StatusChip
-                tone={stateTone(
-                  progress[selectedTask.id] ??
-                    initialStudentState(selectedTask),
-                )}
+                tone={stateTone(selectedState!)}
               >
-                {stateLabel(
-                  progress[selectedTask.id] ??
-                    initialStudentState(selectedTask),
-                )}
+                {stateLabel(selectedState!)}
               </StatusChip>
               <StatusChip>{taskTypeLabels[selectedTask.type]}</StatusChip>
             </div>
@@ -253,16 +288,20 @@ export function StudentTasksPage() {
                 </>
               ) : null}
               <p className="text-sm font-bold text-[#5e7363]">怎么完成</p>
-              <p className="mt-2 text-base font-semibold leading-7 text-[#26362b]">
-                {selectedTask.content}
-              </p>
+              <div className="mt-2 space-y-3 text-base leading-7 text-[#26362b]">
+                {instructionLines(selectedTask.content).map((line, index) => (
+                  <p className="break-words" key={index}>{line}</p>
+                ))}
+              </div>
             </div>
             {selectedTask.successCriteria ? (
               <div className="mt-4 rounded-3xl border border-[#e5ddbd] bg-[#fff9e7]/85 p-5">
                 <p className="text-sm font-bold text-[#79683b]">做到这些就算完成</p>
-                <p className="mt-2 font-semibold leading-7 text-[#51482f]">
-                  {selectedTask.successCriteria}
-                </p>
+                <div className="mt-2 space-y-2 leading-7 text-[#51482f]">
+                  {instructionLines(selectedTask.successCriteria).map((line, index) => (
+                    <p className="break-words" key={index}>{line}</p>
+                  ))}
+                </div>
               </div>
             ) : null}
             <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
@@ -289,6 +328,10 @@ export function StudentTasksPage() {
                 </div>
               ) : null}
             </dl>
+            <a className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#b9cfbd] bg-white/75 px-4 py-3 text-sm font-black text-[#345841] hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#345841]" href={`#/student/ask/${encodeURIComponent(selectedTask.id)}`}>
+              <MessageCircleQuestion aria-hidden="true" size={19} />
+              这项任务有疑问？去询问 AI
+            </a>
             {selectedTask.supportNote ? (
               <div className="mt-4 rounded-2xl bg-[#edf3f6] p-4 text-sm">
                 <p className="font-bold text-[#58707b]">老师给你的支持</p>
@@ -296,80 +339,14 @@ export function StudentTasksPage() {
               </div>
             ) : null}
 
-            {selectedQuiz && (progress[selectedTask.id] ?? initialStudentState(selectedTask)) === "in-progress" ? <fieldset className="mt-5 max-h-[35dvh] overflow-auto rounded-2xl border border-[#dce7da] bg-white p-4"><legend className="px-2 font-black">测验题目</legend><div className="grid gap-5">{selectedQuiz.questions.map((question, index) => <div key={question.id}><p className="font-bold">{index + 1}. {question.prompt}</p>{question.type === "short-answer" ? <textarea aria-label={`第${index + 1}题答案`} className="mt-2 min-h-20 w-full rounded-xl border p-2" value={answers[question.id] ?? ""} onChange={(event) => setAnswers((current) => ({ ...current, [question.id]: event.target.value }))} /> : <div className="mt-2 grid gap-1">{question.options.map((option) => { const selected = question.type === "multiple-choice" ? (answers[question.id] ?? "").split("、").includes(option) : answers[question.id] === option; return <label className="flex min-h-10 items-center gap-2" key={option}><input checked={selected} name={question.id} onChange={() => setAnswers((current) => ({ ...current, [question.id]: question.type === "multiple-choice" ? (selected ? (current[question.id] ?? "").split("、").filter((item) => item !== option).join("、") : [...(current[question.id] ?? "").split("、").filter(Boolean), option].join("、")) : option }))} type={question.type === "multiple-choice" ? "checkbox" : "radio"} />{option}</label> })}</div>}</div>)}</div></fieldset> : null}
-            {selectedQuiz && (progress[selectedTask.id] ?? initialStudentState(selectedTask)) === "completed" ? <section className="mt-5 max-h-[35dvh] overflow-auto rounded-2xl border border-[#dce7da] bg-white p-4"><h3 className="font-black">测验反馈</h3><p className="mt-1 text-sm text-[#718076]">客观题得分：{selectedTask.completions.find((item) => item.studentId === STUDENT_ID)?.score ?? 0}。简答题等待教师查看。</p><ol className="mt-3 grid gap-3">{selectedQuiz.questions.map((question, index) => <li className="rounded-xl bg-[#f4f7f2] p-3 text-sm" key={question.id}><strong>{index + 1}. {question.prompt}</strong><p className="mt-1">你的回答：{selectedTask.completions.find((item) => item.studentId === STUDENT_ID)?.answers?.[question.id] ?? "未作答"}</p><p className="mt-1">参考答案：{Array.isArray(question.answer) ? question.answer.join("、") : question.answer}</p><p className="mt-1 text-[#5b7260]">{question.explanation}</p></li>)}</ol></section> : null}
-            {!selectedQuiz && selectedTask.submissionMode === "text" && (progress[selectedTask.id] ?? initialStudentState(selectedTask)) === "in-progress" ? <label className="mt-5 block text-sm font-bold">我的回答<textarea className="mt-2 min-h-28 w-full rounded-2xl border border-[#dce7da] bg-white p-3 font-normal" placeholder="写下思路或完成过程" value={responses[selectedTask.id] ?? ""} onChange={(event) => setResponses((current) => ({ ...current, [selectedTask.id]: event.target.value }))} /></label> : null}
-            {!selectedQuiz && selectedTask.submissionMode === "text" && (progress[selectedTask.id] ?? initialStudentState(selectedTask)) === "completed" ? <div className="mt-5 rounded-2xl bg-white p-4 text-sm"><strong>我的回答</strong><p className="mt-2 whitespace-pre-wrap">{selectedTask.completions.find((item) => item.studentId === STUDENT_ID)?.responseText ?? ""}</p></div> : null}
+            {selectedQuiz && selectedState === "in-progress" ? <fieldset className="mt-5 max-h-[35dvh] overflow-auto rounded-2xl border border-[#dce7da] bg-white p-4"><legend className="px-2 font-black">测验题目</legend><div className="grid gap-5">{selectedQuiz.questions.map((question, index) => <div key={question.id}><p className="font-bold">{index + 1}. {question.prompt}</p>{question.type === "short-answer" ? <textarea aria-label={`第${index + 1}题答案`} className="mt-2 min-h-20 w-full rounded-xl border p-2" value={answers[question.id] ?? ""} onChange={(event) => setAnswers((current) => ({ ...current, [question.id]: event.target.value }))} /> : <div className={question.type === "true-false" ? "mt-3 grid grid-cols-2 gap-2" : "mt-3 grid gap-2"}>{(question.type === "true-false" ? ["正确", "错误"] : question.options).map((option) => { const selected = question.type === "multiple-choice" ? (answers[question.id] ?? "").split("、").includes(option) : answers[question.id] === option; return <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-[#dce7da] bg-[#fbfdfb] px-4 py-2 text-sm font-bold has-[:checked]:border-[#638b69] has-[:checked]:bg-[#e8f3e7] focus-within:ring-2 focus-within:ring-[#638b69]" key={option}><input checked={selected} className="accent-[#416b49]" name={question.id} onChange={() => setAnswers((current) => ({ ...current, [question.id]: question.type === "multiple-choice" ? (selected ? (current[question.id] ?? "").split("、").filter((item) => item !== option).join("、") : [...(current[question.id] ?? "").split("、").filter(Boolean), option].join("、")) : option }))} type={question.type === "multiple-choice" ? "checkbox" : "radio"} />{option}</label> })}</div>}</div>)}</div></fieldset> : null}
+            {selectedQuiz && selectedState === "completed" ? <section className="mt-5 max-h-[35dvh] overflow-auto rounded-2xl border border-[#dce7da] bg-white p-4"><h3 className="font-black">测验反馈</h3><p className="mt-1 text-sm text-[#718076]">自动得分：{selectedTask.completions.find((item) => item.studentId === STUDENT_ID)?.score ?? 0} / {selectedQuiz.questions.filter(isObjectiveQuestion).reduce((total, question) => total + question.score, 0)} 分。{selectedQuiz.questions.some((question) => question.type === "short-answer") && selectedTask.completions.find((item) => item.studentId === STUDENT_ID)?.status !== "reviewed" ? "简答题等待教师查看。" : "可查看每题结果。"}</p><ol className="mt-3 grid gap-3">{selectedQuiz.questions.map((question, index) => { const response = selectedTask.completions.find((item) => item.studentId === STUDENT_ID)?.answers?.[question.id] ?? ""; const expected = Array.isArray(question.answer) ? question.answer : [question.answer]; const correct = isCorrectAnswer(question, response); return <li className="rounded-xl bg-[#f4f7f2] p-3 text-sm" key={question.id}><strong>{index + 1}. {question.prompt}</strong><p className="mt-1">你的回答：{response || "未作答"}</p><p className="mt-1 font-bold">{question.type === "short-answer" ? "等待教师批阅" : correct ? "回答正确" : "回答错误 · 已加入错题本"}</p><p className="mt-1">参考答案：{expected.join("、")}</p><p className="mt-1 text-[#5b7260]">{question.explanation}</p></li> })}</ol></section> : null}
+            {!selectedQuiz && selectedTask.submissionMode === "text" && selectedState === "in-progress" ? <label className="mt-5 block text-sm font-bold">我的回答<textarea className="mt-2 min-h-28 w-full rounded-2xl border border-[#dce7da] bg-white p-3 font-normal" placeholder="写下思路或完成过程" value={responses[selectedTask.id] ?? ""} onChange={(event) => setResponses((current) => ({ ...current, [selectedTask.id]: event.target.value }))} /></label> : null}
+            {!selectedQuiz && selectedTask.submissionMode === "text" && selectedState === "completed" ? <div className="mt-5 rounded-2xl bg-white p-4 text-sm"><strong>我的回答</strong><p className="mt-2 whitespace-pre-wrap">{selectedTask.completions.find((item) => item.studentId === STUDENT_ID)?.responseText ?? ""}</p></div> : null}
 
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-end">
-              {(progress[selectedTask.id] ??
-                initialStudentState(selectedTask)) === "not-started" ? (
-                <button
-                  className="min-h-12 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-5 font-black text-[#416449]"
-                  onClick={() =>
-                    (() => {
-                      updateTaskCompletion(
-                        selectedTask.id,
-                        STUDENT_ID,
-                        "in-progress",
-                      )
-                      setProgress((current) => ({
-                        ...current,
-                        [selectedTask.id]: "in-progress",
-                      }))
-                      setNotice("任务已开始，进度已同步")
-                    })()
-                  }
-                  type="button"
-                >
-                  开始任务
-                </button>
-              ) : null}
-              {(progress[selectedTask.id] ??
-                initialStudentState(selectedTask)) === "in-progress" ? (
-                <button
-                  className="min-h-12 rounded-2xl border border-[#bed7c1] bg-[#dceedd] px-5 font-black text-[#416449]"
-                  onClick={() =>
-                    (() => {
-                      if (selectedQuiz && selectedQuiz.questions.some((question) => !answers[question.id]?.trim())) { setNotice("请先完成所有测验题目"); return }
-                      if (selectedTask.sourceQuizId && !selectedQuiz) { setNotice("测验题目暂不可用，请联系老师"); return }
-                      if (!selectedQuiz && selectedTask.submissionMode === "text" && !responses[selectedTask.id]?.trim()) { setNotice("请先写下回答再提交"); return }
-                      const result = selectedQuiz ? { answers, score: selectedQuiz.questions.reduce((total, question) => {
-                        if (question.type === "short-answer") return total
-                        const expected = (Array.isArray(question.answer) ? question.answer : [question.answer]).map((item) => item.trim()).sort().join("、")
-                        const actual = (answers[question.id] ?? "").split("、").map((item) => item.trim()).sort().join("、")
-                        return total + (actual === expected ? question.score : 0)
-                      }, 0) } : selectedTask.submissionMode === "text" ? { responseText: responses[selectedTask.id].trim() } : undefined
-                      updateTaskCompletion(
-                        selectedTask.id,
-                        STUDENT_ID,
-                        "submitted",
-                        result,
-                      )
-                      setProgress((current) => ({
-                        ...current,
-                        [selectedTask.id]: "completed",
-                      }))
-                      setNotice("任务已提交，等待老师查看")
-                    })()
-                  }
-                  type="button"
-                >
-                  标记为已完成
-                </button>
-              ) : null}
-              {(progress[selectedTask.id] ??
-                initialStudentState(selectedTask)) === "completed" ? (
-                <p className="inline-flex min-h-12 items-center gap-2 rounded-2xl bg-[#e2efe1] px-5 font-black text-[#315b3b]">
-                  <CheckCircle2 aria-hidden="true" size={19} />
-                  已完成，等待老师查看
-                </p>
-              ) : null}
-            </div>
-          </section>
-        </div>
+        </Dialog>
       ) : null}
-      {notice ? (
+      {notice && !selectedTask ? (
         <p
           aria-live="polite"
           className="rounded-2xl bg-[#e7f1e5] px-4 py-3 text-sm font-black text-[#36563d]"

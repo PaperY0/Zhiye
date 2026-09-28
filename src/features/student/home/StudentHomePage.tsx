@@ -8,7 +8,7 @@ import { StatusChip } from "../../../components/shared/StatusChip"
 type StudentHomePageProps = { onNavigate(route: AppRoute): void }
 
 export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
-  const { lessons, students, tasks } = usePrototype()
+  const { lessons, students, tasks, conversations } = usePrototype()
   const student = students.find((item) => item.id === "student-lin-xiaoyu") ?? students[0]
 
   if (!student) {
@@ -24,16 +24,31 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
   }
 
   const latestReview = [...lessons]
-    .filter((lesson) => lesson.studentVisibility === "visible" && lesson.recap.trim())
+    .filter((lesson) => lesson.className === student.className && lesson.studentVisibility === "visible" && lesson.recap.trim())
     .sort((left, right) => right.date.localeCompare(left.date))[0]
-  const pendingTasks = tasks.filter((task) => {
-    if (task.status === "draft" || task.status === "completed") return false
-    const assigned = task.audience.kind === "class" || task.audience.studentIds.includes(student.id)
-    const completed = task.completions.some((completion) => completion.studentId === student.id && (completion.status === "submitted" || completion.status === "reviewed"))
-    return assigned && !completed
-  })
-  const nextTask = pendingTasks.find((task) => task.status === "review") ?? pendingTasks[0]
-  const latestMistake = student.mistakes[0]
+  const assignedTasks = tasks.filter((task) => {
+    if (task.status === "draft") return false
+    return task.audience.kind === "class"
+      ? task.audience.label === student.className
+      : task.audience.studentIds.includes(student.id)
+  }).sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+  const isCompleted = (task: (typeof assignedTasks)[number]) => task.completions.some((completion) => completion.studentId === student.id && (completion.status === "submitted" || completion.status === "reviewed"))
+  const pendingCount = assignedTasks.filter((task) => !isCompleted(task)).length
+  const latestTask = assignedTasks[0]
+  const latestTaskCompletion = latestTask?.completions.find((completion) => completion.studentId === student.id)
+  const latestTaskScore = typeof latestTaskCompletion?.score === "number"
+    ? ` · ${latestTask?.sourceQuizId && latestTaskCompletion.status === "submitted" ? "自动得分" : "已记录成绩"} ${latestTaskCompletion.score} 分`
+    : ""
+  const latestTaskState = latestTaskCompletion?.status === "reviewed" ? "老师已查看" : "已提交"
+  const latestMistake = [...student.mistakes].sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0]
+  const latestInquiry = assignedTasks.flatMap((task) => (task.inquiries ?? []).filter((item) => item.studentId === student.id).map((item) => ({ task, inquiry: item }))).sort((left, right) => right.inquiry.createdAt.localeCompare(left.inquiry.createdAt))[0]
+  const latestTeacherMessage = conversations.filter((conversation) => (conversation.kind === "student" || conversation.kind === "group") && conversation.participantIds.includes(student.id)).flatMap((conversation) => conversation.messages.filter((message) => message.senderRole === "teacher")).sort((left, right) => right.sentAt.localeCompare(left.sentAt))[0]
+  const showInquiry = Boolean(latestInquiry && (!latestTeacherMessage || latestInquiry.inquiry.createdAt >= latestTeacherMessage.sentAt))
+
+  function openLatestTask() {
+    if (latestTask) window.sessionStorage.setItem("zhiye-student-task-open-id", latestTask.id)
+    onNavigate({ role: "student", page: "tasks" })
+  }
 
   return (
     <div className="role-page role-page-flow">
@@ -61,17 +76,17 @@ export function StudentHomePage({ onNavigate }: StudentHomePageProps) {
 
       <section aria-label="接下来" className="mt-5 grid gap-5 lg:grid-cols-3">
         <GlassSurface className="flex min-h-56 flex-col p-5 sm:p-6" weight="card">
-          <div className="flex items-center justify-between gap-3"><span className="grid size-11 place-items-center rounded-2xl bg-[#eee6cf] text-[#81682e]"><ListTodo aria-hidden size={21} /></span><StatusChip tone={pendingTasks.length ? "warning" : "success"}>{pendingTasks.length} 项待办</StatusChip></div>
-          <h2 className="mt-5 text-xl font-black text-[#203427]">下一项任务</h2><p className="mt-2 text-sm font-black text-[#3f5946]">{nextTask?.title ?? "今天的任务已完成"}</p><p className="mt-1 line-clamp-2 text-xs leading-5 text-[#7a8980]">{nextTask?.content ?? "可以回顾老师发布的复习卡。"}</p>
-          <button className="mt-auto inline-flex min-h-11 items-center justify-between rounded-2xl bg-white/70 px-4 text-sm font-black text-[#31503a]" onClick={() => onNavigate({ role: "student", page: "tasks" })} type="button">查看任务<ArrowRight aria-hidden size={17} /></button>
+          <div className="flex items-center justify-between gap-3"><span className="grid size-11 place-items-center rounded-2xl bg-[#eee6cf] text-[#81682e]"><ListTodo aria-hidden size={21} /></span><StatusChip tone={pendingCount ? "warning" : "success"}>{pendingCount} 项待办</StatusChip></div>
+          <h2 className="mt-5 text-xl font-black text-[#203427]">最新任务</h2><p className="mt-2 text-sm font-black text-[#3f5946]">{latestTask?.title ?? "还没有老师发布的任务"}</p><p className="mt-1 line-clamp-2 text-xs leading-5 text-[#7a8980]">{latestTask ? isCompleted(latestTask) ? `${latestTaskState}${latestTaskScore}` : latestTask.content : "老师发布任务后会显示在这里。"}</p>
+          <button className="mt-auto inline-flex min-h-11 items-center justify-between rounded-2xl bg-white/70 px-4 text-sm font-black text-[#31503a]" onClick={openLatestTask} type="button">{latestTask ? "打开这项任务" : "查看任务"}<ArrowRight aria-hidden size={17} /></button>
         </GlassSurface>
         <GlassSurface className="flex min-h-56 flex-col p-5 sm:p-6" weight="card">
           <span className="grid size-11 place-items-center rounded-2xl bg-[#eadfd9] text-[#815746]"><NotebookTabs aria-hidden size={21} /></span><h2 className="mt-5 text-xl font-black text-[#203427]">最近错题</h2><p className="mt-2 text-sm font-black text-[#3f5946]">{latestMistake?.knowledgePoint ?? "还没有记录错题"}</p><p className="mt-1 line-clamp-2 text-xs leading-5 text-[#7a8980]">{latestMistake?.cause ?? "练习中记录的错题会保存在这里。"}</p>
           <button className="mt-auto inline-flex min-h-11 items-center justify-between rounded-2xl bg-white/70 px-4 text-sm font-black text-[#31503a]" onClick={() => onNavigate({ role: "student", page: "mistakes" })} type="button">打开错题本<ArrowRight aria-hidden size={17} /></button>
         </GlassSurface>
         <GlassSurface className="flex min-h-56 flex-col p-5 sm:p-6" weight="card">
-          <span className="grid size-11 place-items-center rounded-2xl bg-[#e3ecdd] text-[#486750]"><MessageCircle aria-hidden size={21} /></span><h2 className="mt-5 text-xl font-black text-[#203427]">需要老师帮助</h2><p className="mt-2 text-sm leading-6 text-[#708078]">看不懂复习卡或任务时，可以把具体问题发给老师。</p>
-          <button className="mt-auto inline-flex min-h-11 items-center justify-between rounded-2xl bg-white/70 px-4 text-sm font-black text-[#31503a]" onClick={() => onNavigate({ role: "student", page: "messages" })} type="button">联系老师<ArrowRight aria-hidden size={17} /></button>
+          <span className="grid size-11 place-items-center rounded-2xl bg-[#e3ecdd] text-[#486750]"><MessageCircle aria-hidden size={21} /></span><h2 className="mt-5 text-xl font-black text-[#203427]">学习交流</h2><p className="mt-2 text-sm font-black text-[#3f5946]">{showInquiry ? `最近询问 · ${latestInquiry.task.title}` : latestTeacherMessage ? "老师的最新消息" : "还没有新的交流"}</p><p className="mt-1 line-clamp-2 text-xs leading-5 text-[#7a8980]">{showInquiry ? latestInquiry.inquiry.status === "answered" && latestInquiry.inquiry.answer ? `AI 已解答：${latestInquiry.inquiry.answer}` : latestInquiry.inquiry.question : latestTeacherMessage?.body ?? "有任务疑问时，可以直接询问 AI 或联系老师。"}</p>
+          <button className="mt-auto inline-flex min-h-11 items-center justify-between rounded-2xl bg-white/70 px-4 text-sm font-black text-[#31503a]" onClick={() => onNavigate(showInquiry ? { role: "student", page: "task-inquiry", taskId: latestInquiry.task.id } : { role: "student", page: "messages" })} type="button">{showInquiry ? "继续询问" : "查看消息"}<ArrowRight aria-hidden size={17} /></button>
         </GlassSurface>
       </section>
     </div>

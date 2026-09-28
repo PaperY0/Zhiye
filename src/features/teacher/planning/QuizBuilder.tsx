@@ -62,12 +62,14 @@ export function QuestionEditor({
                 onChange({
                   ...question,
                   type,
-                  options: type === "short-answer" ? [] : question.options,
+                  options: type === "short-answer" ? [] : type === "true-false" ? ["正确", "错误"] : question.type === "true-false" ? ["", "", "", ""] : question.options,
+                  answer: type === "true-false" ? "" : question.type === "true-false" ? "" : question.answer,
                 })
               }}
             >
               <option value="single-choice">单选题</option>
               <option value="multiple-choice">多选题</option>
+              <option value="true-false">判断题</option>
               <option value="short-answer">简答题</option>
             </select>
           </label>
@@ -85,7 +87,7 @@ export function QuestionEditor({
             />
           </label>
         </div>
-        {question.type !== "short-answer" && (
+        {question.type !== "short-answer" && question.type !== "true-false" && (
           <label className="grid min-w-0 gap-2 text-sm font-bold">
             选项（每行一个）
             <textarea
@@ -101,7 +103,16 @@ export function QuestionEditor({
             />
           </label>
         )}
-        <label className="grid min-w-0 gap-2 text-sm font-bold">
+        {question.type === "true-false" ? (
+          <fieldset className="grid gap-2 text-sm font-bold">
+            <legend className="mb-2">正确答案</legend>
+            <div className="grid grid-cols-2 gap-2">{["正确", "错误"].map((option) => (
+              <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border border-[#dfe8df] bg-white px-4 has-[:checked]:border-[#64836a] has-[:checked]:bg-[#edf5eb]" key={option}>
+                <input checked={question.answer === option} name={`correct-${question.id}`} onChange={() => onChange({ ...question, answer: option })} type="radio" />{option}
+              </label>
+            ))}</div>
+          </fieldset>
+        ) : <label className="grid min-w-0 gap-2 text-sm font-bold">
           答案
           <input
             aria-label="答案"
@@ -114,7 +125,7 @@ export function QuestionEditor({
               })
             }
           />
-        </label>
+        </label>}
         <label className="grid min-w-0 gap-2 text-sm font-bold">
           解析
           <textarea

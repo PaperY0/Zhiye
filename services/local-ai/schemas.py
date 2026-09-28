@@ -28,6 +28,7 @@ GenerationKind = Literal[
     "student-inference",
     "tutoring",
     "student-companion",
+    "task-inquiry",
 ]
 
 BASE64_PATTERN = re.compile(r"^[A-Za-z0-9+/_-]+={0,2}$")
@@ -128,6 +129,12 @@ TextOnly = Annotated[
     AfterValidator(reject_non_text_payload),
 ]
 
+OptionalText = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, max_length=2000),
+    AfterValidator(reject_non_text_payload),
+]
+
 
 class ContextModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, populate_by_name=True)
@@ -137,9 +144,9 @@ class LessonPlanContext(ContextModel):
     textbook: TextOnly = Field(max_length=200)
     chapter: TextOnly = Field(max_length=300)
     objective: TextOnly = Field(max_length=1000)
-    context: TextOnly = Field(max_length=2000)
-    evidence: list[TextOnly] = Field(min_length=1, max_length=30)
-    teachingAid: TextOnly = Field(default="", max_length=1500)
+    context: OptionalText = Field(default="", max_length=2000)
+    evidence: list[TextOnly] = Field(default_factory=list, max_length=30)
+    teachingAid: OptionalText = Field(default="", max_length=1500)
 
 
 class TaskDraftContext(ContextModel):
@@ -182,13 +189,30 @@ class ParentSummaryContext(ContextModel):
 
 class StudentInferenceContext(ContextModel):
     facts: list[TextOnly] = Field(min_length=1, max_length=30)
-    mistakes: list[TextOnly] = Field(min_length=1, max_length=30)
+    mistakes: list[TextOnly] = Field(default_factory=list, max_length=30)
 
 
 class TutoringContext(ContextModel):
     questionText: TextOnly
     stickingPoint: TextOnly = Field(max_length=1000)
     attempt: TextOnly
+
+
+class TaskInquiryQuizQuestion(ContextModel):
+    prompt: TextOnly = Field(max_length=1000)
+    type: Literal["single-choice", "multiple-choice", "true-false", "short-answer"]
+    options: list[TextOnly] = Field(default_factory=list, max_length=8)
+    answer: TextOnly = Field(max_length=500)
+    explanation: OptionalText = Field(default="", max_length=1000)
+
+
+class TaskInquiryContext(ContextModel):
+    taskTitle: TextOnly = Field(max_length=300)
+    taskObjective: OptionalText = Field(default="", max_length=1000)
+    taskContent: TextOnly
+    question: TextOnly = Field(max_length=1000)
+    previousExchanges: list[TextOnly] = Field(default_factory=list, max_length=6)
+    quizQuestions: list[TaskInquiryQuizQuestion] = Field(default_factory=list, max_length=3)
 
 
 class StudentCompanionContext(ContextModel):
@@ -206,6 +230,7 @@ CONTEXT_MODELS: dict[GenerationKind, type[ContextModel]] = {
     "parent-summary": ParentSummaryContext,
     "student-inference": StudentInferenceContext,
     "tutoring": TutoringContext,
+    "task-inquiry": TaskInquiryContext,
     "student-companion": StudentCompanionContext,
 }
 
@@ -355,9 +380,25 @@ class TaskDraft(BaseModel):
 
 
 class QuizQuestion(BaseModel):
-    prompt: str
+    prompt: str = Field(min_length=1)
+    type: Literal["single-choice", "true-false"] = "single-choice"
     options: list[str] = Field(min_length=2)
     answer: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_judgment(cls, value):
+        if not isinstance(value, dict):
+            return value
+        value = value.copy()
+        options = value.get("options")
+        answer = value.get("answer")
+        truth = {"对": "正确", "错": "错误", "是": "正确", "否": "错误", "true": "正确", "false": "错误", True: "正确", False: "错误"}
+        if value.get("type") in ("judgment", "判断题", "true_false", "true-false") or options in (["正确", "错误"], ["对", "错"]):
+            value["type"] = "true-false"
+            value["options"] = ["正确", "错误"]
+            value["answer"] = truth.get(answer, answer)
+        return value
 
     @field_validator("answer")
     @classmethod
@@ -369,8 +410,8 @@ class QuizQuestion(BaseModel):
 
 
 class QuizDraft(BaseModel):
-    title: str
-    questions: list[QuizQuestion] = Field(min_length=3)
+    title: str = Field(min_length=1)
+    questions: list[QuizQuestion] = Field(min_length=3, max_length=3)
 
 
 class RemedialPlanDraft(BaseModel):
@@ -394,15 +435,17 @@ class RetellFollowUpDraft(BaseModel):
 
 
 class ParentSummaryDraft(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     topics: list[str] = Field(min_length=1)
     encouragement: str
-    teacher_message: str
+    teacher_message: str = Field(validation_alias=AliasChoices("teacher_message", "teacherMessage"))
 
 
 class StudentInferenceDraft(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     evidence: list[str] = Field(min_length=1)
     observation: str
-    suggested_support: str
+    suggested_support: str = Field(validation_alias=AliasChoices("suggested_support", "suggestedSupport"))
 
 
 class TutoringDraft(BaseModel):
@@ -421,6 +464,12 @@ class TutoringDraft(BaseModel):
         if answer not in options:
             raise ValueError("迁移题答案必须属于选项")
         return answer
+
+
+class TaskInquiryDraft(ContextModel):
+    answer: TextOnly = Field(max_length=1200)
+    focus: TextOnly = Field(max_length=120)
+    reviewTip: TextOnly = Field(max_length=500, validation_alias=AliasChoices("reviewTip", "review_tip"))
 
 
 class StudentCompanionDraft(BaseModel):

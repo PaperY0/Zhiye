@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react"
 import { LockKeyhole, MessageCircle, Send, UserRoundCheck } from "lucide-react"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
+import { parentLearningSnapshot } from "../../../app/prototype/parentLearning"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { StatusChip } from "../../../components/shared/StatusChip"
 
-const PARENT_CONVERSATION_ID = "conversation-parent-li"
 const BOUND_STUDENT_ID = "student-lin-xiaoyu"
 
 function senderLabel(message: {
@@ -27,7 +27,7 @@ function messageTime(value: string) {
 }
 
 export function ParentMessagesPage() {
-  const { conversations, markConversationRead, parentSummary, sendMessage } = usePrototype()
+  const { conversations, addConversation, markConversationRead, sendMessage, students, tasks, quizzes } = usePrototype()
   const [draft, setDraft] = useState("")
   const [notice, setNotice] = useState("")
 
@@ -35,10 +35,10 @@ export function ParentMessagesPage() {
     () =>
       conversations.find(
         (item) =>
-          item.id === PARENT_CONVERSATION_ID &&
           item.kind === "parent" &&
           item.boundStudentId === BOUND_STUDENT_ID &&
-          item.participantIds.includes("teacher-li"),
+          item.participantIds.includes("teacher-li") &&
+          item.participantIds.includes("parent-lin-xiaoyu"),
       ),
     [conversations],
   )
@@ -55,16 +55,52 @@ export function ParentMessagesPage() {
     setNotice("消息已保存到本地原型，不会真实发送给老师")
   }
 
-  if (!conversation || !parentSummary) {
+  const boundStudent = students.find((student) => student.id === BOUND_STUDENT_ID)
+  const learning = boundStudent ? parentLearningSnapshot(boundStudent, tasks, quizzes) : null
+
+  function startConversation() {
+    const body = draft.trim()
+    if (!boundStudent || !body) return
+    addConversation({
+      id: `conversation-parent-${boundStudent.id}-${Date.now()}`,
+      kind: "parent",
+      title: `${boundStudent.name}家长`,
+      participantIds: ["teacher-li", "parent-lin-xiaoyu"],
+      participantNames: ["李老师", boundStudent.guardianName],
+      boundStudentId: boundStudent.id,
+      unreadCount: 1,
+      unreadByRole: { teacher: 1, parent: 0 },
+      messages: [{
+        id: `message-parent-first-${Date.now()}`,
+        senderId: "parent-lin-xiaoyu",
+        senderName: boundStudent.guardianName,
+        senderRole: "parent",
+        body,
+        sentAt: new Date().toISOString(),
+      }],
+    })
+    setDraft("")
+  }
+
+  if (!conversation) {
     return (
-      <section className="role-page role-page-narrow">
+      <section className="role-page role-page-flow role-page-medium">
+        <header className="role-page-header">
+          <div>
+            <p className="role-page-kicker">家校沟通</p>
+            <h1 className="role-page-title">联系李老师</h1>
+            {boundStudent && <p className="mt-2 text-sm font-bold text-[#5f7064]">{boundStudent.name} · {boundStudent.className}</p>}
+          </div>
+        </header>
+        {learning && <div aria-label="孩子当前学习进展" role="region" className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-[#dce7dc] bg-white/80 px-5 py-3 text-sm text-[#506b57]"><span><strong className="text-[#2c5035]">{learning.pendingCount}</strong> 项待完成</span><span><strong className="text-[#2c5035]">{learning.completedCount}</strong> 项已提交</span><span><strong className="text-[#2c5035]">{learning.answeredInquiryCount}</strong> 次疑问已解答</span><a className="ml-auto inline-flex min-h-10 items-center font-black text-[#365f40]" href="#/parent/home">查看学习近况</a></div>}
         <GlassSurface className="p-8 text-center">
-          <h1 className="role-page-title">
+          <h2 className="text-xl font-black text-[#203126]">
             还没有家校消息
-          </h1>
+          </h2>
           <p className="role-page-description mx-auto">
-            先完成学生绑定，之后这里会出现与老师的沟通记录。
+            {boundStudent ? "还没有关于孩子的家校会话。写下第一条留言后，会在这里持续记录。" : "先完成学生绑定，之后这里会出现与老师的沟通记录。"}
           </p>
+          {boundStudent && <div className="mx-auto mt-6 max-w-xl text-left"><label className="block text-sm font-black text-[#405448]" htmlFor="parent-first-message">给李老师的第一条留言</label><textarea className="mt-2 min-h-28 w-full rounded-2xl border border-[#cbdccb] bg-white px-4 py-3 text-sm outline-none focus:border-[#5f8067] focus:ring-4 focus:ring-[#6e9276]/15" id="parent-first-message" onChange={(event) => setDraft(event.target.value)} placeholder="写下与孩子学习陪伴有关的问题…" value={draft} /><button className="mt-3 min-h-11 rounded-xl bg-[#dcefd9] px-5 text-sm font-black text-[#355a3d] disabled:opacity-45" disabled={!draft.trim()} onClick={startConversation} type="button">开始家校沟通</button><p className="mt-3 text-xs text-[#78867d]">消息保存在本地原型中，不会发送到真实学校系统。</p></div>}
         </GlassSurface>
       </section>
     )
@@ -81,11 +117,13 @@ export function ParentMessagesPage() {
             联系李老师
           </h1>
           <p className="mt-2 text-sm font-bold text-[#5f7064]">
-            {parentSummary.studentName} · {parentSummary.className}
+            {boundStudent?.name ?? "林晓雨"} · {boundStudent?.className ?? "五年级（2）班"}
           </p>
         </div>
         <StatusChip tone="success">已绑定当前学生</StatusChip>
       </header>
+
+      {learning && <div aria-label="孩子当前学习进展" role="region" className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-[#dce7dc] bg-white/80 px-5 py-3 text-sm text-[#506b57]"><span><strong className="text-[#2c5035]">{learning.pendingCount}</strong> 项待完成</span><span><strong className="text-[#2c5035]">{learning.completedCount}</strong> 项已提交</span><span><strong className="text-[#2c5035]">{learning.answeredInquiryCount}</strong> 次疑问已解答</span><a className="ml-auto inline-flex min-h-10 items-center font-black text-[#365f40]" href="#/parent/home">查看学习近况</a></div>}
 
       <GlassSurface
         className="app-fixed-body flex min-h-[650px] flex-col overflow-hidden p-0 lg:min-h-0"
@@ -123,7 +161,7 @@ export function ParentMessagesPage() {
             />
             <div className="text-xs leading-5 text-[#627267]">
               <p className="font-black text-[#42594a]">
-                只显示您与李老师围绕林晓雨学习陪伴的沟通。
+                只显示您与李老师围绕{boundStudent?.name ?? "林晓雨"}学习陪伴的沟通。
               </p>
               <p className="mt-1">
                 不会展示同学信息、完整学习对话或敏感反馈；请避免在原型中填写真实隐私资料。

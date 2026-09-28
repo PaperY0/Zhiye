@@ -2,17 +2,17 @@ import { useState } from "react"
 import { BookOpen, Bot, RotateCcw, Save, UserRound } from "lucide-react"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
 import { Dialog } from "../../../components/shared/Dialog"
-import { defaultTeacherSettings, getTeacherSettings, saveTeacherSettings, resetTeacherSettings, type TeacherSettings } from "./teacherSettings"
+import { defaultTeacherSettings, getTeacherSettings, saveTeacherSettings, resetTeacherSettings, schoolClasses, type TeacherSettings } from "./teacherSettings"
 
 const input = "mt-2 min-h-11 w-full rounded-2xl border border-[#d7e3d6] bg-white px-4 py-2.5 text-sm outline-none focus:border-[#6f9275] focus:ring-4 focus:ring-[#6f9275]/15"
 const label = "block text-sm font-bold text-[#344d3d]"
 
 export function TeacherSettingsPage() {
-  const { resetPrototype, lessons } = usePrototype()
+  const { resetPrototype } = usePrototype()
   const [settings, setSettings] = useState<TeacherSettings>(getTeacherSettings)
   const [saved, setSaved] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
-  const classes = [...new Set(lessons.map((lesson) => lesson.className).concat(settings.currentClass))].filter(Boolean)
+  const classes = schoolClasses
 
   function change<Key extends keyof TeacherSettings>(key: Key, value: TeacherSettings[Key]) {
     setSettings((current) => ({ ...current, [key]: value }))
@@ -26,7 +26,7 @@ export function TeacherSettingsPage() {
   }
 
   return <main className="mx-auto max-w-5xl p-4 pb-24 text-[#17251b] sm:p-6 lg:p-8">
-    <header className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-black tracking-[.16em] text-[#66806b]">教师工作区</p><h1 className="mt-2 text-3xl font-black">设置</h1><p className="mt-2 max-w-xl text-sm leading-6 text-[#718076]">这里的选择会直接影响班级默认值、备课输入和 AI 生成。配置保存在当前浏览器。</p></div><button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#183021] px-5 text-sm font-bold text-white" onClick={save} type="button"><Save size={17} />保存设置</button></header>
+    <header className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-black tracking-[.16em] text-[#66806b]">教师工作区</p><h1 className="role-page-title">设置</h1><p className="mt-2 max-w-xl text-sm leading-6 text-[#718076]">这里的选择会直接影响班级默认值、备课输入和 AI 生成。配置保存在当前浏览器。</p></div><button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#183021] px-5 text-sm font-bold text-white" onClick={save} type="button"><Save size={17} />保存设置</button></header>
     {saved && <p className="mt-5 rounded-2xl bg-[#e5f1e3] p-3 text-sm font-bold text-[#315b3b]" role="status">设置已保存，备课与任务将使用新的默认值。</p>}
     <div className="mt-6 grid gap-5">
       <section aria-labelledby="profile-heading" className="rounded-[24px] border border-[#dce7da] bg-white p-5 sm:p-6"><div className="flex items-center gap-3"><UserRound className="text-[#58765e]" size={20} /><div><h2 className="text-lg font-black" id="profile-heading">身份与授课班级</h2><p className="text-sm text-[#718076]">用于侧栏身份、任务发布对象与备课的课堂依据。</p></div></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className={label}>教师姓名<input className={input} required value={settings.teacherName} onChange={(event) => change("teacherName", event.target.value)} /></label><label className={label}>教师职称<input className={input} value={settings.teacherTitle} onChange={(event) => change("teacherTitle", event.target.value)} /></label><label className={`${label} sm:col-span-2`}>当前班级<select className={input} value={settings.currentClass} onChange={(event) => change("currentClass", event.target.value)}>{classes.map((className) => <option key={className}>{className}</option>)}</select></label></div></section>

@@ -9,7 +9,7 @@
 - 可执行种子：`prisma/seed.ts`
 - 校验：`pnpm exec prisma validate --config packages/db/prisma.config.ts`
 - 迁移：`pnpm exec prisma migrate dev --config packages/db/prisma.config.ts --name init`
-- 本地依赖：根目录 `docker compose up -d postgres redis minio`
+- 本地依赖：自行准备 PostgreSQL 并设置 `DATABASE_URL`；仓库目前没有 Docker Compose 文件，当前前端演示也尚未连接数据库
 - 写入一份验收数据：`pnpm --dir packages/db seed`
 - 伪造数据清单：`docs/qa/zhiye-fake-data-catalog.md`
 

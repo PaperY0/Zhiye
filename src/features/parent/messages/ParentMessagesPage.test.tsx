@@ -13,6 +13,19 @@ function renderMessages() {
 }
 
 describe("ParentMessagesPage", () => {
+  it("keeps the bound student's progress visible and starts a conversation when none exists", async () => {
+    const user = userEvent.setup()
+    localStorage.setItem("zhiye-prototype-state-v1", JSON.stringify({ conversations: [] }))
+    render(<PrototypeProvider persist><ParentMessagesPage /></PrototypeProvider>)
+    expect(screen.getByRole("heading", { name: "联系李老师" })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "孩子当前学习进展" })).toHaveTextContent("项已提交")
+    expect(screen.getByText("还没有关于孩子的家校会话。写下第一条留言后，会在这里持续记录。")).toBeInTheDocument()
+    await user.type(screen.getByRole("textbox", { name: "给李老师的第一条留言" }), "孩子该先复习哪项任务？")
+    await user.click(screen.getByRole("button", { name: "开始家校沟通" }))
+    expect(screen.getByRole("log", { name: "与李老师的家校消息记录" })).toHaveTextContent("孩子该先复习哪项任务？")
+    localStorage.clear()
+  })
+
   it("binds communication to Lin Xiaoyu and exposes only the Li teacher conversation", () => {
     renderMessages()
 

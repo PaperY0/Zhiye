@@ -195,7 +195,7 @@ export function ClassroomPage({ onNavigate }: ClassroomPageProps) {
             <CalendarDays aria-hidden="true" size={17} />
             课堂记录与发布
           </p>
-          <h1 className="text-4xl font-black tracking-[-0.05em] text-[#142018] sm:text-[2.75rem]">
+          <h1 className="role-page-title">
             课堂
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[#68766c] sm:text-[0.95rem]">

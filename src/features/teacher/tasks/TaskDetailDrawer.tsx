@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { MessageCircleQuestion } from "lucide-react"
 import type { Quiz, Student, Task, TaskStatus } from "../../../app/prototype/types"
 import { Drawer } from "../../../components/shared/Drawer"
 import {
@@ -81,6 +82,13 @@ export function TaskDetailDrawer({
     students.map((student) => [student.id, student.name]),
   )
   const quiz = quizzes.find((item) => item.id === task.sourceQuizId)
+  const inquiries = task.inquiries ?? []
+  const inquiryCounts = task.completions.map((completion) => ({
+    studentId: completion.studentId,
+    name: studentNames.get(completion.studentId) ?? "学生",
+    count: inquiries.filter((item) => item.studentId === completion.studentId).length,
+  })).filter((item) => item.count > 0).sort((a, b) => b.count - a.count)
+  const maxInquiryCount = Math.max(1, ...inquiryCounts.map((item) => item.count))
 
   return (
     <Drawer onClose={onClose} open={open} title={task.title}>
@@ -160,6 +168,14 @@ export function TaskDetailDrawer({
           ) : null}
         </div>
 
+        <section aria-labelledby="task-inquiries-heading" className="rounded-[22px] border border-[#dce6db] bg-white/65 p-4 sm:p-5">
+          <div className="flex items-center gap-2 text-[#416449]"><MessageCircleQuestion aria-hidden="true" size={20} /><h3 className="text-lg font-black" id="task-inquiries-heading">任务询问</h3></div>
+          <p className="mt-1 text-sm text-[#627469]">学生提出的疑问会即时出现在这里，按人数和询问次数汇总。</p>
+          <div className="mt-4 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-[#edf4ed] p-4"><strong className="block text-2xl font-black text-[#315a3b]">{inquiries.length}</strong><span className="text-xs font-bold text-[#61766a]">次询问</span></div><div className="rounded-2xl bg-[#edf4ed] p-4"><strong className="block text-2xl font-black text-[#315a3b]">{inquiryCounts.length}</strong><span className="text-xs font-bold text-[#61766a]">名提问学生</span></div></div>
+          {inquiryCounts.length ? <div className="mt-5" role="img" aria-label={`学生询问次数：${inquiryCounts.map((item) => `${item.name} ${item.count} 次`).join("，")}`}><p className="mb-3 text-sm font-black">学生询问分布</p><div className="grid gap-3">{inquiryCounts.map((item) => <div className="grid grid-cols-[5rem_1fr_2rem] items-center gap-2 text-sm" key={item.studentId}><span className="truncate font-bold">{item.name}</span><div className="h-5 overflow-hidden rounded-full bg-[#e2ebe1]"><div className="h-full rounded-full bg-[#79a47f]" style={{ width: `${item.count / maxInquiryCount * 100}%` }} /></div><span className="text-right font-black">{item.count}</span></div>)}</div></div> : <p className="mt-5 rounded-2xl bg-[#f3f7f1] p-4 text-sm text-[#6b7c70]">还没有学生询问这项任务。</p>}
+          {inquiries.length ? <div className="mt-5"><h4 className="text-sm font-black">近期疑问</h4><ul className="mt-2 grid gap-2">{[...inquiries].reverse().slice(0, 5).map((item) => <li className="rounded-xl bg-[#f4f7f2] p-3 text-sm" key={item.id}><div className="flex flex-wrap justify-between gap-2 font-bold"><span>{studentNames.get(item.studentId) ?? "学生"}{item.focus ? ` · ${item.focus}` : ""}</span><time className="text-xs font-normal text-[#718076]" dateTime={item.createdAt}>{new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric" }).format(new Date(item.createdAt))}</time></div><p className="mt-1 whitespace-pre-wrap leading-6 text-[#3d5143]">{item.question}</p>{item.status === "asking" ? <p className="mt-1 text-xs text-[#6c806f]">AI 正在回答</p> : item.status === "failed" ? <p className="mt-1 text-xs text-[#95553f]">AI 回答失败，学生可重试</p> : null}</li>)}</ul></div> : null}
+        </section>
+
         <section aria-labelledby="task-completion-heading">
           <div className="flex items-end justify-between gap-4">
             <div>
@@ -213,7 +229,7 @@ export function TaskDetailDrawer({
                     <div className="flex items-center gap-2">
                       {typeof completion.score === "number" ? (
                         <span className="text-sm font-black text-[#52675a]">
-                          {completion.score} 分
+                          {completion.score}{quiz ? ` / ${quiz.questions.filter((question) => question.type !== "short-answer").reduce((total, question) => total + question.score, 0)}` : ""} 分
                         </span>
                       ) : null}
                       <StatusChip tone={completionTones[completion.status]}>
@@ -222,7 +238,7 @@ export function TaskDetailDrawer({
                     </div>
                     </div>
                     {quiz && completion.answers && <details className="mt-2 text-xs"><summary className="cursor-pointer font-bold text-[#416449]">查看测验作答与参考答案</summary><ol className="mt-2 grid gap-2">{quiz.questions.map((question) => <li key={question.id}><strong>{question.prompt}</strong><p>学生：{completion.answers?.[question.id] ?? "未作答"}</p><p>参考：{Array.isArray(question.answer) ? question.answer.join("、") : question.answer}</p><p>{question.explanation}</p></li>)}</ol></details>}
-                    {completion.status === "submitted" && onReviewCompletion && <div className="mt-3 flex flex-wrap items-end gap-2"><label className="text-xs font-bold">总分<input aria-label={`评分${studentNames.get(completion.studentId) ?? "学生"}`} className="ml-2 w-20 rounded-lg border border-[#c9d6cb] px-2 py-1" min="0" type="number" value={scores[completion.studentId] ?? String(completion.score ?? "")} onChange={(event) => setScores((current) => ({ ...current, [completion.studentId]: event.target.value }))} /></label><button className="rounded-full bg-[#183021] px-3 py-1.5 text-xs font-bold text-white" onClick={() => onReviewCompletion(task, completion.studentId, scores[completion.studentId] === undefined ? completion.score : Number(scores[completion.studentId]))} type="button">完成查看</button></div>}
+                    {completion.status === "submitted" && onReviewCompletion && <div className="mt-3 flex flex-wrap items-end gap-2"><label className="text-xs font-bold">总分<input aria-label={`评分${studentNames.get(completion.studentId) ?? "学生"}`} className="ml-2 w-20 rounded-lg border border-[#c9d6cb] px-2 py-1" min="0" type="number" value={scores[completion.studentId] ?? String(completion.score ?? "")} onChange={(event) => setScores((current) => ({ ...current, [completion.studentId]: event.target.value }))} /></label><button className="rounded-full bg-[#183021] px-3 py-1.5 text-xs font-bold text-white" onClick={() => { const enteredScore = scores[completion.studentId]?.trim(); onReviewCompletion(task, completion.studentId, enteredScore ? Number(enteredScore) : completion.score) }} type="button">完成查看</button></div>}
                   </li>
                 ))}
               </ul>
@@ -254,13 +270,7 @@ export function TaskDetailDrawer({
             </button>
           ) : null}
           {task.status === "review" ? (
-            <button
-              className="rounded-full bg-[#183021] px-5 py-3 text-sm font-black text-white shadow-md"
-              onClick={() => onStatusChange(task, "completed")}
-              type="button"
-            >
-              完成查看
-            </button>
+            <p className="text-sm font-bold text-[#52675a]">逐份查看学生提交；全部查看后自动进入“已完成”。</p>
           ) : null}
         </div>
       </div>

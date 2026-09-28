@@ -9,21 +9,21 @@ import {
   ClipboardPenLine,
   FileCheck2,
   History,
-  Lightbulb,
+  MessageCircle,
   MessageCircleQuestion,
-  PencilLine,
   ShieldCheck,
   Sparkles,
   UserRoundCheck,
 } from "lucide-react"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
+import { parentLearningSnapshot } from "../../../app/prototype/parentLearning"
+import { navigate } from "../../../app/routes"
 import { generateDraft } from "../../../services/localAi"
 import type {
   KnowledgeSignal,
   ParentSummary,
   StudentTimelineEvent,
 } from "../../../app/prototype/types"
-import { Dialog } from "../../../components/shared/Dialog"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import {
   StatusChip,
@@ -101,7 +101,8 @@ function readParentSummaryDraft(response: unknown, evidence: string[]): ParentSu
   if (!content) return null
   const topics = stringList(content.topics)
   const encouragement = typeof content.encouragement === "string" ? content.encouragement.trim() : ""
-  const teacherMessage = typeof content.teacher_message === "string" ? content.teacher_message.trim() : ""
+  const teacherMessageValue = content.teacher_message ?? content.teacherMessage
+  const teacherMessage = typeof teacherMessageValue === "string" ? teacherMessageValue.trim() : ""
   return topics.length > 0 && encouragement && teacherMessage
     ? { topics, encouragement, teacherMessage, evidence }
     : null
@@ -111,7 +112,8 @@ function readObservationDraft(response: unknown): StudentObservationDraft | null
   const content = asRecord(asRecord(response)?.content)
   if (!content) return null
   const observation = typeof content.observation === "string" ? content.observation.trim() : ""
-  const suggestedSupport = typeof content.suggested_support === "string" ? content.suggested_support.trim() : ""
+  const suggestedSupportValue = content.suggested_support ?? content.suggestedSupport
+  const suggestedSupport = typeof suggestedSupportValue === "string" ? suggestedSupportValue.trim() : ""
   const evidence = stringList(content.evidence)
   return observation && suggestedSupport && evidence.length > 0
     ? { observation, suggestedSupport, evidence }
@@ -124,14 +126,14 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
     approveStudentObservation,
     parentSummary,
     publishParentSummary,
+    tasks,
+    quizzes,
     signals,
     students,
   } = usePrototype()
   const student = students.find((item) => item.id === studentId)
   const [noteDraft, setNoteDraft] = useState("")
   const [savedNotes, setSavedNotes] = useState<string[]>(student?.teacherNotes ?? [])
-  const [correctionOpen, setCorrectionOpen] = useState(false)
-  const [correctionDraft, setCorrectionDraft] = useState("")
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [parentDraft, setParentDraft] = useState<ParentSummaryDraft | null>(null)
   const [observationDraft, setObservationDraft] = useState<StudentObservationDraft | null>(null)
@@ -179,27 +181,29 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
     setFeedback({ id: Date.now(), message: "教师笔记已保存" })
   }
 
-  const submitCorrection = () => {
-    if (!correctionDraft.trim()) return
-    setCorrectionOpen(false)
-    setCorrectionDraft("")
-    setFeedback({ id: Date.now(), message: "更正申请已提交，等待人工核实" })
-  }
-
   const approvedFacts = [
     ...student.facts,
     ...evidenceSignals.flatMap((signal) => signal.evidence.map((item) => `课堂证据：${item}`)),
   ].slice(0, 30)
+  const parentLearning = parentLearningSnapshot(student, tasks, quizzes)
+  const parentFacts = [
+    `截至本次整理，教师已发布 ${parentLearning.rows.length} 项任务，孩子已提交 ${parentLearning.completedCount} 项，待完成 ${parentLearning.pendingCount} 项。`,
+    ...parentLearning.rows.slice(0, 12).map(({ task, state, score }) => `任务“${task.title}”：${state === "reviewed" ? "教师已查看" : state === "submitted" ? "学生已提交" : state === "in-progress" ? "正在完成" : "尚未开始"}${typeof score === "number" ? `，记录得分 ${score} 分` : ""}。`),
+    `已记录 ${parentLearning.inquiryCount} 次任务询问，其中 ${parentLearning.answeredInquiryCount} 次获得 AI 解答。`,
+    `错题本有 ${parentLearning.mistakeCount} 项复习记录${parentLearning.latestMistakeTopic ? `，最近主题是“${parentLearning.latestMistakeTopic}”` : ""}。`,
+    ...evidenceSignals.flatMap((signal) => signal.evidence.map((item) => `课堂证据：${item}`)),
+  ].slice(0, 30)
 
   const generateParentSummary = async () => {
+    if (parentLearning.rows.length === 0 && evidenceSignals.length === 0) { setGenerationError("暂无可核实的学习证据，先补充课堂记录或任务。"); return }
     setGenerating("parent")
     setGenerationError(null)
     setFailedGeneration(null)
     try {
       const response = await generateDraft("parent-summary", {
-        facts: approvedFacts,
+        facts: parentFacts,
       })
-      const draft = readParentSummaryDraft(response, approvedFacts)
+      const draft = readParentSummaryDraft(response, parentFacts)
       if (!draft) throw new Error("AI 草稿格式无效，请重试")
       setParentDraft(draft)
     } catch (error) {
@@ -211,12 +215,13 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
   }
 
   const generateObservation = async () => {
+    if (approvedFacts.length === 0) { setGenerationError("暂无可核实的学习证据，先补充课堂记录。"); return }
     setGenerating("observation")
     setGenerationError(null)
     setFailedGeneration(null)
     try {
       const response = await generateDraft("student-inference", {
-        facts: student.facts.slice(0, 30),
+        facts: approvedFacts,
         mistakes: student.mistakes.map((mistake) => mistake.prompt).slice(0, 30),
       })
       const draft = readObservationDraft(response)
@@ -237,9 +242,9 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
       studentId: student.id,
       studentName: student.name,
       className: student.className,
-      weekLabel: parentSummary?.weekLabel ?? "本周学习摘要",
-      voluntaryQuestions: student.voluntaryQuestions,
-      practiceCount: student.practiceCount,
+      weekLabel: `截至 ${new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long", day: "numeric" }).format(new Date())}`,
+      voluntaryQuestions: parentLearning.inquiryCount,
+      practiceCount: parentLearning.completedCount,
       topics: parentDraft.topics,
       encouragement: parentDraft.encouragement,
       teacherMessage: parentDraft.teacherMessage,
@@ -268,9 +273,8 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8">
-      <header className="relative overflow-hidden rounded-[30px] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,.82),rgba(239,245,238,.67))] p-5 shadow-[0_22px_60px_rgba(48,74,56,.08)] backdrop-blur-2xl sm:p-7">
-        <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(205,224,207,.72),transparent_68%)]" />
+    <div className="role-page">
+      <header className="rounded-[22px] border border-[#dce6dc] bg-white p-5 sm:p-7">
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
             <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[22px] border border-white bg-[linear-gradient(145deg,#eee5c4,#cfe0ce)] text-2xl font-black text-[#426049] shadow-[0_10px_24px_rgba(68,96,73,.12)]">
@@ -280,26 +284,13 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
               <p className="text-xs font-black tracking-[.14em] text-[#718276]">
                 学生学习档案
               </p>
-              <h1 className="mt-1 text-3xl font-black tracking-[-.045em] text-[#15251a] sm:text-4xl">
+              <h1 className="role-page-title">
                 {student.name}
               </h1>
-              <p className="mt-1 text-sm font-semibold text-[#728178]">
-                {student.className} · {student.guardianRelation}{" "}
-                {student.guardianName}
-              </p>
+              <p className="mt-1 text-sm font-semibold text-[#728178]">{student.className}</p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusChip tone="success">档案同步完成</StatusChip>
-            <button
-              className="inline-flex h-11 items-center gap-2 rounded-full border border-white bg-white/75 px-4 text-sm font-black text-[#38523e] shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#a7c2aa]/35"
-              onClick={() => setCorrectionOpen(true)}
-              type="button"
-            >
-              <PencilLine aria-hidden="true" size={16} />
-              申请更正档案
-            </button>
-          </div>
+          <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#173022] px-5 text-sm font-black text-white" onClick={() => { window.sessionStorage.setItem("zhiye-message-student-id", student.id); navigate({ role: "teacher", page: "messages" }) }} type="button"><MessageCircle aria-hidden="true" size={17} />给学生发消息</button>
         </div>
       </header>
 
@@ -316,11 +307,9 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
 
       <section
         aria-label="学习概览"
-        className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        className="mt-5 grid gap-3 sm:grid-cols-2"
       >
         {[
-          [MessageCircleQuestion, student.voluntaryQuestions, "本周主动提问"],
-          [ClipboardPenLine, student.practiceCount, "本周完成练习"],
           [BarChart3, `${student.taskCompletionRate}%`, "任务完成率"],
           [BookOpen, student.mistakes.length, "在学错题"],
         ].map(([Icon, value, label]) => {
@@ -591,56 +580,7 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
                 </div>
               </div>
             ) : null}
-          </GlassSurface>
-
-          <GlassSurface
-            aria-label="AI 推断 · 需教师判断"
-            className="border-[#d8d9bd]/80 bg-[linear-gradient(145deg,rgba(255,255,255,.75),rgba(245,241,211,.68))] p-5 sm:p-6"
-            role="region"
-            weight="card"
-          >
-            <div className="flex items-start gap-3">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#eeecd3] text-[#777342]">
-                <Sparkles aria-hidden="true" size={19} />
-              </div>
-              <div>
-                <p className="text-xs font-black tracking-[.12em] text-[#88865f]">
-                  辅助线索，不作结论
-                </p>
-                <h2 className="mt-0.5 font-black text-[#3b4029]">
-                  AI 推断 · 需教师判断
-                </h2>
-              </div>
-            </div>
-            <ul className="mt-5 space-y-3">
-              {student.aiInferences.map((inference) => (
-                <li
-                  className="rounded-[18px] border border-white/80 bg-white/50 p-4 text-sm leading-6 text-[#66674d]"
-                  key={inference}
-                >
-                  {inference}
-                </li>
-              ))}
-              {(student.approvedObservations ?? []).map((observation) => (
-                <li
-                  className="rounded-[18px] border border-white/80 bg-white/50 p-4 text-sm leading-6 text-[#66674d]"
-                  key={observation.id}
-                >
-                  <p>{observation.observation}</p>
-                  <p className="mt-2 text-xs font-bold text-[#7d805d]">后续支持：{observation.suggestedSupport}</p>
-                  <p className="mt-2 text-xs font-semibold text-[#85896a]">证据：{observation.evidence.join("；")}</p>
-                  <p className="mt-2 text-xs font-semibold text-[#85896a]">教师确认于 {formatDateTime(observation.confirmedAt)} · 来源：{observation.source}</p>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-4 flex gap-2 text-xs font-semibold leading-5 text-[#88866c]">
-              <Lightbulb
-                aria-hidden="true"
-                className="mt-0.5 shrink-0"
-                size={14}
-              />
-              请结合课堂观察、学生表达和后续练习判断，不用于给学生贴固定标签。
-            </p>
+            {(student.approvedObservations ?? []).length > 0 && <div className="mt-5 border-t border-[#dce6dc] pt-4"><h3 className="text-sm font-bold">已确认的观察</h3><ul className="mt-3 space-y-3">{student.approvedObservations?.map((observation) => <li className="rounded-xl bg-white p-3 text-sm leading-6" key={observation.id}><strong>{observation.observation}</strong><p className="text-[#617266]">后续支持：{observation.suggestedSupport}</p><p className="text-xs text-[#718076]">证据：{observation.evidence.join("；")}</p><p className="text-xs text-[#718076]">教师确认于 {formatDateTime(observation.confirmedAt)} · 来源：{observation.source}</p></li>)}</ul></div>}
           </GlassSurface>
 
           <GlassSurface className="p-5 sm:p-6" weight="card">
@@ -690,50 +630,6 @@ export function StudentDetailPage({ studentId }: StudentDetailPageProps) {
         </aside>
       </div>
 
-      <Dialog
-        description="更正不会直接覆盖原档案；提交后由学校授权人员人工核实。"
-        footer={
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button
-              className="h-11 rounded-full border border-[#dce5d9] bg-white px-5 text-sm font-black text-[#506456]"
-              onClick={() => setCorrectionOpen(false)}
-              type="button"
-            >
-              返回检查
-            </button>
-            <button
-              className="h-11 rounded-full bg-[#18291e] px-5 text-sm font-black text-white disabled:opacity-45"
-              disabled={!correctionDraft.trim()}
-              onClick={submitCorrection}
-              type="button"
-            >
-              提交更正申请
-            </button>
-          </div>
-        }
-        onClose={() => setCorrectionOpen(false)}
-        open={correctionOpen}
-        title="申请更正学生档案"
-      >
-        <label className="grid gap-2 text-sm font-black text-[#354c3a]">
-          更正说明
-          <textarea
-            aria-label="更正说明"
-            className="min-h-32 resize-y rounded-[18px] border border-[#dce6da] bg-white/80 p-4 font-normal leading-6 outline-none focus:border-[#a7bda8] focus:ring-4 focus:ring-[#afc7b0]/25"
-            onChange={(event) => setCorrectionDraft(event.target.value)}
-            placeholder="请说明需要更正的字段、当前内容和建议内容。"
-            value={correctionDraft}
-          />
-        </label>
-        <div className="mt-4 flex gap-3 rounded-[18px] bg-[#f3f5ea] p-4 text-xs font-semibold leading-5 text-[#697160]">
-          <ShieldCheck
-            aria-hidden="true"
-            className="mt-0.5 shrink-0"
-            size={16}
-          />
-          原始记录、更正原因与人工处理结果会一并保留，方便后续审计。
-        </div>
-      </Dialog>
     </div>
   )
 }

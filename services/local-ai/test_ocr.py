@@ -108,7 +108,7 @@ def test_solve_image_removes_temp_file_when_read_raises(monkeypatch):
     class FailingImage:
         filename = "broken.png"
 
-        async def read(self):
+        async def read(self, _limit):
             raise RuntimeError("read failed")
 
     monkeypatch.setattr(server.tempfile, "NamedTemporaryFile", capture_named_temporary_file)
@@ -122,6 +122,29 @@ def test_solve_image_removes_temp_file_when_read_raises(monkeypatch):
 
     assert len(created_paths) == 1
     assert not Path(created_paths[0]).exists()
+
+
+def test_local_ai_rejects_untrusted_browser_origin(monkeypatch):
+    server = load_server(monkeypatch)
+    client = TestClient(server.app)
+    response = client.post(
+        "/solve-image",
+        files={"image": ("question.png", b"x", "image/png")},
+        headers={"Origin": "https://untrusted.example"},
+    )
+    assert response.status_code == 403
+
+
+def test_image_upload_limit_rejects_oversized_file(monkeypatch):
+    server = load_server(monkeypatch)
+    monkeypatch.setattr(server, "MAX_IMAGE_BYTES", 3)
+    client = TestClient(server.app)
+    response = client.post(
+        "/solve-image",
+        files={"image": ("question.png", b"four", "image/png")},
+        headers={"Origin": "http://127.0.0.1:8443"},
+    )
+    assert response.status_code == 413
 
 
 def test_ocr_worker_crash_keeps_api_error_contained(monkeypatch):

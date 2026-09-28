@@ -138,7 +138,7 @@ export function MistakeDetailDrawer({
               {masteryLabels[mastery]}
             </StatusChip>
             <span className="text-xs font-bold text-[#718078]">
-              加入于 2026 年 7 月 22 日
+              加入于 {new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long", day: "numeric" }).format(new Date(mistake.createdAt))}
             </span>
           </div>
 

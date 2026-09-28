@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Dialog } from "../../../components/shared/Dialog"
 import type { PlanDraft } from "../../../app/prototype/types"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
@@ -6,6 +6,7 @@ import { generateDraft } from "../../../services/localAi"
 import { toPlanDraft, type LessonPlanGeneratorInput } from "./generators"
 import { getTeacherSettings } from "../settings/teacherSettings"
 import { findTeachingAid, getTeachingAidTopic, teachingAids } from "./resources/catalog"
+import type { ProgressImport } from "./progressImport"
 
 
 function LinesEditor({
@@ -17,12 +18,21 @@ function LinesEditor({
   value: string[]
   onChange(value: string[]): void
 }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+    textarea.style.height = "auto"
+    textarea.style.height = `${Math.max(144, textarea.scrollHeight)}px`
+  }, [value])
   return (
     <label className="grid gap-2 text-sm font-bold text-[#263b2b]">
       {label}
       <textarea
+        ref={textareaRef}
         aria-label={label}
-        className="min-h-28 rounded-2xl border border-white/80 bg-white/70 px-4 py-3 font-normal leading-7 outline-none focus:border-[#64836a] focus:ring-4 focus:ring-[#64836a]/15"
+        className="w-full min-w-0 resize-none overflow-hidden rounded-2xl border border-[#dce6dc] bg-white px-4 py-3 text-base font-normal leading-8 text-[#314238] outline-none focus:border-[#64836a] focus:ring-4 focus:ring-[#64836a]/15"
+        placeholder="每行写一项，按课堂顺序排列"
         value={value.join("\n")}
         onChange={(event) => onChange(event.target.value.split("\n"))}
       />
@@ -30,28 +40,37 @@ function LinesEditor({
   )
 }
 
-function blankPlan(settings: ReturnType<typeof getTeacherSettings>): PlanDraft {
+function importedFields(importedProgress?: ProgressImport | null) {
+  const chapter = importedProgress ? importedProgress.nextStep.length <= 40 ? importedProgress.nextStep : `${importedProgress.lessonTitle} · 下一课` : ""
+  const context = importedProgress ? `承接“${importedProgress.lessonTitle}”（${importedProgress.chapter || "上一课"}）${importedProgress.nextStep.length > 40 ? `；下节课安排：${importedProgress.nextStep}` : ""}` : ""
+  return { chapter, context }
+}
+
+function blankPlan(settings: ReturnType<typeof getTeacherSettings>, importedProgress?: ProgressImport | null): PlanDraft {
+  const { chapter, context } = importedFields(importedProgress)
   return {
     id: crypto.randomUUID(), title: "", subject: "数学",
-    grade: settings.currentClass.match(/^.+?年级/)?.[0] ?? "",
-    chapter: "", objective: "", context: "", evidence: [],
+    grade: importedProgress?.className.match(/^.+?年级/)?.[0] ?? settings.currentClass.match(/^.+?年级/)?.[0] ?? "",
+    chapter, objective: "",
+    context, evidence: [],
     outline: [], examples: [], misconceptions: [], suggestions: [],
     extension: "", durationMinutes: 40, materials: "", assessment: "",
     status: "draft", createdAt: new Date().toISOString(),
   }
 }
 
-export function LessonPlanBuilder({ selectedPlan, startNew = false, onSaved, onDirtyChange }: { selectedPlan?: PlanDraft | null; startNew?: boolean; onSaved?: (id: string) => void; onDirtyChange?: (dirty: boolean) => void }) {
+export function LessonPlanBuilder({ selectedPlan, importedProgress, startNew = false, onSaved, onDirtyChange }: { selectedPlan?: PlanDraft | null; importedProgress?: ProgressImport | null; startNew?: boolean; onSaved?: (id: string) => void; onDirtyChange?: (dirty: boolean) => void }) {
   const { addPlan, updatePlan, lessons, storageError } = usePrototype()
   const settings = getTeacherSettings()
+  const importedPlan = importedFields(importedProgress)
   const [input, setInput] = useState<LessonPlanGeneratorInput>({
-    textbook: `${settings.textbook}数学${settings.currentClass}`,
-    chapter: selectedPlan?.chapter ?? (startNew ? "" : settings.chapter),
+    textbook: `${settings.textbook}数学${importedProgress?.className ?? settings.currentClass}`,
+    chapter: selectedPlan?.chapter ?? (importedProgress ? importedPlan.chapter : startNew ? "" : settings.chapter),
     objective: selectedPlan?.objective ?? "",
-    context: selectedPlan?.context ?? "",
+    context: selectedPlan?.context ?? (importedProgress ? importedPlan.context : ""),
     evidence: selectedPlan?.evidence ?? [],
   })
-  const [draft, setDraft] = useState<PlanDraft | null>(() => selectedPlan ?? (startNew ? blankPlan(settings) : null))
+  const [draft, setDraft] = useState<PlanDraft | null>(() => selectedPlan ?? (startNew ? blankPlan(settings, importedProgress) : null))
   const [notice, setNotice] = useState("")
   const [generationError, setGenerationError] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
@@ -136,7 +155,7 @@ export function LessonPlanBuilder({ selectedPlan, startNew = false, onSaved, onD
       const teachingAid = useResource
         ? `教辅：${resource.aid.title}（${resource.aid.edition}）；课题：${resource.topic.title}；教学提示：${resource.topic.teachingHint}；易错点：${resource.topic.misconception}；活动：${resource.topic.activity}；检验：${resource.topic.check}`
         : ""
-      const response = await generateDraft("lesson-plan", { ...input, teachingAid, evidence: settings.includeEvidence && input.evidence.length ? input.evidence : ["本次不使用课堂证据；只根据教学目标起草"] })
+      const response = await generateDraft("lesson-plan", { ...input, teachingAid, evidence: settings.includeEvidence ? input.evidence : [] })
       const payload = response as { content?: unknown }
       const generated = toPlanDraft(payload.content, input)
       if (requestId !== generationToken.current) return
@@ -170,7 +189,7 @@ export function LessonPlanBuilder({ selectedPlan, startNew = false, onSaved, onD
   }
 
   const setupSection = (
-      <section className="rounded-[24px] border border-[#dce6dc] bg-white p-5 shadow-[0_10px_30px_rgba(54,82,61,0.04)] sm:p-6">
+      <section className="mx-auto w-full max-w-5xl rounded-[24px] border border-[#dce6dc] bg-white p-5 shadow-[0_10px_30px_rgba(54,82,61,0.04)] sm:p-6">
         <div className="mb-5">
           <p className="text-xs font-black tracking-[0.18em] text-[#66806b]">
             第一步 · 课题与目标
@@ -256,11 +275,11 @@ export function LessonPlanBuilder({ selectedPlan, startNew = false, onSaved, onD
   const editorSection = (
       <section
         aria-label="教案编辑器"
-        className="min-w-0 rounded-[24px] border border-[#dce6dc] bg-white p-5 shadow-[0_10px_30px_rgba(54,82,61,0.04)] sm:p-6"
+        className="mx-auto w-full max-w-5xl min-w-0 rounded-[24px] border border-[#dce6dc] bg-white p-5 shadow-[0_10px_30px_rgba(54,82,61,0.04)] sm:p-6"
       >
         {draft ? (
           <div className="grid gap-5">
-            <div><p className="text-xs font-black tracking-[0.18em] text-[#66806b]">第二步 · 教学活动</p><h2 className="mt-2 text-2xl font-black text-[#15241a]">怎么教、怎么检验</h2><p className="mt-2 text-sm leading-6 text-[#718076]">按课堂顺序写教学流程；材料和检验方式帮助你在上课时直接使用这份教案。</p></div>
+            <div><p className="text-xs font-black tracking-[0.18em] text-[#66806b]">第二步 · 教学活动</p><h2 className="mt-2 text-2xl font-black text-[#15241a]">怎么教、怎么检验</h2><p className="mt-2 text-sm leading-6 text-[#718076]">先写教学流程，再补充例子、易错点和课堂检验。</p></div>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <label className="grid min-w-0 flex-1 gap-2 text-sm font-black">
                 教案标题（可选，默认使用课题）
@@ -274,9 +293,6 @@ export function LessonPlanBuilder({ selectedPlan, startNew = false, onSaved, onD
                   }
                 />
               </label>
-              <span className="rounded-full bg-[#e6efe3] px-3 py-2 text-xs font-black text-[#47644d]">
-                教案草稿 · 可编辑
-              </span>
             </div>
 
             {draft.evidence.length > 0 && (
@@ -290,12 +306,14 @@ export function LessonPlanBuilder({ selectedPlan, startNew = false, onSaved, onD
               </div>
             )}
 
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-5 border-t border-[#e5ece4] pt-5">
               <LinesEditor
                 label="教学流程"
                 value={draft.outline}
                 onChange={(outline) => patchDraft({ outline })}
               />
+            </div>
+            <div className="grid gap-5 border-t border-[#e5ece4] pt-5 sm:grid-cols-2">
               <LinesEditor
                 label="生活化示例"
                 value={draft.examples}
@@ -306,13 +324,16 @@ export function LessonPlanBuilder({ selectedPlan, startNew = false, onSaved, onD
                 value={draft.misconceptions}
                 onChange={(misconceptions) => patchDraft({ misconceptions })}
               />
+            </div>
+            <div className="border-t border-[#e5ece4] pt-5">
               <LinesEditor
                 label="教学建议"
                 value={draft.suggestions}
                 onChange={(suggestions) => patchDraft({ suggestions })}
               />
             </div>
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="border-t border-[#e5ece4] pt-5"><h3 className="text-base font-black text-[#263b2b]">上课准备与检验</h3><p className="mt-1 text-sm text-[#718076]">记录上课时要用的材料和判断学生是否学会的方法。</p></div>
+            <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-sm font-black">课时（分钟）<input className="rounded-2xl border border-[#dfe8df] bg-white px-4 py-3" min={10} max={120} type="number" value={draft.durationMinutes ?? 40} onChange={(event) => patchDraft({ durationMinutes: Number(event.target.value) })} /></label>
               <label className="grid gap-2 text-sm font-black">所需材料<input className="rounded-2xl border border-[#dfe8df] bg-white px-4 py-3" value={draft.materials ?? ""} onChange={(event) => patchDraft({ materials: event.target.value })} /></label>
               <label className="grid gap-2 text-sm font-black lg:col-span-2">课堂检验方式<textarea className="min-h-20 rounded-2xl border border-[#dfe8df] bg-white px-4 py-3" placeholder="用什么表现判断学生达成了目标？" value={draft.assessment ?? ""} onChange={(event) => patchDraft({ assessment: event.target.value })} /></label>

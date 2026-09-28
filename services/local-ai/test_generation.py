@@ -17,7 +17,49 @@ from generation import (
     call_deepseek,
     generate_draft,
 )
-from schemas import GenerateRequest, QuizDraft
+from schemas import GenerateRequest, ParentSummaryDraft, QuizDraft, StudentInferenceDraft
+
+
+def test_task_inquiry_validates_context_and_retries_incomplete_response(monkeypatch):
+    request = GenerateRequest(kind="task-inquiry", context={
+        "taskTitle": "单位换算", "taskObjective": "解释换算理由",
+        "taskContent": "先统一单位", "question": "为什么先统一单位？",
+        "previousExchanges": [],
+    })
+    calls = []
+
+    def fake_call(body):
+        calls.append(body)
+        return '{"answer":"先统一单位"}' if len(calls) == 1 else json.dumps({
+            "answer": "先找出单位关系", "focus": "单位换算方向",
+            "review_tip": "回看换算步骤",
+        }, ensure_ascii=False)
+
+    monkeypatch.setattr(generation, "call_deepseek", fake_call)
+    result = generate_draft(request)
+    assert result == {"answer": "先找出单位关系", "focus": "单位换算方向", "reviewTip": "回看换算步骤"}
+    assert len(calls) == 2
+    assert "循序渐进" in calls[0]["messages"][0]["content"]
+
+
+def test_task_inquiry_receives_three_linked_quiz_questions(monkeypatch):
+    request = GenerateRequest(kind="task-inquiry", context={
+        "taskTitle": "分数自检", "taskContent": "完成三题", "question": "请讲解第 2 题",
+        "quizQuestions": [
+            {"prompt": f"第 {index} 题", "type": "single-choice", "options": ["对", "错"], "answer": "对", "explanation": "依据课堂内容"}
+            for index in range(1, 4)
+        ],
+    })
+    calls = []
+
+    def fake_call(body):
+        calls.append(body)
+        return json.dumps({"answer": "第 2 题选对，因为依据课堂内容", "focus": "第 2 题", "reviewTip": "回看题干"}, ensure_ascii=False)
+
+    monkeypatch.setattr(generation, "call_deepseek", fake_call)
+    assert generate_draft(request)["focus"] == "第 2 题"
+    assert "quizQuestions" in calls[0]["messages"][1]["content"]
+    assert "标准答案" in calls[0]["messages"][0]["content"]
 
 
 def test_quiz_rejects_less_than_three_questions():
@@ -25,6 +67,32 @@ def test_quiz_rejects_less_than_three_questions():
         QuizDraft.model_validate(
             {"title": "测验", "questions": [{"prompt": "只有一题"}]}
         )
+
+
+def test_quiz_normalizes_judgment_and_retries_invalid_response(monkeypatch):
+    request = GenerateRequest(kind="quiz", context={
+        "title": "课堂三题自检", "topic": "圆的面积", "difficulty": "递进", "focus": "面积公式",
+    })
+    calls = []
+
+    def fake_call(body):
+        calls.append(body)
+        if len(calls) == 1:
+            return '{"title":"课堂三题自检","questions":[]}'
+        return json.dumps({"title": "课堂三题自检", "questions": [
+            {"prompt": "半径翻倍时面积也翻倍。", "type": "判断题", "options": ["对", "错"], "answer": "错"},
+            {"prompt": "半径为 2 时面积是多少？", "options": ["2π", "4π", "8π"], "answer": "4π"},
+            {"prompt": "圆面积公式是 πr²。", "type": "true-false", "options": ["正确", "错误"], "answer": True},
+        ]}, ensure_ascii=False)
+
+    monkeypatch.setattr(generation, "call_deepseek", fake_call)
+    result = generate_draft(request)
+    assert len(calls) == 2
+    assert calls[0]["max_tokens"] == 2000
+    assert calls[1]["temperature"] == 0
+    assert result["questions"][0]["type"] == "true-false"
+    assert result["questions"][0]["answer"] == "错误"
+    assert result["questions"][2]["answer"] == "正确"
 
 
 def test_task_draft_uses_a_validated_context_and_response(monkeypatch):
@@ -88,6 +156,26 @@ def test_lesson_plan_retries_a_truncated_response_once(monkeypatch):
     assert "teachingAid" in calls[1]["messages"][1]["content"]
 
 
+def test_lesson_plan_accepts_empty_optional_context_and_teaching_aid():
+    request = GenerateRequest(kind="lesson-plan", context={
+        "textbook": "北师大版数学五年级", "chapter": "圆形的面积",
+        "objective": "能解释圆面积公式", "context": "",
+        "evidence": ["本次不使用课堂证据；只根据教学目标起草"],
+        "teachingAid": "",
+    })
+    assert request.context["context"] == ""
+    assert request.context["teachingAid"] == ""
+
+
+def test_lesson_plan_optional_context_still_rejects_image_urls():
+    with pytest.raises(ValidationError):
+        GenerateRequest(kind="lesson-plan", context={
+            "textbook": "数学", "chapter": "圆形的面积",
+            "objective": "能解释圆面积公式", "context": "https://example.com/image.png",
+            "evidence": ["课堂练习"], "teachingAid": "",
+        })
+
+
 def test_unexpected_model_json_is_rejected(monkeypatch):
     monkeypatch.setattr(generation, "call_deepseek", lambda _: '{"unsafe": true}')
 
@@ -128,6 +216,35 @@ def test_parent_summary_accepts_only_approved_facts_context():
     )
 
     assert request.context["facts"] == ["本周主动提问 4 次", "课堂证据：完成单位换算练习"]
+
+
+def test_student_observation_accepts_no_mistakes_when_facts_exist():
+    request = GenerateRequest(kind="student-inference", context={"facts": ["课堂练习已完成"], "mistakes": []})
+    assert request.context["mistakes"] == []
+
+
+def test_student_ai_drafts_accept_camel_case_output_fields():
+    parent = ParentSummaryDraft.model_validate({"topics": ["单位换算"], "encouragement": "继续练习", "teacherMessage": "本周完成任务"})
+    observation = StudentInferenceDraft.model_validate({"evidence": ["课堂练习"], "observation": "仍需观察", "suggestedSupport": "继续练习"})
+    assert parent.teacher_message == "本周完成任务"
+    assert observation.suggested_support == "继续练习"
+
+
+def test_student_observation_retries_incomplete_model_output_once(monkeypatch):
+    request = GenerateRequest(kind="student-inference", context={"facts": ["课堂练习已完成"], "mistakes": []})
+    calls = []
+
+    def fake_call(body):
+        calls.append(body)
+        if len(calls) == 1:
+            return '{"observation":"继续观察"}'
+        return json.dumps({"evidence": ["课堂练习已完成"], "observation": "继续观察", "suggestedSupport": "下次核对步骤"}, ensure_ascii=False)
+
+    monkeypatch.setattr(generation, "call_deepseek", fake_call)
+    result = generate_draft(request)
+    assert result["suggested_support"] == "下次核对步骤"
+    assert len(calls) == 2
+    assert calls[1]["temperature"] == 0
 
 
 @pytest.mark.parametrize(

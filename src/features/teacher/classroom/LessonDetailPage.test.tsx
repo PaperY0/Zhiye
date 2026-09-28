@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
 import { PrototypeProvider, usePrototype } from "../../../app/prototype/PrototypeContext"
 import { LessonDetailPage } from "./LessonDetailPage"
+import { progressImportKey } from "../planning/progressImport"
 
 function AnalysisSeed() {
   const { updateLessonAnalysis } = usePrototype()
@@ -149,6 +150,23 @@ describe("LessonDetailPage", () => {
     expect(screen.getByText("复习卡已发布，学生现在可以查看。")).toBeInTheDocument()
     expect(screen.getByText("学生可见")).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "确认并发布" })).not.toBeInTheDocument()
+  })
+
+  it("sends the confirmed next lesson content into a new lesson plan", async () => {
+    const user = userEvent.setup()
+    renderDetail("lesson-fractions")
+    await user.click(screen.getByRole("tab", { name: "课程进度" }))
+    await user.clear(screen.getByLabelText("下一步教学内容"))
+    await user.type(screen.getByLabelText("下一步教学内容"), "通分综合练习")
+    await user.click(screen.getByRole("button", { name: "用下一步新建教案" }))
+
+    expect(JSON.parse(sessionStorage.getItem(progressImportKey) ?? "{}")).toMatchObject({
+      lessonId: "lesson-fractions",
+      nextStep: "通分综合练习",
+      className: "五年级（2）班",
+    })
+    expect(window.location.hash).toBe("#/teacher/planning")
+    sessionStorage.removeItem(progressImportKey)
   })
 
   it("shows a recoverable empty state for an unknown lesson", () => {

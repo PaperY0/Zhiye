@@ -7,9 +7,9 @@ import Dialog from "./shared/Dialog"
 type WelcomeScreenProps = { onEnterRole: (role: Role) => void }
 
 const roleOptions = [
-  { role: "teacher" as const, label: "教师", description: "课堂复盘、班级洞察与备课", icon: Sparkles },
+  { role: "teacher" as const, label: "教师", description: "课堂复盘、关联任务与备课", icon: Sparkles },
   { role: "student" as const, label: "学生", description: "复习、答疑与错题回顾", icon: GraduationCap },
-  { role: "parent" as const, label: "家长", description: "学习摘要与联系老师", icon: School },
+  { role: "parent" as const, label: "家长", description: "学习近况与联系老师", icon: School },
   { role: "admin" as const, label: "管理员", description: "学校管理与保护性反馈", icon: ShieldCheck },
 ]
 

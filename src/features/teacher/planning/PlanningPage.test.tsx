@@ -4,6 +4,7 @@ import { vi } from "vitest"
 import { PrototypeProvider, usePrototype } from "../../../app/prototype/PrototypeContext"
 import PlanningPage from "./PlanningPage"
 import { generateDraft } from "../../../services/localAi"
+import { progressImportKey } from "./progressImport"
 
 vi.mock("../../../services/localAi", () => ({ generateDraft: vi.fn() }))
 
@@ -11,7 +12,30 @@ function Probe() { const { plans } = usePrototype(); return <output aria-label="
 function setup() { return render(<PrototypeProvider><PlanningPage /><Probe /></PrototypeProvider>) }
 
 describe("PlanningPage", () => {
-  beforeEach(() => { localStorage.clear(); vi.mocked(generateDraft).mockReset() })
+  beforeEach(() => { localStorage.clear(); sessionStorage.clear(); vi.mocked(generateDraft).mockReset() })
+
+  it("opens an independent plan with the next lesson content from classroom progress", () => {
+    sessionStorage.setItem(progressImportKey, JSON.stringify({
+      lessonId: "lesson-fractions", lessonTitle: "分数的基本性质",
+      nextStep: "通分综合练习", chapter: "分数的意义和性质",
+      className: "五年级（2）班", subject: "数学",
+    }))
+    setup()
+
+    expect(screen.getByText(/已从“分数的基本性质”带入下一步教学内容/)).toBeInTheDocument()
+    expect(screen.getByRole("textbox", { name: "课题" })).toHaveValue("通分综合练习")
+    expect(screen.getByRole("textbox", { name: "生活情境" })).toHaveValue("承接“分数的基本性质”（分数的意义和性质）")
+    expect(screen.getByRole("textbox", { name: "教学目标" })).toHaveValue("")
+    expect(sessionStorage.getItem(progressImportKey)).toBeNull()
+  })
+
+  it("keeps a long next-lesson note readable in context instead of stretching the topic", () => {
+    const nextStep = "先回顾圆面积公式，再用不同半径完成练习，最后比较正方形和圆形面积公式的适用条件，并让学生解释每一步计算的依据。"
+    sessionStorage.setItem(progressImportKey, JSON.stringify({ lessonId: "lesson-area", lessonTitle: "圆形面积公式", nextStep, chapter: "图形面积", className: "五年级（1）班", subject: "数学" }))
+    setup()
+    expect(screen.getByRole("textbox", { name: "课题" })).toHaveValue("圆形面积公式 · 下一课")
+    expect((screen.getByRole("textbox", { name: "生活情境" }) as HTMLTextAreaElement).value).toContain(nextStep)
+  })
 
   it("creates a manual plan, saves it, and reopens the full editor", async () => {
     const user = userEvent.setup()

@@ -1,4 +1,5 @@
 import type { KnowledgeSignal, Lesson, Student, Subject, Task } from "../../../app/prototype/types"
+import { taskSubmissionCounts } from "../../../app/prototype/taskStatus"
 
 export type InsightRange = "all" | "7d" | "30d"
 export type InsightSubject = "all" | Subject
@@ -29,28 +30,29 @@ export function buildInsightData(input: {
   const now = input.now ?? new Date()
   const subjectMatches = (value: Subject) => subject === "all" || value === subject
   const scopedSignals = byNewest(signals.filter((signal) =>
-    (!signal.className || signal.className === className) &&
+    (className === "all" || !signal.className || signal.className === className) &&
     subjectMatches(signal.subject) && inRange(signal.observedAt, range, now),
   ), (signal) => signal.observedAt)
   const scopedLessons = byNewest(lessons.filter((lesson) =>
-    lesson.className === className && subjectMatches(lesson.subject) &&
+    (className === "all" || lesson.className === className) && subjectMatches(lesson.subject) &&
     inRange(lesson.date, range, now) &&
     (lesson.evidence?.length || lesson.teacherReport),
   ), (lesson) => lesson.date)
   const scopedTasks = byNewest(tasks.filter((task) =>
     task.status !== "draft" &&
-    (task.audience.kind === "class" ? task.audience.label === className : task.audience.studentIds.some((id) => students.some((student) => student.id === id && student.className === className))) &&
+    (task.audience.kind === "class" ? (className === "all" || task.audience.label === className) : task.audience.studentIds.some((id) => students.some((student) => student.id === id && (className === "all" || student.className === className)))) &&
     inRange(task.createdAt, range, now),
   ), (task) => task.createdAt)
   // Tasks have no subject field yet. Do not silently claim a subject-specific
   // submission total; only show them in the unfiltered class view.
   const visibleTasks = subject === "all" ? scopedTasks : []
-  const classIds = new Set(students.filter((student) => student.className === className).map((student) => student.id))
+  const classIds = new Set(students.filter((student) => className === "all" || student.className === className).map((student) => student.id))
   const identifiedStudents = new Set(scopedSignals.flatMap((signal) => signal.affectedStudentIds).filter((id) => classIds.has(id)))
   const affectedLowerBound = Math.max(identifiedStudents.size, ...scopedSignals.map((signal) => signal.affectedCount), 0)
-  const totalExpected = visibleTasks.reduce((sum, task) => sum + task.completions.length, 0)
-  const totalSubmitted = visibleTasks.reduce((sum, task) => sum + task.completions.filter((item) => item.status === "submitted" || item.status === "reviewed").length, 0)
-  const totalReviewed = visibleTasks.reduce((sum, task) => sum + task.completions.filter((item) => item.status === "reviewed").length, 0)
+  const taskCounts = visibleTasks.map((task) => taskSubmissionCounts(task, className, students))
+  const totalExpected = taskCounts.reduce((sum, item) => sum + item.total, 0)
+  const totalSubmitted = taskCounts.reduce((sum, item) => sum + item.submitted, 0)
+  const totalReviewed = taskCounts.reduce((sum, item) => sum + item.reviewed, 0)
 
   return {
     signals: scopedSignals,

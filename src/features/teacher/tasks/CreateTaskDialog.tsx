@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react"
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
 import {
   BookOpenCheck,
   CheckCircle2,
@@ -8,7 +8,7 @@ import {
 } from "lucide-react"
 import type { Lesson, PlanDraft, Quiz, QuizQuestion, Student, Task } from "../../../app/prototype/types"
 import { Dialog } from "../../../components/shared/Dialog"
-import { getTeacherSettings } from "../settings/teacherSettings"
+import { getTeacherSettings, schoolClasses } from "../settings/teacherSettings"
 import { generateDraft } from "../../../services/localAi"
 import { toQuiz } from "../planning/generators"
 import { QuestionEditor } from "../planning/QuizBuilder"
@@ -23,6 +23,7 @@ interface CreateTaskDialogProps {
   initialPlanId?: string | null
   initialLessonId?: string | null
   initialQuizId?: string | null
+  initialStudentId?: string | null
   onClose: () => void
   onCreate: (task: Task, quiz?: Quiz) => void
 }
@@ -167,6 +168,7 @@ export function CreateTaskDialog({
   initialPlanId,
   initialLessonId,
   initialQuizId,
+  initialStudentId,
   onClose,
   onCreate,
 }: CreateTaskDialogProps) {
@@ -177,6 +179,7 @@ export function CreateTaskDialog({
   const [content, setContent] = useState("")
   const [submissionMode, setSubmissionMode] = useState<SubmissionMode>("text")
   const [selectedClass, setSelectedClass] = useState(getTeacherSettings().currentClass)
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const reminder = "不提醒"
   const [error, setError] = useState("")
   const [sourcePlanId, setSourcePlanId] = useState("")
@@ -185,7 +188,7 @@ export function CreateTaskDialog({
   const [generating, setGenerating] = useState(false)
   const generationToken = useRef(0)
   const currentClass = getTeacherSettings().currentClass
-  const availableClasses = useMemo(() => [...new Set([currentClass, ...students.map((student) => student.className), ...lessons.map((lesson) => lesson.className)])].filter(Boolean), [currentClass, students, lessons])
+  const availableClasses = schoolClasses
 
   useEffect(() => {
     if (!open) { generationToken.current += 1; return }
@@ -195,7 +198,9 @@ export function CreateTaskDialog({
     setType(lesson || quiz ? "quiz" : source ? "reading" : "practice")
     setSourcePlanId(source?.id ?? "")
     setSourceLessonId(lesson?.id ?? "")
-    setSelectedClass(lesson?.className ?? currentClass)
+    const targetStudent = students.find((student) => student.id === initialStudentId)
+    setSelectedClass(lesson?.className ?? targetStudent?.className ?? currentClass)
+    setSelectedStudentId(targetStudent?.id ?? null)
     setTitle(lesson ? `${lesson.title} · 课堂三题自检` : quiz?.title ?? (source ? `${source.chapter} · 课堂热身` : ""))
     setObjective(lesson ? `检查学生对“${lesson.title}”的理解` : quiz ? `完成${quiz.title}，检查当前知识的掌握情况` : source?.objective ?? "")
     setSuccessCriteria(lesson || quiz ? "完成三道题，并根据解析订正" : source?.assessment ?? "")
@@ -204,7 +209,7 @@ export function CreateTaskDialog({
     setQuizDraft(quiz ? { ...structuredClone(quiz), id: crypto.randomUUID(), questions: quiz.questions.map((question) => ({ ...structuredClone(question), id: crypto.randomUUID() })) } : lesson ? blankQuiz(`${lesson.title}课堂自检`, lesson.id, lesson.subject) : null)
     setError("")
     if (lesson) void generateQuiz(lesson)
-  }, [open, initialPlanId, initialLessonId, initialQuizId])
+  }, [open, initialPlanId, initialLessonId, initialQuizId, initialStudentId])
 
   function choosePlan(id: string) {
     generationToken.current += 1
@@ -336,7 +341,7 @@ export function CreateTaskDialog({
       setError("请补全任务标题、学习目标、达成标准和任务说明。")
       return
     }
-    if (!selectedClass) {
+    if (!selectedClass && !selectedStudentId) {
       setError("请选择发布班级。")
       return
     }
@@ -348,7 +353,8 @@ export function CreateTaskDialog({
       }
       quiz = { ...quizDraft, title: `${normalizedTitle} · 三题自检`, status: "ready", questions: quizDraft.questions.map((question) => ({ ...question, options: question.options.map((option) => option.trim()).filter(Boolean) })) }
     }
-    const audienceStudentIds = students.filter((student) => student.className === selectedClass).map((student) => student.id)
+    const targetStudent = students.find((student) => student.id === selectedStudentId)
+    const audienceStudentIds = targetStudent ? [targetStudent.id] : students.filter((student) => student.className === selectedClass).map((student) => student.id)
 
     onCreate({
       id: `task-local-${Date.now()}-${taskCount + 1}`,
@@ -362,9 +368,9 @@ export function CreateTaskDialog({
       content: normalizedContent,
       submissionMode: type === "quiz" ? "online" : submissionMode,
       audience: {
-        kind: "class",
-        label: selectedClass,
-        studentIds: [],
+        kind: targetStudent ? "students" : "class",
+        label: targetStudent ? targetStudent.name : selectedClass,
+        studentIds: targetStudent ? [targetStudent.id] : [],
       },
       reminder,
       status: "draft",
@@ -483,8 +489,8 @@ export function CreateTaskDialog({
           </section>}
 
           <section className="min-w-0 rounded-[26px] border border-white/85 bg-white/58 p-4 shadow-[0_16px_38px_rgba(49,78,58,.06)] sm:p-5">
-            <SectionHeading description="只选择你授课的班级。保存后先预览，再决定是否发布。" step={type === "quiz" ? "4" : "3"} title="发布对象" />
-            <fieldset><legend className="sr-only">发布班级</legend><div className="grid gap-2 sm:grid-cols-2">{availableClasses.map((className) => <ChoiceCard key={className} checked={selectedClass === className} description="该班全体学生" icon={<Users aria-hidden="true" size={18} />} label={className} name="发布班级" onChange={() => setSelectedClass(className)} value={className} />)}</div></fieldset>
+            <SectionHeading description={initialStudentId ? "可只布置给当前学生，或改为授课班级。保存后先预览，再决定是否发布。" : "选择你授课的班级。保存后先预览，再决定是否发布。"} step={type === "quiz" ? "4" : "3"} title="发布对象" />
+            <fieldset><legend className="sr-only">发布对象</legend><div className="grid gap-2 sm:grid-cols-2">{initialStudentId && students.find((student) => student.id === initialStudentId) ? <ChoiceCard checked={selectedStudentId === initialStudentId} description="仅该学生可见" icon={<Users aria-hidden="true" size={18} />} label={students.find((student) => student.id === initialStudentId)!.name} name="发布对象" onChange={() => setSelectedStudentId(initialStudentId)} value={initialStudentId} /> : null}{availableClasses.map((className) => <ChoiceCard key={className} checked={!selectedStudentId && selectedClass === className} description="该班全体学生" icon={<Users aria-hidden="true" size={18} />} label={className} name="发布对象" onChange={() => { setSelectedStudentId(null); setSelectedClass(className) }} value={className} />)}</div></fieldset>
           </section>
 
           {error && type !== "quiz" ? (

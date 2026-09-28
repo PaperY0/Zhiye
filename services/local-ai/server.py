@@ -7,8 +7,9 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from generation import (
@@ -28,9 +29,12 @@ from schemas import (
 )
 
 app = FastAPI(title="Zhiye local lesson AI")
+ALLOWED_ORIGINS = {"http://127.0.0.1:8443", "http://localhost:8443"}
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
+MAX_AUDIO_BYTES = 50 * 1024 * 1024
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:8443", "http://localhost:8443"],
+    allow_origins=sorted(ALLOWED_ORIGINS),
     allow_methods=["POST", "GET"],
     allow_headers=["*"],
 )
@@ -38,6 +42,21 @@ app.add_middleware(
 asr_model = None
 ocr_engine = None
 recap_jobs: dict[str, object] = {}
+
+
+@app.middleware("http")
+async def reject_untrusted_browser_origins(request: Request, call_next):
+    origin = request.headers.get("origin")
+    if request.method not in {"GET", "HEAD", "OPTIONS"} and origin and origin not in ALLOWED_ORIGINS:
+        return JSONResponse(status_code=403, content={"detail": "此本地 AI 服务仅接受知野本机页面的请求"})
+    return await call_next(request)
+
+
+async def read_upload(upload: UploadFile, limit: int, label: str) -> bytes:
+    content = await upload.read(limit + 1)
+    if len(content) > limit:
+        raise HTTPException(status_code=413, detail=f"{label}过大，请选择较小文件")
+    return content
 
 
 def get_asr_model():
@@ -243,10 +262,11 @@ async def analyze(
     teacher_settings: str = Form(default="{}"),
 ):
     suffix = Path(audio.filename or "lesson-recording.webm").suffix or ".webm"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temporary:
-        temporary.write(await audio.read())
-        path = temporary.name
+    path = None
     try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temporary:
+            path = temporary.name
+            temporary.write(await read_upload(audio, MAX_AUDIO_BYTES, "课堂录音"))
         transcript_text = transcribe(path)
         try:
             parsed_teacher_settings = json.loads(teacher_settings)
@@ -276,7 +296,8 @@ async def analyze(
         }
     finally:
         try:
-            Path(path).unlink(missing_ok=True)
+            if path:
+                Path(path).unlink(missing_ok=True)
         except OSError:
             pass
 
@@ -305,7 +326,7 @@ async def create_recap_job(
         elif audio is not None:
             suffix = Path(audio.filename or "lesson-recording.webm").suffix or ".webm"
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temporary:
-                temporary.write(await audio.read())
+                temporary.write(await read_upload(audio, MAX_AUDIO_BYTES, "课堂录音"))
                 temporary_path = temporary.name
             evidence = transcribe_audio(temporary_path)
         else:
@@ -345,7 +366,7 @@ async def solve_image(image: UploadFile = File(...)):
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temporary:
             path = temporary.name
-            temporary.write(await image.read())
+            temporary.write(await read_upload(image, MAX_IMAGE_BYTES, "题目图片"))
         recognized_text, ocr_confidence = recognize_image(path)
         result = {
             "recognizedText": recognized_text,

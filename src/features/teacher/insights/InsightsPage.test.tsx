@@ -1,210 +1,74 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { vi } from "vitest"
-import {
-  PrototypeProvider,
-  usePrototype,
-} from "../../../app/prototype/PrototypeContext"
+import { PrototypeProvider, usePrototype } from "../../../app/prototype/PrototypeContext"
+import { taskFixtures } from "../../../app/prototype/fixtures"
 import { InsightsPage } from "./InsightsPage"
-import { generateDraft } from "../../../services/localAi"
 
-vi.mock("../../../services/localAi", () => ({
-  generateDraft: vi.fn(),
-}))
-
-function StateProbe() {
-  const { plans, quizzes } = usePrototype()
-
-  return (
-    <output aria-label="生成结果计数">
-      方案 {plans.length} · 练习 {quizzes.length}
-    </output>
-  )
+function LiveTaskProbe() {
+  const { addTask, updateTaskCompletion, addTaskInquiry } = usePrototype()
+  return <>
+    <button onClick={() => addTask({ ...taskFixtures[0], id: "insight-live-task", title: "实时联动任务", sourceQuizId: "quiz-fractions-check", status: "active", audience: { kind: "students", label: "林晓雨", studentIds: ["student-lin-xiaoyu"] }, completions: [{ studentId: "student-lin-xiaoyu", status: "not-started" }] })} type="button">新增联动任务</button>
+    <button onClick={() => updateTaskCompletion("insight-live-task", "student-lin-xiaoyu", "submitted", { score: 5, answers: { "question-fractions-01": "6/10", "question-fractions-02": "可以", "question-fractions-03": "解释" } })} type="button">模拟学生提交</button>
+    <button onClick={() => updateTaskCompletion("insight-live-task", "student-lin-xiaoyu", "reviewed")} type="button">模拟教师查看</button>
+    <button onClick={() => addTaskInquiry("insight-live-task", { id: "live-inquiry", studentId: "student-lin-xiaoyu", subject: "数学", question: "为什么先统一单位？", status: "asking", createdAt: new Date().toISOString() })} type="button">模拟学生询问</button>
+  </>
 }
 
-function renderPage() {
-  return render(
-    <PrototypeProvider>
-      <InsightsPage />
-      <StateProbe />
-    </PrototypeProvider>,
-  )
+function renderPage(withProbe = false) {
+  return render(<PrototypeProvider><InsightsPage />{withProbe && <LiveTaskProbe />}</PrototypeProvider>)
 }
 
 describe("InsightsPage", () => {
-  beforeEach(() => {
-    vi.mocked(generateDraft).mockReset()
+  beforeEach(() => localStorage.clear())
+
+  it("shows a task-count pie and removes the redundant panels", () => {
+    renderPage()
+    expect(screen.getByRole("heading", { name: "班级洞察" })).toBeInTheDocument()
+    const pie = screen.getByRole("img", { name: /五年级（2）班共 4 项任务/ })
+    expect(pie).toHaveTextContent("4项任务")
+    expect(screen.getByRole("heading", { name: "每项任务的学习反馈" })).toBeInTheDocument()
+    for (const heading of ["班级概览", "需要跟进的学习步骤", "任务回流", "按班级查看"]) {
+      expect(screen.queryByRole("heading", { name: heading })).not.toBeInTheDocument()
+    }
+    expect(screen.queryByText("3 / 60 份")).not.toBeInTheDocument()
   })
 
-  it("filters class signals by time and subject without showing rankings", async () => {
+  it("updates the task total, status and inquiry chart from live state", async () => {
+    const user = userEvent.setup()
+    renderPage(true)
+    await user.click(screen.getByRole("button", { name: "新增联动任务" }))
+    expect(screen.getByRole("img", { name: /五年级（2）班共 5 项任务：.*进行中 2 项/ })).toBeInTheDocument()
+    const task = screen.getByRole("button", { name: /查看任务 实时联动任务，已提交 0\/1，0 次询问/ })
+    expect(task).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "模拟学生提交" }))
+    expect(screen.getByRole("img", { name: "实时联动任务提交进度 1/1" })).toBeInTheDocument()
+    expect(screen.getByRole("img", { name: "实时联动任务正确率 50%，答对 1/2 题" })).toBeInTheDocument()
+    expect(screen.getByRole("img", { name: /五年级（2）班共 5 项任务：.*待查看 2 项/ })).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "模拟教师查看" }))
+    expect(screen.getByRole("img", { name: /五年级（2）班共 5 项任务：.*已完成 2 项/ })).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "模拟学生询问" }))
+    expect(screen.getByRole("button", { name: /查看任务 实时联动任务，已提交 1\/1，1 次询问/ })).toHaveTextContent("为什么先统一单位？")
+  })
+
+  it("switches pie and task list to the selected class", async () => {
     const user = userEvent.setup()
     renderPage()
-
-    expect(
-      screen.getByRole("heading", { name: "班级洞察" }),
-    ).toBeInTheDocument()
-    expect(screen.getByText("3 个知识信号")).toBeInTheDocument()
-    expect(screen.getByText("12 名学生受影响")).toBeInTheDocument()
-    expect(screen.queryByText(/排名|第\s*\d+\s*名/)).not.toBeInTheDocument()
-    expect(screen.getByRole("region", { name: "课后回流" })).toHaveTextContent("仅显示班级聚合")
-    expect(screen.getByRole("region", { name: "课后回流" })).toHaveTextContent("教师草稿 · 不自动推送")
-
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "时间范围" }),
-      "today",
-    )
-    expect(screen.getByText("2 个知识信号")).toBeInTheDocument()
-    expect(
-      screen.queryByRole("button", { name: /^分数基本性质 × 概念/ }),
-    ).not.toBeInTheDocument()
-
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "学科" }),
-      "英语",
-    )
-    expect(screen.getByText("这个筛选条件下还没有困难信号")).toBeInTheDocument()
-    expect(screen.getByText("0 个知识信号")).toBeInTheDocument()
-
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "时间范围" }),
-      "week",
-    )
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "学科" }),
-      "数学",
-    )
-    expect(
-      screen.getByRole("button", { name: /^单位换算 × 计算/ }),
-    ).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "全局预览" }))
+    expect(screen.getByRole("img", { name: /全部授课班级共 4 项任务/ })).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "更换班级" }))
+    await user.click(screen.getByRole("option", { name: "五年级（1）班" }))
+    expect(screen.getByRole("img", { name: "五年级（1）班暂无任务" })).toBeInTheDocument()
+    expect(screen.getByText("当前范围还没有已发布任务。")).toBeInTheDocument()
   })
 
-  it("provides text-equivalent heatmap cells and an accessible SVG trend", () => {
-    renderPage()
-
-    const heatmap = screen.getByRole("grid", { name: "知识困难热力图" })
-    expect(
-      within(heatmap).getByRole("button", { name: /^单位换算 × 计算/ }),
-    ).toHaveAttribute("aria-label", expect.stringContaining("12 名学生"))
-    expect(
-      screen.getByRole("img", { name: "困难信号近五次变化趋势" }),
-    ).toBeInTheDocument()
-    expect(screen.getByText("4 → 6 → 8 → 10 → 12 名学生")).toBeInTheDocument()
-  })
-
-  it("opens unit-conversion evidence and adds the remedial plan returned by local AI", async () => {
+  it("opens the selected task with the class filter", async () => {
     const user = userEvent.setup()
-    vi.mocked(generateDraft).mockResolvedValue({
-      content: {
-        title: "单位换算方向补讲",
-        goals: ["判断换算方向"],
-        steps: ["比较单位大小"],
-        examples: ["1 米等于 100 厘米"],
-        check_for_understanding: "解释一次换算方向",
-      },
-    })
     renderPage()
-
-    expect(screen.getByLabelText("生成结果计数")).toHaveTextContent(
-      "方案 1 · 练习 1",
-    )
-    await user.click(screen.getByRole("button", { name: /^单位换算 × 计算/ }))
-
-    const drawer = screen.getByRole("dialog", { name: "单位换算 · 计算步骤" })
-    expect(within(drawer).getByRole("heading", { name: "判断乘除方向" })).toBeInTheDocument()
-    expect(
-      within(drawer).getByText("随堂练习第 3 题停顿时间增加"),
-    ).toBeInTheDocument()
-    expect(
-      within(drawer).getByText("课堂中 5 次询问乘还是除"),
-    ).toBeInTheDocument()
-
-    await user.click(
-      within(drawer).getByRole("button", { name: "一键生成补讲方案" }),
-    )
-    expect(vi.mocked(generateDraft)).toHaveBeenCalledWith("remedial-plan", {
-      knowledgePoint: "单位换算",
-      step: "判断乘除方向",
-      affectedCount: 12,
-      trend: "4 → 6 → 8 → 10 → 12",
-      evidence: ["随堂练习第 3 题停顿时间增加", "课堂中 5 次询问乘还是除"],
-    })
-    expect(screen.getByLabelText("生成结果计数")).toHaveTextContent(
-      "方案 2 · 练习 1",
-    )
-    expect(
-      screen.getByRole("status", { name: "生成结果通知" }),
-    ).toHaveTextContent("已生成“单位换算方向补讲”")
-  })
-
-  it("keeps remedial drafts unchanged and offers a retry when local AI is unavailable", async () => {
-    const user = userEvent.setup()
-    vi.mocked(generateDraft).mockRejectedValue(new Error("补讲服务不可用"))
-    renderPage()
-
-    await user.click(screen.getByRole("button", { name: /^单位换算 × 计算/ }))
-    const drawer = screen.getByRole("dialog", { name: "单位换算 · 计算步骤" })
-    await user.click(
-      within(drawer).getByRole("button", { name: "一键生成补讲方案" }),
-    )
-
-    expect(await within(drawer).findByRole("alert")).toHaveTextContent(
-      "补讲服务不可用",
-    )
-    expect(within(drawer).getByRole("button", { name: "重试生成" })).toBeInTheDocument()
-    expect(screen.getByLabelText("生成结果计数")).toHaveTextContent(
-      "方案 1 · 练习 1",
-    )
-    expect(screen.queryByRole("status", { name: "生成结果通知" })).not.toBeInTheDocument()
-    expect(screen.queryByText("回看课堂证据")).not.toBeInTheDocument()
-  })
-
-  it("keeps consolidation drafts unchanged when local AI returns malformed content", async () => {
-    const user = userEvent.setup()
-    vi.mocked(generateDraft).mockResolvedValue({ content: { title: "不完整巩固练习" } })
-    renderPage()
-
-    await user.click(screen.getByRole("button", { name: /^单位换算 × 计算/ }))
-    const drawer = screen.getByRole("dialog", { name: "单位换算 · 计算步骤" })
-    await user.click(
-      within(drawer).getByRole("button", { name: "一键生成巩固练习" }),
-    )
-
-    expect(await within(drawer).findByRole("alert")).toHaveTextContent(
-      "草稿格式不正确",
-    )
-    expect(within(drawer).getByRole("button", { name: "重试生成" })).toBeInTheDocument()
-    expect(screen.getByLabelText("生成结果计数")).toHaveTextContent(
-      "方案 1 · 练习 1",
-    )
-    expect(screen.queryByRole("status", { name: "生成结果通知" })).not.toBeInTheDocument()
-    expect(screen.queryByText("3 米等于多少厘米？先判断方向，再选择答案。")).not.toBeInTheDocument()
-  })
-
-  it("generates a focused exercise from the selected signal", async () => {
-    const user = userEvent.setup()
-    vi.mocked(generateDraft).mockResolvedValue({
-      content: {
-        title: "单位换算计算巩固练习",
-        questions: [
-          { prompt: "1 米等于多少厘米？", options: ["1", "100"], answer: "100" },
-          { prompt: "2 米等于多少厘米？", options: ["2", "200"], answer: "200" },
-          { prompt: "3 米等于多少厘米？", options: ["3", "300"], answer: "300" },
-        ],
-      },
-    })
-    renderPage()
-
-    await user.click(screen.getByRole("button", { name: /^单位换算 × 计算/ }))
-    const drawer = screen.getByRole("dialog", { name: "单位换算 · 计算步骤" })
-    await user.click(
-      within(drawer).getByRole("button", { name: "一键生成巩固练习" }),
-    )
-
-    expect(screen.getByLabelText("生成结果计数")).toHaveTextContent(
-      "方案 1 · 练习 2",
-    )
-    expect(
-      screen.getByRole("status", { name: "生成结果通知" }),
-    ).toHaveTextContent("已生成“单位换算计算巩固练习”")
+    const task = screen.getByRole("button", { name: /查看任务 单位换算巩固练习/ })
+    expect(within(task).getByText("单位换算巩固练习")).toBeInTheDocument()
+    await user.click(task)
+    expect(window.location.hash).toBe("#/teacher/tasks")
+    expect(window.sessionStorage.getItem("zhiye-task-class-filter")).toBe("五年级（2）班")
+    expect(window.sessionStorage.getItem("zhiye-task-open-id")).toBe("task-active-01")
   })
 })

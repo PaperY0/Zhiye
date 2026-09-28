@@ -15,8 +15,8 @@ beforeEach(() => {
 
 describe("teacher settings store", () => {
   it("derives the grade used by classroom records from a selected class", () => {
-    expect(getGradeFromClassName("六年级（3）班")).toBe("六年级")
-    expect(getGradeFromClassName("一年级（1）班")).toBe("一年级")
+    expect(getGradeFromClassName("五年级（1）班")).toBe("五年级")
+    expect(getGradeFromClassName("五年级（2）班")).toBe("五年级")
   })
 
   it("persists settings and exposes only relevant AI preferences", () => {

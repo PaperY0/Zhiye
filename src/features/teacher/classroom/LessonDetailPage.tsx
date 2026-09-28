@@ -12,6 +12,7 @@ import { Dialog } from "../../../components/shared/Dialog"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
 import { StatusChip } from "../../../components/shared/StatusChip"
 import { lessonTopicFromContent } from "../../../services/lessonAnalysis"
+import { progressImportKey } from "../planning/progressImport"
 
 type LessonTab = "transcript" | "recap" | "report" | "progress"
 type SaveResult = { title: string; description: string } | null
@@ -153,7 +154,7 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
             <p className="text-sm font-black text-[#607365]">
               {lesson.className} · {lesson.subject} · {lesson.date}
             </p>
-            <h1 className="mt-2 text-3xl font-black tracking-[-0.045em] text-[#152119] sm:text-4xl">
+            <h1 className="role-page-title">
               {lesson.title}
             </h1>
             <p className="mt-3 text-sm leading-6 text-[#68776c]">
@@ -360,7 +361,7 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
                   value={nextStep}
                 />
               </label>
-              <div className="flex justify-center">
+              <div className="flex flex-wrap justify-center gap-3">
                 <button
                   className="inline-flex items-center gap-2 rounded-full bg-[#24462f] px-5 py-3 font-black text-white"
                   onClick={() => {
@@ -374,6 +375,26 @@ export function LessonDetailPage({ lessonId }: LessonDetailPageProps) {
                 >
                   <Save aria-hidden="true" size={17} />
                   保存课程进度
+                </button>
+                <button
+                  className="inline-flex items-center gap-2 rounded-full border border-[#9ab59b] bg-white px-5 py-3 font-black text-[#294530]"
+                  disabled={!nextStep.trim()}
+                  onClick={() => {
+                    updateLessonProgress(lesson.id, progress, nextStep, chapter)
+                    window.sessionStorage.setItem(progressImportKey, JSON.stringify({
+                      lessonId: lesson.id,
+                      lessonTitle: lesson.title,
+                      nextStep: nextStep.trim(),
+                      chapter: chapter.trim(),
+                      className: lesson.className,
+                      subject: lesson.subject,
+                    }))
+                    navigate({ role: "teacher", page: "planning" })
+                  }}
+                  type="button"
+                >
+                  <BookOpenCheck aria-hidden="true" size={17} />
+                  用下一步新建教案
                 </button>
               </div>
             </div>

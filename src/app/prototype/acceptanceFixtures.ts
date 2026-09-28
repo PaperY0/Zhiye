@@ -45,26 +45,24 @@ const lessons = one(lessonFixtures, acceptanceLessonId).map((lesson) => ({
     "学生：如果只把分子乘二，分数是不是也一样？",
   ],
 }))
-const students = one(studentFixtures, acceptanceStudentId)
+const students = clone(studentFixtures)
 
 const signals: KnowledgeSignal[] = one(
   knowledgeSignalFixtures,
   "signal-unit-calculation",
 ).map((signal) => ({
   ...signal,
-  affectedStudentIds: [acceptanceStudentId],
-  affectedCount: 1,
+  affectedStudentIds: studentFixtures.filter((student) => student.className === signal.className).map((student) => student.id),
+  affectedCount: 5,
 }))
 
 const tasks: Task[] = one(taskFixtures, "task-active-01").map((task) => ({
   ...task,
   audience: {
     ...task.audience,
-    studentIds: [acceptanceStudentId],
+    studentIds: [],
   },
-  completions: task.completions
-    .filter((completion) => completion.studentId === acceptanceStudentId)
-    .map((completion) => clone(completion)),
+  completions: clone(task.completions),
 }))
 
 const conversations: Conversation[] = conversationFixtures

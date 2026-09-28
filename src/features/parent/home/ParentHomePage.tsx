@@ -1,333 +1,85 @@
 import { useState } from "react"
-import {
-  ArrowRight,
-  BookOpenCheck,
-  Heart,
-  MessageCircle,
-  Pause,
-  Play,
-  Sparkles,
-} from "lucide-react"
+import { ArrowRight, BookOpenCheck, CheckCircle2, ClipboardList, MessageCircle, NotebookTabs, Sparkles } from "lucide-react"
 import { usePrototype } from "../../../app/prototype/PrototypeContext"
-import type { AppRoute } from "../../../app/routes"
+import { parentLearningSnapshot, type ParentTaskRow } from "../../../app/prototype/parentLearning"
 import type { ParentSummary } from "../../../app/prototype/types"
+import type { AppRoute } from "../../../app/routes"
 import { GlassSurface } from "../../../components/shared/GlassSurface"
-import { PinyinText } from "../../../components/pinyin/PinyinText"
 
-export type ParentHomePageProps = {
-  onNavigate(route: AppRoute): void
+const BOUND_STUDENT_ID = "student-lin-xiaoyu"
+
+export type ParentHomePageProps = { onNavigate(route: AppRoute): void }
+
+function isPublishedParentSummary(summary: ParentSummary | null, studentId: string): summary is ParentSummary & { source: "deepseek"; confirmedAt: string; evidence: string[] } {
+  return Boolean(summary && summary.studentId === studentId && summary.source === "deepseek" && summary.confirmedAt?.trim() && summary.evidence?.some((item) => item.trim()) && summary.topics.length > 0 && summary.encouragement.trim() && summary.teacherMessage.trim())
 }
 
-function isPublishedParentSummary(
-  summary: ParentSummary | null,
-): summary is ParentSummary & { source: "deepseek"; confirmedAt: string; evidence: string[] } {
-  return Boolean(
-    summary &&
-      summary.source === "deepseek" &&
-      summary.confirmedAt?.trim() &&
-      summary.evidence?.some((item) => item.trim()) &&
-      summary.id.trim() &&
-      summary.studentId.trim() &&
-      summary.studentName.trim() &&
-      summary.className.trim() &&
-      summary.weekLabel.trim() &&
-      summary.topics.length > 0 &&
-      summary.topics.every((topic) => topic.trim()) &&
-      Number.isFinite(summary.voluntaryQuestions) &&
-      Number.isFinite(summary.practiceCount) &&
-      summary.encouragement.trim() &&
-      summary.teacherMessage.trim() &&
-      summary.audioLetter?.title.trim() &&
-      Number.isFinite(summary.audioLetter?.durationSeconds),
-  )
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric" }).format(new Date(value))
+}
+
+function taskStateLabel(row: ParentTaskRow) {
+  if (row.state === "reviewed") return "老师已查看"
+  if (row.state === "submitted") return "孩子已提交"
+  if (row.state === "in-progress") return "正在完成"
+  return "等待开始"
+}
+
+function taskScoreLabel(row: ParentTaskRow) {
+  if (typeof row.score !== "number") return null
+  const automaticallyScored = row.state === "submitted" && Boolean(row.task.sourceQuizId && row.objectiveMax)
+  const prefix = automaticallyScored ? "自动得分" : "已记录成绩"
+  return `${prefix} ${row.score}${automaticallyScored ? ` / ${row.objectiveMax}` : ""} 分`
 }
 
 export function ParentHomePage({ onNavigate }: ParentHomePageProps) {
-  const { parentSummary, students } = usePrototype()
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [audioNotice, setAudioNotice] = useState("")
-  if (students.length === 0) {
-    return (
-      <div className="role-page role-page-narrow">
-      <GlassSurface className="p-8 text-center" weight="sheet">
-        <h1 className="role-page-title"><PinyinText text="还没有绑定学生" /></h1>
-        <p className="role-page-description mx-auto">
-          先联系老师完成孩子绑定，之后这里会显示学习摘要和课堂回响。
-        </p>
-        <button
-          className="role-action-primary mt-5"
-          onClick={() => onNavigate({ role: "parent", page: "messages" })}
-          type="button"
-        >
-          <PinyinText text="联系老师完成绑定" />
-        </button>
-      </GlassSurface>
-      </div>
-    )
-  }
-  if (!isPublishedParentSummary(parentSummary)) {
-    return (
-      <div className="role-page role-page-narrow">
-      <GlassSurface className="p-8 text-center" weight="sheet">
-        <h1 className="role-page-title"><PinyinText text="本周摘要尚未发布" /></h1>
-        <p className="role-page-description mx-auto">
-          教师确认并发布后，这里才会显示可追溯的学习摘要。
-        </p>
-      </GlassSurface>
-      </div>
-    )
-  }
-  const publishedSummary = parentSummary
-  const student = students.find((item) => item.id === parentSummary.studentId)
-  const latestTimelineEvent = student?.timeline.at(-1)
+  const { parentSummary, students, tasks, quizzes, conversations } = usePrototype()
+  const [showAllTasks, setShowAllTasks] = useState(false)
+  const student = students.find((item) => item.id === BOUND_STUDENT_ID)
 
-  function toggleAudioLetter() {
-    const nextPlaying = !isPlaying
-    setIsPlaying(nextPlaying)
-    setAudioNotice(
-      nextPlaying
-        ? `正在模拟播放${publishedSummary.audioLetter.title}`
-        : "模拟语音家书已停止",
-    )
-  }
+  if (!student) return <section className="role-page role-page-narrow"><GlassSurface className="p-8 text-center" weight="sheet"><h1 className="role-page-title">还没有绑定学生</h1><p className="role-page-description mx-auto">请联系老师确认孩子的学习档案。</p><button className="role-action-primary mt-5" onClick={() => onNavigate({ role: "parent", page: "messages" })} type="button">联系老师</button></GlassSurface></section>
 
-  return (
-    <section className="role-page role-page-flow">
-      <header className="role-page-header rounded-[24px] border border-white/75 bg-white/72 p-5 shadow-[0_16px_40px_rgba(51,78,59,0.07)] sm:p-7">
-        <div>
-          <p className="role-page-kicker">
-            <PinyinText text="家庭学习陪伴" />
-          </p>
-          <h1 className="role-page-title">
-            {parentSummary.studentName}的本周学习摘要
-          </h1>
-          <p className="mt-3 text-sm font-bold text-[#5f7064]">
-            {parentSummary.studentName} · {parentSummary.className}
-          </p>
-        </div>
-        <div className="rounded-full border border-white/80 bg-white/65 px-4 py-2 text-sm font-bold text-[#51665a] shadow-sm">
-          {parentSummary.weekLabel}
-        </div>
-      </header>
+  const learning = parentLearningSnapshot(student, tasks, quizzes)
+  const publishedSummary = isPublishedParentSummary(parentSummary, student.id) ? parentSummary : null
+  const parentConversation = conversations.find((item) => item.kind === "parent" && item.boundStudentId === student.id && item.participantIds.includes("parent-lin-xiaoyu"))
+  const latestTeacherMessage = parentConversation?.messages.filter((item) => item.senderRole === "teacher").sort((left, right) => right.sentAt.localeCompare(left.sentAt))[0]
+  const visibleTasks = showAllTasks ? learning.rows : learning.rows.slice(0, 3)
 
-      <GlassSurface aria-label="摘要发布依据" className="p-4" role="region" weight="light">
-        <PinyinText className="text-xs font-black tracking-[0.1em] text-[#718276]" text="已确认的可追溯信息" />
-        <p className="mt-2 text-sm font-bold text-[#405448]">
-          来源：{parentSummary.source} · 教师确认于 {new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(parentSummary.confirmedAt))}
-        </p>
-        <p className="mt-1 text-xs leading-5 text-[#65766b]">依据：{parentSummary.evidence.join("；")}</p>
-      </GlassSurface>
+  return <main className="role-page role-page-flow text-[#1d3023]">
+    <header className="role-page-header"><div><p className="role-page-kicker">家庭学习陪伴</p><h1 className="role-page-title">{student.name}的学习近况</h1><p className="role-page-description">{student.className} · 任务和学习记录更新后，这里会同步呈现。</p></div><span className="rounded-full border border-[#d7e4d7] bg-white/75 px-4 py-2 text-sm font-bold text-[#4f6b55]">已绑定孩子</span></header>
 
-      <div className="app-split-layout">
-        <div className="app-split-primary space-y-5">
-          <GlassSurface
-            aria-label="本周学习主题"
-            className="p-5 sm:p-7"
-            role="region"
-          >
-            <div className="flex items-center gap-3">
-              <span className="grid size-11 place-items-center rounded-2xl bg-[#e4efe0] text-[#4f7658]">
-                <BookOpenCheck aria-hidden="true" size={21} />
-              </span>
-              <div>
-                <p className="text-xs font-black tracking-[0.12em] text-[#718276]">
-                  本周学习主题
-                </p>
-                <h2 className="mt-1 text-xl font-black text-[#1d3023]">
-                  一起看看孩子接触了什么
-                </h2>
-              </div>
-            </div>
-            <ul className="mt-6 grid gap-3 sm:grid-cols-3">
-              {parentSummary.topics.map((topic, index) => (
-                <li
-                  className="rounded-3xl border border-white/80 bg-white/55 px-4 py-5 text-center shadow-sm"
-                  key={topic}
-                >
-                  <span className="text-xs font-bold text-[#819086]">
-                    主题 {index + 1}
-                  </span>
-                  <p className="mt-2 font-black text-[#28402f]">{topic}</p>
-                </li>
-              ))}
-            </ul>
-          </GlassSurface>
-
-          <GlassSurface
-            aria-label="本周学习脚印"
-            className="p-5 sm:p-7"
-            role="region"
-          >
-            <div className="flex items-center gap-3">
-              <span className="grid size-11 place-items-center rounded-2xl bg-[#f7e9bf] text-[#8b6a25]">
-                <Sparkles aria-hidden="true" size={21} />
-              </span>
-              <div>
-                <p className="text-xs font-black tracking-[0.12em] text-[#718276]">
-                  本周学习脚印
-                </p>
-                <h2 className="mt-1 text-xl font-black text-[#1d3023]">
-                  看见主动与坚持
-                </h2>
-              </div>
-            </div>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <article className="rounded-3xl border border-white/80 bg-white/55 p-5">
-                <p className="text-sm font-bold text-[#66776b]">主动提问</p>
-                <p className="mt-2 text-3xl font-black text-[#26472e]">
-                  {parentSummary.voluntaryQuestions} 次
-                </p>
-                <p className="mt-2 text-xs leading-5 text-[#7b8980]">
-                  记录孩子愿意表达疑问的次数，只与自己的学习过程相关。
-                </p>
-              </article>
-              <article className="rounded-3xl border border-white/80 bg-white/55 p-5">
-                <p className="text-sm font-bold text-[#66776b]">完成练习</p>
-                <p className="mt-2 text-3xl font-black text-[#26472e]">
-                  {parentSummary.practiceCount} 次
-                </p>
-                <p className="mt-2 text-xs leading-5 text-[#7b8980]">
-                  用于了解本周练习节奏，不与其他孩子进行比较。
-                </p>
-              </article>
-            </div>
-          </GlassSurface>
-
-          <GlassSurface
-            aria-label="最近学习记录"
-            className="flex items-center justify-between gap-4 p-5 sm:p-7"
-            role="region"
-            weight="light"
-          >
-            <div>
-              <p className="text-xs font-black tracking-[0.12em] text-[#718276]">
-                最近学习记录
-              </p>
-              <p className="mt-2 text-base font-black text-[#28402f]">
-                {latestTimelineEvent?.title ?? "还没有新的学习记录"}
-              </p>
-              <p className="mt-1 text-sm font-medium text-[#718078]">
-                {latestTimelineEvent?.detail ?? "孩子完成学习后，这里会显示一条温和的记录。"}
-              </p>
-            </div>
-            <span className="shrink-0 rounded-full bg-[#e5efe1] px-3 py-2 text-xs font-black text-[#4e7358]">
-              {latestTimelineEvent ? "已记录" : "等待记录"}
-            </span>
-          </GlassSurface>
-
-          <GlassSurface
-            aria-label="给家长的陪伴建议"
-            className="overflow-hidden p-0"
-            role="region"
-            weight="sheet"
-          >
-            <div className="grid gap-0 sm:grid-cols-[auto_minmax(0,1fr)]">
-              <div className="grid min-h-40 place-items-center bg-[linear-gradient(145deg,rgba(231,242,225,.95),rgba(249,235,198,.72))] p-6">
-                <span className="grid size-16 place-items-center rounded-[1.6rem] bg-white/70 text-[#58745e] shadow-sm">
-                  <Heart aria-hidden="true" size={29} />
-                </span>
-              </div>
-              <div className="p-6 sm:p-7">
-                <p className="text-xs font-black tracking-[0.12em] text-[#718276]">
-                  给家长的陪伴建议
-                </p>
-                <h2 className="mt-2 text-xl font-black text-[#1d3023]">
-                  先肯定孩子愿意开口
-                </h2>
-                <p className="mt-4 text-base font-bold leading-8 text-[#405448]">
-                  {parentSummary.encouragement}
-                </p>
-              </div>
-            </div>
-          </GlassSurface>
-        </div>
-
-        <aside className="app-split-rail app-split-rail-scroll space-y-5">
-          <GlassSurface
-            aria-label="李老师留言"
-            className="p-5 sm:p-6"
-            role="region"
-            weight="sheet"
-          >
-            <div className="flex items-center gap-3">
-              <span className="grid size-11 place-items-center rounded-2xl bg-[#e8eee4] text-[#56705d]">
-                <MessageCircle aria-hidden="true" size={21} />
-              </span>
-              <div>
-                <p className="text-xs font-black tracking-[0.12em] text-[#718276]">
-                  李老师留言
-                </p>
-                <h2 className="mt-1 font-black text-[#1d3023]">本周陪伴重点</h2>
-              </div>
-            </div>
-            <p className="mt-5 rounded-3xl border border-white/80 bg-white/55 p-5 text-sm font-bold leading-7 text-[#405448]">
-              {parentSummary.teacherMessage}
-            </p>
-          </GlassSurface>
-
-          <GlassSurface className="p-5 sm:p-6">
-            <p className="text-xs font-black tracking-[0.12em] text-[#718276]">
-              模拟音频家书
-            </p>
-            <h2 className="mt-2 text-xl font-black text-[#1d3023]">
-              {parentSummary.audioLetter.title}
-            </h2>
-            <p className="mt-2 text-sm font-bold text-[#687a6e]">
-              {parentSummary.audioLetter.durationSeconds} 秒 · 模拟音频
-            </p>
-            <button
-              aria-label={isPlaying ? "停止模拟语音家书" : "播放模拟语音家书"}
-              className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#c9e2c8] bg-[#dcefd9] px-5 font-black text-[#355a3d] shadow-[0_12px_28px_rgba(84,126,87,.12)]"
-              onClick={toggleAudioLetter}
-              type="button"
-            >
-              {isPlaying ? (
-                <Pause aria-hidden="true" size={18} />
-              ) : (
-                <Play aria-hidden="true" size={18} />
-              )}
-              {isPlaying ? "停止播放" : "播放语音家书"}
-            </button>
-            <p className="mt-3 text-xs leading-5 text-[#7b8980]">
-              此处仅演示播放状态，不会播放、采集或上传真实音频。
-            </p>
-            {audioNotice ? (
-              <p
-                className="mt-3 text-sm font-bold text-[#48614f]"
-                role="status"
-              >
-                {audioNotice}
-              </p>
-            ) : null}
-          </GlassSurface>
-
-          <GlassSurface
-            aria-label="联系老师"
-            className="p-5 sm:p-6"
-            role="region"
-          >
-            <p className="text-xs font-black tracking-[0.12em] text-[#718276]">
-              联系老师
-            </p>
-            <h2 className="mt-2 text-xl font-black text-[#1d3023]">
-              有需要时，和李老师聊一聊
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-[#65766b]">
-              仅展示与林晓雨学习陪伴相关的教师沟通，不提供班级或同学的私人信息。
-            </p>
-            <button
-              className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#496a51]/20 bg-[#edf4ea] px-5 font-black text-[#315139]"
-              onClick={() => onNavigate({ role: "parent", page: "messages" })}
-              type="button"
-            >
-              联系李老师
-              <ArrowRight aria-hidden="true" size={18} />
-            </button>
-          </GlassSurface>
-        </aside>
-      </div>
+    <section aria-labelledby="parent-live-title" className="rounded-[26px] border border-[#dce7dc] bg-white p-5 shadow-[0_12px_32px_rgba(49,75,55,.05)] sm:p-7">
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black tracking-[.12em] text-[#68806d]">与学生端同步</p><h2 className="mt-1 text-xl font-black" id="parent-live-title">当前学习动态</h2><p className="mt-2 text-sm leading-6 text-[#68796d]">只统计与{student.name}有关的已发布任务和已记录的学习活动。</p></div><span className="rounded-full bg-[#eaf3e8] px-3 py-2 text-xs font-black text-[#426b4b]">实时更新</span></div>
+      <dl className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[
+          { label: "待完成任务", value: learning.pendingCount, suffix: "项", color: "#bf9554" },
+          { label: "已提交任务", value: learning.completedCount, suffix: "项", color: "#4d7958" },
+          { label: "已解答疑问", value: learning.answeredInquiryCount, suffix: "次", color: "#6b8d78" },
+          { label: "复习记录", value: learning.mistakeCount, suffix: "项", color: "#8a9b6d" },
+        ].map((metric) => <div className="rounded-2xl border border-[#e3ebe2] bg-[#fafcf9] p-4" key={metric.label}><dt className="text-xs font-bold text-[#67796b]">{metric.label}</dt><dd className="mt-2 text-2xl font-black tabular-nums text-[#203b28]" style={{ borderLeft: `3px solid ${metric.color}`, paddingLeft: 10 }}>{metric.value} <span className="text-xs font-semibold">{metric.suffix}</span></dd></div>)}
+      </dl>
     </section>
-  )
+
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,1fr)]">
+      <section aria-labelledby="parent-tasks-title" className="min-w-0 rounded-[26px] border border-[#dce7dc] bg-white p-5 sm:p-7">
+        <div className="flex items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#e7f0e4] text-[#4c7454]"><ClipboardList aria-hidden="true" size={20} /></span><div><p className="text-xs font-black tracking-[.12em] text-[#718276]">教师发布 → 学生完成</p><h2 className="mt-1 text-xl font-black" id="parent-tasks-title">孩子的任务</h2></div></div>
+        {learning.rows.length ? <ol className="mt-5 grid gap-3">{visibleTasks.map((row) => <li className="rounded-2xl border border-[#e2ebe0] bg-[#fbfcfa] p-4" key={row.task.id}><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><h3 className="font-black leading-6">{row.task.title}</h3><p className="mt-1 text-xs text-[#78877c]">{formatDate(row.task.createdAt)} 发布 · {row.task.type === "quiz" ? "三题自检" : "学习任务"}</p></div><span className={`rounded-full px-3 py-1.5 text-xs font-black ${row.state === "submitted" || row.state === "reviewed" ? "bg-[#e4f1e4] text-[#3f704a]" : "bg-[#f7efdd] text-[#866d3e]"}`}>{taskStateLabel(row)}</span></div>{taskScoreLabel(row) && <p className="mt-3 inline-flex items-center gap-1.5 text-sm font-black text-[#3e6749]"><CheckCircle2 aria-hidden="true" size={16} />{taskScoreLabel(row)}</p>}</li>)}</ol> : <p className="mt-5 rounded-2xl bg-[#f5f8f3] p-5 text-sm text-[#6b7b6e]">老师发布任务后，这里会显示任务进展。</p>}
+        {learning.rows.length > 3 && <button aria-expanded={showAllTasks} className="mt-3 min-h-11 text-sm font-black text-[#3e6749]" onClick={() => setShowAllTasks((current) => !current)} type="button">{showAllTasks ? "收起任务" : `查看全部 ${learning.rows.length} 项任务`}<ArrowRight aria-hidden="true" className="ml-1 inline" size={15} /></button>}
+      </section>
+
+      <div className="grid content-start gap-5">
+        <section aria-label="学习支持" className="rounded-[26px] border border-[#dce7dc] bg-white p-5 sm:p-6"><div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-2xl bg-[#e9efe5] text-[#5b795e]"><Sparkles aria-hidden="true" size={20} /></span><div><p className="text-xs font-black text-[#718276]">孩子主动提出的问题</p><h2 className="mt-1 text-lg font-black">学习支持</h2></div></div><p className="mt-4 text-sm leading-6 text-[#5f7365]">已记录 {learning.inquiryCount} 次任务询问，其中 {learning.answeredInquiryCount} 次已获得 AI 解答。</p>{learning.latestInquiryFocus && <p className="mt-3 rounded-xl bg-[#eff5ed] px-4 py-3 text-sm font-bold text-[#41634a]">最近关注：{learning.latestInquiryFocus}</p>}<p className="mt-3 text-xs leading-5 text-[#819084]">这里只显示学习关注点，不展示孩子的完整提问与 AI 对话。</p></section>
+        <section aria-label="复习方向" className="rounded-[26px] border border-[#dce7dc] bg-white p-5 sm:p-6"><div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-2xl bg-[#f4eddb] text-[#937548]"><NotebookTabs aria-hidden="true" size={20} /></span><h2 className="text-lg font-black">可以陪孩子回顾</h2></div><p className="mt-4 text-sm leading-6 text-[#627467]">{learning.latestMistakeTopic ? `最近的复习主题：${learning.latestMistakeTopic}` : "目前还没有新的复习记录。"}</p><p className="mt-2 text-xs leading-5 text-[#819084]">复习记录来自学生端；具体判断请以孩子的作答和老师反馈为准。</p></section>
+      </div>
+    </div>
+
+    <section aria-labelledby="parent-summary-title" className="rounded-[26px] border border-[#dce7dc] bg-white p-5 sm:p-7"><div className="flex items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#e7f0e4] text-[#4c7454]"><BookOpenCheck aria-hidden="true" size={20} /></span><div><p className="text-xs font-black tracking-[.12em] text-[#718276]">教师审核后发布</p><h2 className="mt-1 text-xl font-black" id="parent-summary-title">已确认的学习摘要</h2></div></div>{publishedSummary ? <><p className="mt-4 text-sm text-[#687a6d]">{publishedSummary.weekLabel} · 教师确认于 {formatDate(publishedSummary.confirmedAt)}</p><div className="mt-4 flex flex-wrap gap-2">{publishedSummary.topics.map((topic) => <span className="rounded-full bg-[#edf4ea] px-3 py-2 text-xs font-black text-[#496d51]" key={topic}>{topic}</span>)}</div><p className="mt-5 text-base font-semibold leading-8 text-[#3e5644]">{publishedSummary.encouragement}</p><div className="mt-4 rounded-2xl bg-[#f3f7f1] p-4"><p className="text-xs font-black text-[#6a806f]">李老师的陪伴建议</p><p className="mt-2 text-sm font-semibold leading-7 text-[#425a49]">{publishedSummary.teacherMessage}</p></div><details className="mt-4 text-xs text-[#6f8174]"><summary className="cursor-pointer font-bold">查看摘要依据</summary><p className="mt-2 leading-5">{publishedSummary.evidence.join("；")}</p></details></> : <p className="mt-5 rounded-2xl bg-[#f5f8f3] p-5 text-sm leading-6 text-[#68796d]">本次摘要还在等待教师确认。上方的任务和学习动态会继续更新。</p>}</section>
+
+    <div className="grid gap-5 lg:grid-cols-2">
+      <section aria-label="最近学习记录" className="rounded-[26px] border border-[#dce7dc] bg-white p-5 sm:p-6"><h2 className="text-lg font-black">最近学习记录</h2>{learning.recentActivity.length ? <ol className="mt-4 grid gap-3">{learning.recentActivity.slice(0, 4).map((event) => <li className="flex items-start justify-between gap-3 border-b border-[#edf1ea] pb-3 text-sm last:border-0 last:pb-0" key={event.id}><span className="min-w-0"><strong className="block text-[#2c4833]">{event.title}</strong><span className="mt-1 block text-xs text-[#748478]">{event.detail}</span></span><time className="shrink-0 text-xs text-[#819084]" dateTime={event.at}>{formatDate(event.at)}</time></li>)}</ol> : <p className="mt-4 text-sm text-[#6b7b6e]">还没有新的学习记录。</p>}</section>
+      <section aria-label="联系老师" className="rounded-[26px] border border-[#dce7dc] bg-white p-5 sm:p-6"><div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-2xl bg-[#e9efe5] text-[#5b795e]"><MessageCircle aria-hidden="true" size={20} /></span><h2 className="text-lg font-black">与李老师保持联系</h2></div><p className="mt-4 rounded-2xl bg-[#f4f7f2] p-4 text-sm leading-7 text-[#506654]">{latestTeacherMessage?.body ?? "老师的最新留言会显示在这里。"}</p><p className="mt-3 text-xs leading-5 text-[#819084]">只展示与{student.name}绑定的家校沟通，不显示其他学生的信息。</p><button className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#e5f1e3] px-4 text-sm font-black text-[#345b3d]" onClick={() => onNavigate({ role: "parent", page: "messages" })} type="button">查看家校消息<ArrowRight aria-hidden="true" size={16} /></button></section>
+    </div>
+  </main>
 }
 
 export default ParentHomePage

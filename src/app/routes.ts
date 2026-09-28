@@ -15,11 +15,15 @@ export type AppRoute = {
   studentId: string
 } | {
   role: "student"
-  page: "home" | "tutoring" | "learning" | "mistakes" | "tasks" | "messages"
+  page: "home" | "tutoring" | "learning" | "mistakes" | "tasks" | "ask" | "messages"
 } | {
   role: "student"
   page: "review"
   lessonId: string
+} | {
+  role: "student"
+  page: "task-inquiry"
+  taskId: string
 } | {
   role: "parent"
   page: "home" | "messages"
@@ -30,7 +34,7 @@ export type AppRoute = {
 
 type RoleRoute<R extends Role> = Extract<AppRoute, { role: R }>
 type TeacherStaticPage = Exclude<RoleRoute<"teacher">["page"], "lesson-detail" | "student-detail">
-type StudentStaticPage = Exclude<RoleRoute<"student">["page"], "review">
+type StudentStaticPage = Exclude<RoleRoute<"student">["page"], "review" | "task-inquiry">
 
 const teacherPages = [
   "workspace",
@@ -49,6 +53,7 @@ const studentPages = [
   "learning",
   "mistakes",
   "tasks",
+  "ask",
   "messages",
 ] as const satisfies readonly StudentStaticPage[]
 
@@ -125,6 +130,11 @@ export function parseHash(hash: string): AppRoute {
     }
 
     if (
+      segments.length === 3 && page === "ask" && identifier
+    ) {
+      return { role, page: "task-inquiry", taskId: identifier }
+    }
+    if (
       segments.length === 3 &&
       page === "review" &&
       identifier !== undefined &&
@@ -167,6 +177,9 @@ export function formatRoute(route: AppRoute): string {
   }
 
   if (route.role === "student") {
+    if (route.page === "task-inquiry") {
+      return `#/student/ask/${encodeURIComponent(route.taskId)}`
+    }
     if (route.page === "review") {
       return `#/student/review/${encodeURIComponent(route.lessonId)}`
     }

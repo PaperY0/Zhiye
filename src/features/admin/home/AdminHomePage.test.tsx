@@ -23,8 +23,9 @@ describe("AdminHomePage", () => {
       screen.getByRole("heading", { name: "学校管理概览" }),
     ).toBeInTheDocument()
     expect(screen.getByText("知野实验学校")).toBeInTheDocument()
-    expect(screen.getAllByText("1", { selector: "strong" })).toHaveLength(2)
-    expect(screen.getByText("12", { selector: "strong" })).toBeInTheDocument()
+    expect(screen.getByText("1", { selector: "strong" })).toBeInTheDocument()
+    expect(screen.getByText("2", { selector: "strong" })).toBeInTheDocument()
+    expect(screen.getByText("10", { selector: "strong" })).toBeInTheDocument()
     expect(
       screen.getByRole("region", { name: "保护性反馈联系人" }),
     ).toHaveTextContent("王老师 · 德育负责人")

@@ -29,7 +29,9 @@ describe("prototype fixtures", () => {
     expect(lessonFixtures.map((lesson) => lesson.id)).toEqual(
       expect.arrayContaining(["lesson-fractions", "lesson-units"]),
     )
-    expect(studentFixtures).toHaveLength(12)
+    expect(studentFixtures).toHaveLength(10)
+    expect(studentFixtures.filter((student) => student.className === "五年级（1）班")).toHaveLength(5)
+    expect(studentFixtures.filter((student) => student.className === "五年级（2）班")).toHaveLength(5)
     expect(studentFixtures.some((student) => student.id === "student-lin-xiaoyu")).toBe(true)
 
     expect(knowledgeSignalFixtures).toHaveLength(3)
@@ -124,17 +126,72 @@ describe("PrototypeProvider", () => {
     })
   })
 
+  it("repairs stale task stages from saved student submissions on load", () => {
+    localStorage.clear()
+    localStorage.setItem("zhiye-prototype-state-v1", JSON.stringify({ tasks: [
+      { ...taskFixtures[0], id: "saved-review", status: "active", completions: [{ studentId: "student-lin-xiaoyu", status: "submitted" }] },
+      { ...taskFixtures[0], id: "saved-completed", status: "active", completions: [{ studentId: "student-lin-xiaoyu", status: "reviewed" }] },
+    ] }))
+    const persistedWrapper = ({ children }: { children: ReactNode }) => <PrototypeProvider persist>{children}</PrototypeProvider>
+    const { result, unmount } = renderHook(() => usePrototype(), { wrapper: persistedWrapper })
+    expect(result.current.tasks.map((task) => task.status)).toEqual(["review", "completed"])
+    unmount()
+    localStorage.clear()
+  })
+
+  it("migrates the old demo roster without removing saved classroom work", () => {
+    localStorage.clear()
+    localStorage.setItem("zhiye-prototype-state-v1", JSON.stringify({
+      students: [
+        ...studentFixtures.map((student) => ({ ...student, className: "五年级（2）班" })),
+        { ...studentFixtures[0], id: "student-he-yuchen", name: "何雨辰" },
+        { ...studentFixtures[0], id: "student-tang-ruoxi", name: "唐若曦" },
+      ],
+      tasks: [{ ...taskFixtures[1], completions: [
+        { studentId: "student-lin-xiaoyu", status: "submitted" },
+        { studentId: "student-guo-haoran", status: "submitted" },
+        { studentId: "student-he-yuchen", status: "submitted" },
+      ] }],
+    }))
+    const persistedWrapper = ({ children }: { children: ReactNode }) => <PrototypeProvider persist>{children}</PrototypeProvider>
+    const { result, unmount } = renderHook(() => usePrototype(), { wrapper: persistedWrapper })
+    expect(result.current.students).toHaveLength(10)
+    expect(result.current.students.filter((student) => student.className === "五年级（1）班")).toHaveLength(5)
+    expect(result.current.tasks[0].completions.map((completion) => completion.studentId)).toEqual(["student-lin-xiaoyu"])
+    unmount()
+    localStorage.clear()
+  })
+
+  it("expands a persisted single-student acceptance demo into two five-student classes", () => {
+    localStorage.clear()
+    localStorage.setItem("zhiye-prototype-state-acceptance-v1", JSON.stringify({
+      students: [studentFixtures[0]],
+      tasks: [{ ...taskFixtures[1], status: "completed", completions: [{ studentId: "student-lin-xiaoyu", status: "reviewed" }] }],
+      plans: [{ ...planFixtures[0], evidence: ["12 名学生在“单位换算 × 计算”步骤停下来"] }],
+    }))
+    const acceptanceWrapper = ({ children }: { children: ReactNode }) => <PrototypeProvider persist dataset="acceptance">{children}</PrototypeProvider>
+    const { result, unmount } = renderHook(() => usePrototype(), { wrapper: acceptanceWrapper })
+    expect(result.current.students).toHaveLength(10)
+    expect(result.current.students.filter((student) => student.className === "五年级（1）班")).toHaveLength(5)
+    expect(result.current.students.filter((student) => student.className === "五年级（2）班")).toHaveLength(5)
+    expect(result.current.tasks[0].completions).toHaveLength(5)
+    expect(result.current.tasks[0].status).toBe("active")
+    expect(result.current.plans[0].evidence).toEqual(["5 名学生在“单位换算 × 计算”步骤停下来"])
+    unmount()
+    localStorage.clear()
+  })
+
   it("uses the selected class grade for a new classroom recording", () => {
     const { result } = renderHook(() => usePrototype(), { wrapper })
     let lessonId = ""
 
     act(() => {
-      lessonId = result.current.createLesson({ className: "六年级（3）班" })
+      lessonId = result.current.createLesson({ className: "五年级（1）班" })
     })
 
     expect(result.current.lessons.find((lesson) => lesson.id === lessonId)).toMatchObject({
-      grade: "六年级",
-      className: "六年级（3）班",
+      grade: "五年级",
+      className: "五年级（1）班",
     })
   })
 
@@ -510,7 +567,7 @@ describe("PrototypeProvider", () => {
       chapter: "单位换算",
       objective: "区分乘除步骤",
       context: "校园菜园测量",
-      evidence: ["12 名学生在计算步骤停下来"],
+      evidence: ["5 名学生在计算步骤停下来"],
       outline: ["回顾单位关系", "示范换算", "分层练习"],
       examples: ["2.5 米等于多少厘米"],
       misconceptions: ["只换单位名称，不换数值"],

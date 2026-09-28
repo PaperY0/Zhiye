@@ -24,12 +24,13 @@ export type TeacherSettings = {
   hideStudentRankings: boolean
 }
 
-const primaryGrades = ["一年级", "二年级", "三年级", "四年级", "五年级", "六年级"] as const
+export const schoolClasses = ["五年级（1）班", "五年级（2）班"] as const
 
-export const primaryClassGroups = primaryGrades.map((grade) => ({
-  grade,
-  classes: [1, 2, 3].map((classNumber) => `${grade}（${classNumber}）班`),
-}))
+export const primaryClassGroups = [{ grade: "五年级", classes: [...schoolClasses] }]
+
+export function isSchoolClass(value: string): value is typeof schoolClasses[number] {
+  return schoolClasses.includes(value as typeof schoolClasses[number])
+}
 
 export function getGradeFromClassName(className: string) {
   return className.match(/^(.+?年级)/)?.[1] ?? "未设置年级"
@@ -69,9 +70,12 @@ function readSettings(): TeacherSettings {
   if (raw === cachedRaw) return cachedSettings
   cachedRaw = raw
   try {
-    cachedSettings = raw
+    const settings = raw
       ? { ...defaultTeacherSettings, ...(JSON.parse(raw) as Partial<TeacherSettings>) }
       : defaultTeacherSettings
+    cachedSettings = isSchoolClass(settings.currentClass)
+      ? settings
+      : { ...settings, currentClass: defaultTeacherSettings.currentClass }
   } catch {
     cachedSettings = defaultTeacherSettings
   }
@@ -88,7 +92,10 @@ export function getTeacherSettings() {
 }
 
 export function saveTeacherSettings(settings: TeacherSettings) {
-  window.localStorage.setItem(teacherSettingsStorageKey, JSON.stringify(settings))
+  window.localStorage.setItem(teacherSettingsStorageKey, JSON.stringify({
+    ...settings,
+    currentClass: isSchoolClass(settings.currentClass) ? settings.currentClass : defaultTeacherSettings.currentClass,
+  }))
   emitChange()
 }
 

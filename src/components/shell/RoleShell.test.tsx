@@ -119,7 +119,7 @@ describe("RoleShell", () => {
       {
         route: { role: "parent", page: "home" },
         navigationName: "家长端主导航",
-        currentLabel: "学习摘要",
+        currentLabel: "学习近况",
         roleLabel: "家长端",
         expectPinyin: true,
       },
@@ -223,8 +223,8 @@ describe("RoleShell", () => {
         "消息",
         "设置",
       ],
-      student: ["首页", "任务", "错题本", "消息"],
-      parent: ["学习摘要", "联系老师"],
+      student: ["首页", "任务", "询问", "错题本", "消息"],
+      parent: ["学习近况", "联系老师"],
       admin: ["管理概览", "保护性反馈", "审计记录", "学校设置"],
     }
     const homeRoutes: Record<keyof typeof expectedLabels, AppRoute> = {

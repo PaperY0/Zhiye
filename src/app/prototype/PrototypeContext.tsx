@@ -197,10 +197,17 @@ function cloneFixture<T>(fixture: T): T {
   return structuredClone(fixture)
 }
 
-function formatLocalDate(date: Date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
+function formatSchoolDate(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date)
+  const value = (type: "year" | "month" | "day") => parts.find((part) => part.type === type)?.value
+  const year = value("year")
+  const month = value("month")
+  const day = value("day")
   return `${year}-${month}-${day}`
 }
 
@@ -391,7 +398,7 @@ export function PrototypeProvider({
             subject: "数学",
             grade: getGradeFromClassName(className),
             className,
-            date: formatLocalDate(new Date()),
+            date: formatSchoolDate(new Date()),
             durationMinutes: 0,
             status: "scheduled",
             syncStatus: "local",
@@ -515,7 +522,7 @@ export function PrototypeProvider({
                   ...lesson,
                   title: title.trim(),
                   date: lesson.id.startsWith("lesson-recording-")
-                    ? formatLocalDate(new Date())
+                    ? formatSchoolDate(new Date())
                     : lesson.date,
                   transcript,
                   recap,

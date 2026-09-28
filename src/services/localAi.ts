@@ -41,10 +41,20 @@ export type QuestionImageRecognition = {
 
 const baseUrl = import.meta.env.VITE_LOCAL_AI_BASE_URL ?? "http://127.0.0.1:8787"
 
+export function isUnavailableLoopbackAi(targetUrl: string, pageUrl: string): boolean {
+  const target = new URL(targetUrl, pageUrl)
+  const page = new URL(pageUrl)
+  const loopback = (hostname: string) => hostname === "127.0.0.1" || hostname === "localhost" || hostname === "[::1]"
+  return loopback(target.hostname) && !loopback(page.hostname)
+}
+
 export async function requestJson<T>(
   input: string,
   init?: RequestInit,
 ): Promise<T> {
+  if (typeof window !== "undefined" && isUnavailableLoopbackAi(input, window.location.href)) {
+    throw new Error("公开演示版暂不提供 AI 功能；任务和记录仅保存在当前浏览器。")
+  }
   let response: Response
   try {
     response = await fetch(input, init)

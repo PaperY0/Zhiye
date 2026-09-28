@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from "vitest"
-import { generateDraft } from "./localAi"
+import { generateDraft, isUnavailableLoopbackAi } from "./localAi"
 
 describe("local AI client", () => {
+  it("blocks a public site from calling a visitor's loopback service", () => {
+    expect(isUnavailableLoopbackAi("http://127.0.0.1:8787/generate", "https://demo.example/#/student")).toBe(true)
+    expect(isUnavailableLoopbackAi("http://localhost:8787/analyze", "https://demo.example/")).toBe(true)
+    expect(isUnavailableLoopbackAi("http://127.0.0.1:8787/generate", "http://127.0.0.1:8443/")).toBe(false)
+    expect(isUnavailableLoopbackAi("https://ai.example/generate", "https://demo.example/")).toBe(false)
+  })
+
   it("does not fabricate a draft when local AI is offline", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")))
 

@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import subprocess
@@ -11,6 +12,19 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
+from pydantic import BaseModel, Field
+
+from public_access import (
+    WINDOW_SECONDS,
+    allowed_origins,
+    invite_limiter,
+    invite_matches,
+    issue_token,
+    public_mode,
+    public_settings,
+    request_limiter,
+    verify_token,
+)
 
 from generation import (
     DeepSeekNotConfiguredError,
@@ -29,27 +43,42 @@ from schemas import (
 )
 
 app = FastAPI(title="Zhiye local lesson AI")
-ALLOWED_ORIGINS = {"http://127.0.0.1:8443", "http://localhost:8443"}
+ALLOWED_ORIGINS = allowed_origins()
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_AUDIO_BYTES = 50 * 1024 * 1024
+asr_model = None
+ocr_engine = None
+recap_jobs: dict[str, object] = {}
+recap_job_owners: dict[str, str] = {}
+
+
+@app.middleware("http")
+async def reject_untrusted_browser_origins(request: Request, call_next):
+    origin = request.headers.get("origin")
+    if origin and origin not in ALLOWED_ORIGINS:
+        return JSONResponse(status_code=403, content={"detail": "此 AI 服务不接受该站点的请求"})
+    if public_mode() and request.method != "OPTIONS" and request.url.path not in {"/health", "/auth/invite"}:
+        try:
+            public_settings()
+        except RuntimeError:
+            return JSONResponse(status_code=503, content={"detail": "公网 AI 尚未完成安全配置"})
+        authorization = request.headers.get("authorization", "")
+        token = authorization[7:] if authorization.startswith("Bearer ") else ""
+        if not verify_token(token):
+            return JSONResponse(status_code=401, content={"detail": "请先输入有效的邀请码"})
+        token_key = hashlib.sha256(token.encode()).hexdigest()
+        request.state.ai_session = token_key
+        if not request_limiter.allow("global", 120, WINDOW_SECONDS) or not request_limiter.allow(f"token:{token_key}", 30, WINDOW_SECONDS):
+            return JSONResponse(status_code=429, content={"detail": "演示 AI 调用次数已达上限，请稍后再试"}, headers={"Retry-After": "3600"})
+    return await call_next(request)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=sorted(ALLOWED_ORIGINS),
     allow_methods=["POST", "GET"],
     allow_headers=["*"],
 )
-
-asr_model = None
-ocr_engine = None
-recap_jobs: dict[str, object] = {}
-
-
-@app.middleware("http")
-async def reject_untrusted_browser_origins(request: Request, call_next):
-    origin = request.headers.get("origin")
-    if request.method not in {"GET", "HEAD", "OPTIONS"} and origin and origin not in ALLOWED_ORIGINS:
-        return JSONResponse(status_code=403, content={"detail": "此本地 AI 服务仅接受知野本机页面的请求"})
-    return await call_next(request)
 
 
 async def read_upload(upload: UploadFile, limit: int, label: str) -> bytes:
@@ -239,7 +268,35 @@ def _parse_json_object(content: str) -> dict:
 
 @app.get("/health")
 def health():
-    return {"ok": True, "asr": "local-funasr", "deepseek": bool(os.getenv("DEEPSEEK_API_KEY"))}
+    if public_mode():
+        try:
+            public_settings()
+        except RuntimeError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+        if not os.getenv("DEEPSEEK_API_KEY"):
+            raise HTTPException(status_code=503, detail="DeepSeek 尚未配置")
+    return {"ok": True, "asr": "local-funasr", "deepseek": bool(os.getenv("DEEPSEEK_API_KEY")), "inviteRequired": public_mode()}
+
+
+class InviteRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=128)
+
+
+@app.post("/auth/invite")
+def exchange_invite(payload: InviteRequest, request: Request):
+    if not public_mode():
+        raise HTTPException(status_code=404, detail="本地 AI 无需邀请码")
+    try:
+        public_settings()
+    except RuntimeError as error:
+        raise HTTPException(status_code=503, detail="公网 AI 尚未完成安全配置") from error
+    client = request.client.host if request.client else "unknown"
+    if not invite_limiter.allow("exchange:global", 100, 15 * 60) or not invite_limiter.allow(f"exchange:{client}", 10, 15 * 60):
+        raise HTTPException(status_code=429, detail="邀请码尝试次数过多，请稍后再试", headers={"Retry-After": "900"})
+    if not invite_matches(payload.code):
+        raise HTTPException(status_code=401, detail="邀请码不正确")
+    token, expires_at = issue_token()
+    return JSONResponse(content={"token": token, "expiresAt": expires_at}, headers={"Cache-Control": "no-store"})
 
 
 @app.post("/generate")
@@ -304,6 +361,7 @@ async def analyze(
 
 @app.post("/recap-jobs")
 async def create_recap_job(
+    request: Request,
     goal: str = Form(...),
     audio: UploadFile | None = File(default=None),
     transcript: str | None = Form(default=None),
@@ -333,6 +391,8 @@ async def create_recap_job(
             raise HTTPException(status_code=422, detail="请提供 audio 或 transcript")
         job = run_recap_job(new_recap_job(goal), evidence)
         recap_jobs[job.id] = job
+        if public_mode():
+            recap_job_owners[job.id] = request.state.ai_session
         return job.model_dump(by_alias=False)
     except HTTPException:
         raise
@@ -347,9 +407,9 @@ async def create_recap_job(
 
 
 @app.post("/recap-jobs/{job_id}/retry")
-async def retry_recap_job(job_id: str, step_key: str = Form(...)):
+async def retry_recap_job(request: Request, job_id: str, step_key: str = Form(...)):
     job = recap_jobs.get(job_id)
-    if job is None:
+    if job is None or (public_mode() and recap_job_owners.get(job_id) != request.state.ai_session):
         raise HTTPException(status_code=404, detail="复盘任务不存在或已过期")
     try:
         recovered = retry_recap_step(job, step_key)

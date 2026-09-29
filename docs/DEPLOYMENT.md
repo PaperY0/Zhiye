@@ -8,7 +8,7 @@
 
 ## 已发布的公开演示版
 
-地址：[zhiye-demo.vercel.app](https://zhiye-demo.vercel.app)。它只托管静态前端；每位访客的任务、成绩与消息只保存在自己的浏览器中，不跨设备同步。公网演示中的 AI 请求会在访问本机地址前停止，并显示说明；本地 8443/8787 的 AI 流程仍可用。请勿在公开演示中输入真实学生资料。
+地址：[zhiye-demo.vercel.app](https://zhiye-demo.vercel.app)。它只托管静态前端；每位访客的任务、成绩与消息只保存在自己的浏览器中，不跨设备同步。当前线上版本的 AI 尚未接通；下述 Render 服务验收成功后，才把 Vercel 构建指向该服务。请勿在公开演示中输入真实学生资料。
 
 当前 Vercel 项目由 CLI 发布，尚未连接 GitHub 仓库。提交和推送源码后，在已登录该 Vercel 项目的机器上运行：
 
@@ -17,6 +17,25 @@
 ```
 
 脚本构建前端，把 `dist/` 关联到现有的 `zhiye-demo` 项目并发布生产版本。它会移除 Vercel CLI 临时写入构建目录的身份文件。发布后检查生产地址和教师、学生、家长入口；仅推送 GitHub 不会自动更新演示站。
+
+## 公网演示 AI：Render 常驻服务
+
+仓库根目录的 `render.yaml` 定义了新加坡区域的 Docker Web Service，计划为 `1c-2g`（1 CPU、2 GB 内存）。这是付费常驻实例；[Render 当前标价](https://render.com/pricing)约 **US$0.20/小时**，持续整月运行约 **US$146/月**，另有 DeepSeek 按量费用。完整录音转写和 OCR 模型会下载到实例的临时文件系统，首次调用较慢，重部署后需重新下载。2 GB 是否足够同时运行模型仍须以 Render 实测内存为准；如遇内存溢出，要升级实例规格并重新估算费用。
+
+1. 在 Render Dashboard 以 GitHub 账号连接 `PaperY0/Zhiye`，从根目录 `render.yaml` 创建 Blueprint。创建时按提示在 Render 密钥输入框填写 `ZHIYE_AI_INVITE_CODE`（至少 16 字符）与 `DEEPSEEK_API_KEY`；不要把它们写入仓库或前端环境变量。`ZHIYE_AI_SESSION_SECRET` 由 Render 自动生成。服务自动部署关闭，避免每次推送自动重启和重复下载模型。
+2. 等待 Docker 构建与 `/health` 检查通过，记下服务的 HTTPS 地址，例如 `https://zhiye-ai.onrender.com`。若 Docker 构建、模型首次下载或内存检查失败，不发布带 AI 的前端。
+3. 在**本机、未提交**的项目根目录 `.env.production.local` 写入以下非密钥构建参数，使用实际 Render 地址替换示例。`VITE_` 变量会进入公开的浏览器包，绝不能放 DeepSeek Key 或邀请码。
+
+   ```dotenv
+   VITE_LOCAL_AI_BASE_URL=https://zhiye-ai.onrender.com
+   VITE_LOCAL_AI_URL=https://zhiye-ai.onrender.com/analyze
+   VITE_AI_INVITE_REQUIRED=true
+   ```
+
+4. 先从公网验证 `/health`，在浏览器演示站检查邀请码错误和正确两种情况，再分别试文字问答、题图识别和短录音转写。邀请码换取的令牌只保存在当前标签页，有效期八小时；所有 AI 路由都由服务端验签并限流。前端可见的邀请码输入框不是安全边界。
+5. 验收通过后运行 `.\scripts\deploy-demo.ps1` 更新 Vercel 静态前端，复查三个入口和 AI 请求。用户原来的本机端口不变：前端 8443，AI 8787；Render 使用平台分配的公网 HTTPS 地址和内部 `PORT`。
+
+公网邀请码只控制 AI 调用，并不能让不同浏览器共享教学数据或隔离教师、学生、家长身份。服务使用单进程内存限流与临时复盘任务记录，重启会清空它们。若要存放真实学生资料或提供正式多用户协作，仍需数据库、登录、角色授权及数据保留策略。
 
 ## 从 GitHub 在 Windows 上运行
 
@@ -62,6 +81,6 @@ curl.exe --noproxy '*' -I http://127.0.0.1:8443/
 
 数据库包 `packages/db` 目前仅提供 schema、迁移和种子契约，前端没有连接它。若要单独验证 schema，请在当前 PowerShell 进程设置自己的 `DATABASE_URL`，然后运行 `pnpm --filter @zhiye/db validate`。不需要数据库也能运行当前演示。
 
-## 公网正式服务需要完成的工程
+## 公网正式学校服务需要完成的工程
 
 要让真实教师、学生和家长跨设备使用，必须先接入持久化后端与身份认证，按角色和班级在服务端授权；把本地 AI 改为受认证保护的 HTTPS API，并配置允许的站点来源、调用限额和密钥管理；为课堂音频与题图建立存储、访问和删除规则。完成后再选择前端托管和后端运行平台。仅把 `dist/` 发布为静态网站会显示各访问者各自独立的演示数据，也不能可靠调用其电脑上的 `127.0.0.1:8787`。

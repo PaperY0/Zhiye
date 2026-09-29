@@ -1,5 +1,6 @@
 import type { RecapJob } from "../app/prototype/types"
 import { teacherSettingsForAi } from "../features/teacher/settings/teacherSettings"
+import { aiInviteEnabled, clearAiAccess, requestAiToken } from "./aiAccess"
 
 export type GenerationKind =
   | "lesson-plan"
@@ -55,12 +56,19 @@ export async function requestJson<T>(
   if (typeof window !== "undefined" && isUnavailableLoopbackAi(input, window.location.href)) {
     throw new Error("公开演示版暂不提供 AI 功能；任务和记录仅保存在当前浏览器。")
   }
+  const headers = new Headers(init?.headers)
+  if (aiInviteEnabled()) headers.set("Authorization", `Bearer ${await requestAiToken()}`)
   let response: Response
   try {
-    response = await fetch(input, init)
+    response = await fetch(input, { ...init, headers })
+    if (response.status === 401 && aiInviteEnabled()) {
+      clearAiAccess()
+      headers.set("Authorization", `Bearer ${await requestAiToken()}`)
+      response = await fetch(input, { ...init, headers })
+    }
   } catch (error) {
     if (error instanceof TypeError) {
-      throw new Error("本地 AI 服务未启动，请运行 start-local-ai.ps1")
+      throw new Error(aiInviteEnabled() ? "公网 AI 服务暂时无法连接，请稍后再试。" : "本地 AI 服务未启动，请运行 start-local-ai.ps1")
     }
     throw error
   }

@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: zhiye-ai
+    runtime: docker
+    region: singapore
+    plan: 1c-2g
+    dockerfilePath: services/local-ai/Dockerfile
+    dockerContext: services/local-ai
+    healthCheckPath: /health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: ZHIYE_AI_PUBLIC_MODE
+        value: "1"
+      - key: ZHIYE_AI_ALLOWED_ORIGINS
+        value: https://zhiye-demo.vercel.app
+      - key: ZHIYE_AI_SESSION_SECRET
+        generateValue: true
+      - key: ZHIYE_AI_INVITE_CODE
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false

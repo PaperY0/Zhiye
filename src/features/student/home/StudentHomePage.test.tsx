@@ -70,7 +70,7 @@ describe("StudentHomePage", () => {
         <button onClick={() => updateTaskCompletion("fresh-task", "student-lin-xiaoyu", "submitted", { score: 20, answers: { q1: "正确" } })} type="button">提交新任务</button>
         <button onClick={() => addMistake("student-lin-xiaoyu", { id: "fresh-mistake", subject: "数学", knowledgePoint: "新自检中的面积题", prompt: "半径翻倍面积如何变", cause: "误选翻倍", explanation: "面积变四倍", mastery: "new", source: "quiz", taskId: "fresh-task", createdAt: "2026-09-28T18:05:00+08:00" })} type="button">记录新错题</button>
         <button onClick={() => sendMessage("conversation-student-xiaoyu", "请看今天的新自检")} type="button">老师发送新消息</button>
-        <button onClick={() => addTaskInquiry("fresh-task", { id: "fresh-inquiry", studentId: "student-lin-xiaoyu", subject: "数学", question: "为什么面积变四倍？", status: "answered", createdAt: "2026-09-28T18:06:00+08:00" })} type="button">记录新询问</button>
+        <button onClick={() => addTaskInquiry("fresh-task", { id: "fresh-inquiry", studentId: "student-lin-xiaoyu", subject: "数学", question: "为什么面积变四倍？", status: "answered", createdAt: new Date(Date.now() + 60_000).toISOString() })} type="button">记录新询问</button>
       </>
     }
     const onNavigate = vi.fn<(route: AppRoute) => void>()

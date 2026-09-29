@@ -4,7 +4,7 @@
 
 当前可运行形态是本地演示原型。安装、验收及公网部署边界见 [部署与验收](docs/DEPLOYMENT.md)。
 
-公开演示：[zhiye-demo.vercel.app](https://zhiye-demo.vercel.app)。各访客数据只保存在自己的浏览器中，公网演示不提供 AI 服务。
+公开演示：[zhiye-demo.vercel.app](https://zhiye-demo.vercel.app)。各访客数据只保存在自己的浏览器中。公网 AI 的邀请码服务已在仓库中准备，实际启用状态与上线步骤见[部署与验收](docs/DEPLOYMENT.md)。
 
 ## 环境
 

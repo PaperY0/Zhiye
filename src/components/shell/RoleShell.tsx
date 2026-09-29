@@ -6,6 +6,7 @@ import { RoleSidebar } from "./RoleSidebar"
 import { ROLE_THEME } from "./roleTheme"
 import { StudentCompanionAssistant } from "../../features/student/companion/StudentCompanionAssistant"
 import { RoleSearch } from "./RoleSearch"
+import { AiDemoNotice } from "./AiDemoNotice"
 
 interface RoleShellProps extends PropsWithChildren {
   route: RoleRoute
@@ -52,12 +53,7 @@ export function RoleShell({ route, onNavigate, children }: RoleShellProps) {
         <RoleSidebar route={route} onNavigate={onNavigate} showPinyin={showPinyin} onTogglePinyin={toggleStudentPinyin} />
 
         <div className="role-shell-main h-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pb-24 lg:pb-0">
-          {showPublicDemoNotice ? (
-            <aside className="mx-4 mt-4 rounded-2xl border border-[#d8e5d8] bg-[#f9fcf7]/95 px-4 py-3 text-sm leading-relaxed text-[#49634e] shadow-sm sm:mx-6 lg:mx-8" aria-label="公开演示说明">
-              <strong className="mr-2 text-[#27472f]">公开演示版</strong>
-              任务与记录只保存在当前浏览器，不会同步到其他设备；AI 功能在公网演示中暂不可用。
-            </aside>
-          ) : null}
+          {showPublicDemoNotice ? <AiDemoNotice /> : null}
           <main id="main-content" tabIndex={-1} className="min-h-full min-w-0 focus:outline-none lg:h-full">
             {children}
           </main>

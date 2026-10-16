@@ -1,0 +1,231 @@
+{
+  "schema": "ppt-master.pptx-postflight-report.v1",
+  "status": "passed",
+  "output": {
+    "path": "D:\\Project\\Zhiye\\docs\\presentation\\zhiye-roadshow_ppt169_20261013\\exports\\zhiye-roadshow_20261013_150957.pptx",
+    "bytes": 2474560
+  },
+  "source": {
+    "svg_slide_count": 12,
+    "layout_definition_count": 0,
+    "fingerprint": {
+      "algorithm": "sha256",
+      "digest": "c22cfc7c30625088e4882fc2034085709aa1eb6085ab71b5a6c8de15133b5b74",
+      "file_count": 12,
+      "files": [
+        {
+          "file": "01_zhiye.svg",
+          "sha256": "05b5a6542af004fbc24040ee6943859c5be902ae546106f083bc5dbd89cc6725"
+        },
+        {
+          "file": "02_zhiye.svg",
+          "sha256": "1b1da7fbd4f173e5d04f76c2d6e782d15cd48ef794add49589a2ec552b2a3c9c"
+        },
+        {
+          "file": "03_zhiye.svg",
+          "sha256": "829c4b63e55a29d1db50e617700e88660dcf36142cd845f85e7ca6f710604c74"
+        },
+        {
+          "file": "04_zhiye.svg",
+          "sha256": "a57b1c66fc780be55650100362b6b068f5161739302d63336b392f0c59a26cb2"
+        },
+        {
+          "file": "05_zhiye.svg",
+          "sha256": "e35c2e87ae1768588e3250ad497f8e4c06cebfe3d8ab2600bd64e9b2d3d120f1"
+        },
+        {
+          "file": "06_zhiye.svg",
+          "sha256": "a7315fb32c95a17287496a19a9599cce372ae20c2d0a76d0c92506ecde99230f"
+        },
+        {
+          "file": "07_zhiye.svg",
+          "sha256": "ab2a4e2c44d9eac9c58280f1144b448c1ea575ca41dca2ab236e47cea25b8265"
+        },
+        {
+          "file": "08_zhiye.svg",
+          "sha256": "b37dd65255f238cb7923eae42343b8a75d5699766a389f0967f76d4f07f2d4a7"
+        },
+        {
+          "file": "09_zhiye.svg",
+          "sha256": "6d93de292310ff7716464724e9efbad3edc7c7f0ebbf313ac7dcfe91f48b15b3"
+        },
+        {
+          "file": "10_zhiye.svg",
+          "sha256": "c4478af11c5ad934a20f9cb234a43a1dfd377dd8f0e0fad42e332fc0e3c6c30d"
+        },
+        {
+          "file": "11_zhiye.svg",
+          "sha256": "9cf0d71666d8391ee5e8119e4170feacb752e6c74808c65644ed223a6fb2d946"
+        },
+        {
+          "file": "12_zhiye.svg",
+          "sha256": "4613b9aa53e9d1b5ac4d9b7c373bba25a4f936ba784f8f0e013cdafc30f0b74e"
+        }
+      ]
+    },
+    "authoring_roundtrip": null
+  },
+  "package": {
+    "zip_integrity": "passed",
+    "corrupt_member": null,
+    "slides": 12,
+    "notes": 12,
+    "masters": 1,
+    "layouts": 1
+  },
+  "checks": {
+    "zip_integrity": "passed",
+    "slide_count": "passed",
+    "internal_relationships": "enforced-at-build",
+    "structured_package": "not-applicable",
+    "transitions": "enforced-at-build",
+    "animations": "enforced-at-build",
+    "project_svg_contract": "enforced-at-build",
+    "compatibility_normalization": "not-applicable",
+    "authoring_roundtrip": "not-applicable",
+    "quality_gate": "passed",
+    "quality_warnings": "passed",
+    "template_tokens": "passed",
+    "external_images": "passed",
+    "font_portability": "passed"
+  },
+  "quality": {
+    "status": "loaded",
+    "path": "D:\\Project\\Zhiye\\docs\\presentation\\zhiye-roadshow_ppt169_20261013\\validation\\svg_quality_report.json",
+    "schema": "ppt-master.svg-quality-report.v1",
+    "stage": "final",
+    "source_match": "passed",
+    "source_fingerprint": {
+      "algorithm": "sha256",
+      "digest": "c22cfc7c30625088e4882fc2034085709aa1eb6085ab71b5a6c8de15133b5b74",
+      "file_count": 12,
+      "files": [
+        {
+          "file": "01_zhiye.svg",
+          "sha256": "05b5a6542af004fbc24040ee6943859c5be902ae546106f083bc5dbd89cc6725"
+        },
+        {
+          "file": "02_zhiye.svg",
+          "sha256": "1b1da7fbd4f173e5d04f76c2d6e782d15cd48ef794add49589a2ec552b2a3c9c"
+        },
+        {
+          "file": "03_zhiye.svg",
+          "sha256": "829c4b63e55a29d1db50e617700e88660dcf36142cd845f85e7ca6f710604c74"
+        },
+        {
+          "file": "04_zhiye.svg",
+          "sha256": "a57b1c66fc780be55650100362b6b068f5161739302d63336b392f0c59a26cb2"
+        },
+        {
+          "file": "05_zhiye.svg",
+          "sha256": "e35c2e87ae1768588e3250ad497f8e4c06cebfe3d8ab2600bd64e9b2d3d120f1"
+        },
+        {
+          "file": "06_zhiye.svg",
+          "sha256": "a7315fb32c95a17287496a19a9599cce372ae20c2d0a76d0c92506ecde99230f"
+        },
+        {
+          "file": "07_zhiye.svg",
+          "sha256": "ab2a4e2c44d9eac9c58280f1144b448c1ea575ca41dca2ab236e47cea25b8265"
+        },
+        {
+          "file": "08_zhiye.svg",
+          "sha256": "b37dd65255f238cb7923eae42343b8a75d5699766a389f0967f76d4f07f2d4a7"
+        },
+        {
+          "file": "09_zhiye.svg",
+          "sha256": "6d93de292310ff7716464724e9efbad3edc7c7f0ebbf313ac7dcfe91f48b15b3"
+        },
+        {
+          "file": "10_zhiye.svg",
+          "sha256": "c4478af11c5ad934a20f9cb234a43a1dfd377dd8f0e0fad42e332fc0e3c6c30d"
+        },
+        {
+          "file": "11_zhiye.svg",
+          "sha256": "9cf0d71666d8391ee5e8119e4170feacb752e6c74808c65644ed223a6fb2d946"
+        },
+        {
+          "file": "12_zhiye.svg",
+          "sha256": "4613b9aa53e9d1b5ac4d9b7c373bba25a4f936ba784f8f0e013cdafc30f0b74e"
+        }
+      ]
+    },
+    "summary": {
+      "total": 12,
+      "passed": 12,
+      "warnings": 0,
+      "errors": 0
+    },
+    "categories": {
+      "blocking": {
+        "count": 0,
+        "issues": []
+      },
+      "introduced": {
+        "count": 0,
+        "issues": []
+      },
+      "inherited": {
+        "count": 0,
+        "issues": []
+      },
+      "source-import": {
+        "count": 0,
+        "summary": {
+          "warning_count": 0,
+          "by_code": {}
+        }
+      }
+    }
+  },
+  "resources": {
+    "unresolved_template_tokens": [],
+    "fonts": {
+      "stacks": [
+        "KaiTi, Arial, Microsoft YaHei",
+        "Noto Sans SC, Arial, Microsoft YaHei"
+      ],
+      "generic_only_stacks": [],
+      "unsafe_exported_faces": []
+    },
+    "images": {
+      "data_uri": 0,
+      "local": 7,
+      "external": 0,
+      "external_references": []
+    }
+  },
+  "export_policy": {
+    "project_svg_contract": "strict",
+    "dangerous_normalization_count": 0
+  },
+  "deck_motion": {
+    "transition": {
+      "effect": "fade",
+      "effect_options": {},
+      "duration": 0.4,
+      "auto_advance": null,
+      "sound": null
+    },
+    "animation": {
+      "effect": "none",
+      "effect_request": null,
+      "duration": 0.4,
+      "stagger": 0.5,
+      "trigger": "after-previous"
+    },
+    "cli_overrides": {
+      "transition": false,
+      "transition_duration": false,
+      "auto_advance": false,
+      "transition_sound": false,
+      "animation": false,
+      "animation_duration": false,
+      "animation_stagger": false,
+      "animation_trigger": false
+    },
+    "narration_timings": false
+  },
+  "backup_path": "D:\\Project\\Zhiye\\docs\\presentation\\zhiye-roadshow_ppt169_20261013\\backup\\20261013_150957\\svg_output",
+  "conversion_trace_path": null
+}

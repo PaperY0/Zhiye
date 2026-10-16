@@ -1,0 +1,128 @@
+{
+  "roles": {
+    "body": {
+      "family": "Noto Sans SC, Arial, Microsoft YaHei",
+      "size": 28.0,
+      "weight": "normal",
+      "cjk_chars_per_100px": 3.4,
+      "latin_chars_per_100px": 6.9,
+      "caps_chars_per_100px": 6.4,
+      "digits_chars_per_100px": 6.1,
+      "citation_chars_per_100px": 6.4,
+      "script_clusters_per_100px": {},
+      "longest_planned_line": {
+        "px": 801.4,
+        "slide": "P11",
+        "text": "计划：授权脱敏课堂音频试跑、教师审核对照、持续学习反馈"
+      }
+    },
+    "title": {
+      "family": "Noto Sans SC, Arial, Microsoft YaHei",
+      "size": 52.0,
+      "weight": "normal",
+      "cjk_chars_per_100px": 1.8,
+      "latin_chars_per_100px": 3.7,
+      "caps_chars_per_100px": 3.5,
+      "digits_chars_per_100px": 3.3,
+      "citation_chars_per_100px": 3.5,
+      "script_clusters_per_100px": {},
+      "longest_planned_line": {
+        "px": 937.0,
+        "slide": "P10",
+        "text": "已完成工程验收，真实课堂效果待验证"
+      }
+    },
+    "annotation": {
+      "family": "Noto Sans SC, Arial, Microsoft YaHei",
+      "size": 20.0,
+      "weight": "normal",
+      "cjk_chars_per_100px": 4.7,
+      "latin_chars_per_100px": 9.7,
+      "caps_chars_per_100px": 9.0,
+      "digits_chars_per_100px": 8.6,
+      "citation_chars_per_100px": 9.0,
+      "script_clusters_per_100px": {},
+      "longest_planned_line": null
+    },
+    "caption": {
+      "family": "Noto Sans SC, Arial, Microsoft YaHei",
+      "size": 24.0,
+      "weight": "normal",
+      "cjk_chars_per_100px": 3.9,
+      "latin_chars_per_100px": 8.1,
+      "caps_chars_per_100px": 7.5,
+      "digits_chars_per_100px": 7.1,
+      "citation_chars_per_100px": 7.5,
+      "script_clusters_per_100px": {},
+      "longest_planned_line": null
+    },
+    "cover": {
+      "family": "Ma Shan Zheng, Arial, Microsoft YaHei",
+      "size": 108.0,
+      "weight": "normal",
+      "cjk_chars_per_100px": 0.9,
+      "latin_chars_per_100px": 1.8,
+      "caps_chars_per_100px": 1.7,
+      "digits_chars_per_100px": 1.6,
+      "citation_chars_per_100px": 1.7,
+      "script_clusters_per_100px": {},
+      "longest_planned_line": null
+    },
+    "display": {
+      "family": "Noto Sans SC, Arial, Microsoft YaHei",
+      "size": 144.0,
+      "weight": "normal",
+      "cjk_chars_per_100px": 0.7,
+      "latin_chars_per_100px": 1.3,
+      "caps_chars_per_100px": 1.2,
+      "digits_chars_per_100px": 1.2,
+      "citation_chars_per_100px": 1.3,
+      "script_clusters_per_100px": {},
+      "longest_planned_line": null
+    },
+    "footnote": {
+      "family": "Noto Sans SC, Arial, Microsoft YaHei",
+      "size": 16.0,
+      "weight": "normal",
+      "cjk_chars_per_100px": 5.9,
+      "latin_chars_per_100px": 12.1,
+      "caps_chars_per_100px": 11.2,
+      "digits_chars_per_100px": 10.7,
+      "citation_chars_per_100px": 11.3,
+      "script_clusters_per_100px": {},
+      "longest_planned_line": null
+    },
+    "index": {
+      "family": "Noto Sans SC, Arial, Microsoft YaHei",
+      "size": 72.0,
+      "weight": "normal",
+      "cjk_chars_per_100px": 1.3,
+      "latin_chars_per_100px": 2.7,
+      "caps_chars_per_100px": 2.5,
+      "digits_chars_per_100px": 2.4,
+      "citation_chars_per_100px": 2.5,
+      "script_clusters_per_100px": {},
+      "longest_planned_line": null
+    },
+    "lead": {
+      "family": "Noto Sans SC, Arial, Microsoft YaHei",
+      "size": 34.0,
+      "weight": "normal",
+      "cjk_chars_per_100px": 2.8,
+      "latin_chars_per_100px": 5.7,
+      "caps_chars_per_100px": 5.3,
+      "digits_chars_per_100px": 5.0,
+      "citation_chars_per_100px": 5.3,
+      "script_clusters_per_100px": {},
+      "longest_planned_line": null
+    }
+  },
+  "script_samples": {},
+  "source": "spec_lock.md",
+  "generated_at": "2026-10-13T07:38:53Z",
+  "notes": [
+    "role display (144px, at least twice body) has no display_family and uses body_family; declare display_family if it is display type",
+    "role index (72px, at least twice body) has no index_family and uses body_family; declare index_family if it is display type",
+    "every role is measured at normal weight; recalibrate a role realized as bold deck-wide with --role NAME:FAMILY:SIZE:bold: bold widens Latin and digits about 7%, while the bundled advance table gives CJK one width for both weights"
+  ]
+}

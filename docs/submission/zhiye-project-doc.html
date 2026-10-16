@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>知野 · 课堂复盘数字员工 — 项目文档</title>
+<style>
+  @page { size: A4; margin: 11mm 11mm 12mm 11mm; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0;
+    font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
+    color: #1b2420;
+    font-size: 9pt;
+    line-height: 1.4;
+    background: #fff;
+  }
+  h1, h2, h3, h4 { margin: 0; font-weight: 800; }
+  p { margin: 0 0 4pt 0; }
+  ul, ol { margin: 0 0 4pt 0; padding-left: 13pt; }
+  li { margin-bottom: 1.5pt; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.1pt; margin: 3pt 0 5pt; }
+  th { background: #eef3ec; color: #23402e; text-align: left; font-weight: 800; }
+  th, td { border: 0.6pt solid #cfdccf; padding: 2.4pt 3.4pt; vertical-align: top; }
+  tr { break-inside: avoid; }
+  .sheet { break-before: page; }
+  .sheet:first-of-type { break-before: auto; }
+  .kicker { font-size: 7.8pt; font-weight: 800; letter-spacing: .14em; color: #4d6b56; text-transform: uppercase; }
+  .sec-title { font-size: 14.5pt; color: #172a1f; margin-top: 1pt; }
+  .sec-sub { font-size: 8.6pt; color: #5d6b60; margin-bottom: 5pt; }
+  .rule { height: 2.2pt; background: linear-gradient(90deg,#285943,#c79035); border-radius: 2pt; margin: 3pt 0 6pt; }
+  h3.blk { font-size: 10.2pt; color: #23402e; margin: 6pt 0 2.5pt; padding-left: 5pt; border-left: 3pt solid #285943; }
+  h4.blk { font-size: 9.4pt; color: #2c4433; margin: 5pt 0 2pt; }
+  .lead { font-size: 9.6pt; color: #2f3d34; }
+  .note { background: #f4f7f1; border: 0.6pt solid #d6e2d3; border-radius: 5pt; padding: 4pt 6pt; font-size: 8.3pt; color: #35473a; margin: 4pt 0; }
+  .warn { background: #fdf6ea; border: 0.6pt solid #e8d5ac; border-radius: 5pt; padding: 4pt 6pt; font-size: 8.3pt; color: #6a4f1c; margin: 4pt 0; }
+  .tag { display: inline-block; border-radius: 20pt; padding: 0.6pt 5pt; font-size: 7.6pt; font-weight: 800; }
+  .tag-p0 { background: #e7efe6; color: #285943; }
+  .tag-p1 { background: #f3ecdd; color: #7d5f22; }
+  .tag-ai { background: #e8eef8; color: #2b4a7a; }
+  .tag-safe { background: #f6e9e9; color: #8c4040; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7pt; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6pt; }
+  .card { border: 0.6pt solid #d8e2d6; border-radius: 6pt; padding: 4.5pt 6pt; background: #fbfcfa; break-inside: avoid; }
+  .card h5 { margin: 0 0 2.5pt; font-size: 9pt; color: #23402e; font-weight: 800; }
+  .card p { font-size: 8.2pt; color: #44524a; margin: 0; }
+  figure { margin: 4pt 0 5pt; break-inside: avoid; }
+  figure img { width: 100%; border: 0.6pt solid #c9d6c8; border-radius: 4pt; display: block; }
+  figcaption { font-size: 7.4pt; color: #5d6b60; margin-top: 2pt; text-align: center; line-height: 1.3; }
+  .figrow { display: grid; grid-template-columns: 1fr 1fr; gap: 7pt; margin: 4pt 0 5pt; break-inside: avoid; }
+  .figrow figure { margin: 0; }
+  .mono { font-family: Consolas, "Courier New", monospace; font-size: 7.8pt; }
+  .flow { display: flex; flex-wrap: wrap; gap: 3pt; align-items: stretch; margin: 5pt 0; }
+  .flow .node { border: 0.6pt solid #b9ccbb; background: #f2f6f0; border-radius: 5pt; padding: 3pt 5pt; font-size: 8.2pt; font-weight: 700; color: #24402e; }
+  .flow .arrow { align-self: center; color: #8aa18d; font-weight: 800; font-size: 9pt; }
+  /* cover */
+  .cover { position: relative; height: 272mm; }
+  .cover-head { position: absolute; top: 0; left: 0; right: 0; }
+  .cover h1 { font-size: 52pt; color: #14261b; letter-spacing: .06em; line-height: 1.05; }
+  .cover .suffix { font-size: 19pt; color: #285943; font-weight: 800; letter-spacing: .03em; margin-top: 8pt; line-height: 1.3; }
+  .cover .en { font-size: 10.5pt; color: #7d8b81; letter-spacing: .16em; margin-top: 9pt; font-weight: 700; }
+  .cover .slogan { font-size: 12pt; color: #2c4433; margin-top: 16pt; line-height: 1.65; }
+  .cover-banner { position: absolute; left: 0; right: 0; top: 134mm; }
+  .cover-banner img { width: 100%; border-radius: 8pt; display: block; }
+  .cover-banner .cap { font-size: 7.8pt; color: #7d8b81; margin-top: 3pt; text-align: right; }
+  .cover-meta { position: absolute; left: 0; right: 0; bottom: 0; border-top: 1.2pt solid #285943; padding-top: 8pt; display: grid; grid-template-columns: 1fr 1fr; gap: 5pt 14pt; font-size: 9pt; color: #3b4a41; line-height: 1.5; }
+  .cover-meta b { color: #172a1f; }
+  /* toc */
+  .toc { font-size: 9.4pt; }
+  .toc div { display: flex; justify-content: space-between; border-bottom: 0.5pt dotted #b9c7b8; padding: 2.6pt 0; }
+  .toc span.n { color: #285943; font-weight: 800; width: 26pt; }
+  .toc span.t { flex: 1; }
+  .toc span.p { color: #6b7a6f; }
+  /* footer */
+  .pfoot { position: fixed; bottom: 4mm; left: 0; right: 0; font-size: 7.4pt; color: #7d8b81; display: flex; justify-content: space-between; }
+  code { font-family: Consolas, "Courier New", monospace; background: #f1f4ef; border-radius: 3pt; padding: 0 2pt; font-size: 8.4pt; color: #24402e; }
+  pre { font-family: Consolas, "Courier New", monospace; font-size: 8pt; background: #f5f7f3; border: 0.6pt solid #d9e2d7; border-radius: 5pt; padding: 5pt 6pt; margin: 4pt 0 6pt; white-space: pre-wrap; line-height: 1.42; }
+  .arch { border: 0.6pt solid #cfdccf; border-radius: 7pt; padding: 7pt; background: #fbfcfa; margin: 5pt 0 7pt; }
+  .arch .layer { border-radius: 5pt; padding: 4pt 6pt; margin-bottom: 4pt; font-size: 8.4pt; }
+  .l-user { background: #eaf1e8; border: 0.6pt solid #b9ccbb; }
+  .l-web { background: #e9eff6; border: 0.6pt solid #b6c6da; }
+  .l-ai { background: #f4efe4; border: 0.6pt solid #ddd0b2; }
+  .l-model { background: #f6ecec; border: 0.6pt solid #e0c3c3; }
+  .l-data { background: #eef0f2; border: 0.6pt solid #c8ced3; }
+  .arch .row { display: flex; gap: 4pt; flex-wrap: wrap; }
+  .arch .box { flex: 1; min-width: 60pt; border-radius: 4pt; padding: 3pt 4pt; text-align: center; font-weight: 700; font-size: 8.2pt; background: #fff; border: 0.6pt solid #c3d2c4; }
+  .arch .cap { font-size: 7.6pt; color: #5d6b60; margin-top: 3pt; }
+</style>
+</head>
+<body>
+
+<!-- ============ P1 封面 ============ -->
+<section class="cover">
+  <div class="cover-head">
+    <div class="kicker">2026年iCAN大学生创新创业大赛 · AI应用创新挑战赛 · 项目文档</div>
+    <h1>知野</h1>
+    <div class="suffix">知其所学，野望生长</div>
+    <div class="en">ZHIYE&nbsp;&nbsp;CLASSROOM&nbsp;&nbsp;RECAP&nbsp;&nbsp;DIGITAL&nbsp;&nbsp;EMPLOYEE</div>
+    <p class="slogan">教师提交课堂录音与补讲目标，智能体自主完成转写、取证、归因、成稿；<br />教师审核确认后，复习卡、补讲教案与练习才抵达学生与家长。</p>
+  </div>
+  <div class="cover-banner">
+    <img src="assets/opt/cover-banner.jpg" alt="知野产品意象：山谷与风筝" />
+    <div class="cap">知野产品意象 · 山谷与风筝</div>
+  </div>
+  <div class="cover-meta">
+    <div><b>作品形态：</b>可运行的本地演示原型 + 公网只读演示站</div>
+    <div><b>代码仓库：</b>github.com/PaperY0/Zhiye</div>
+    <div><b>公开演示：</b>zhiye-demo.vercel.app</div>
+    <div><b>文档版本：</b>v1.1（2026-09-29）</div>
+    <div><b>核心用户：</b>乡村小学 4–6 年级数学教师</div>
+    <div><b>AI 能力：</b>FunASR 语音识别 / PaddleOCR 题图识别 / DeepSeek 结构化生成</div>
+  </div>
+</section>
+
+<!-- ============ P2 目录 + 摘要 ============ -->
+<section class="sheet">
+  <div class="kicker">CONTENTS &amp; SUMMARY</div>
+  <h2 class="sec-title">目录与一页速览</h2>
+  <div class="rule"></div>
+  <div class="grid2">
+    <div class="toc">
+      <div><span><span class="n">01</span><span class="t">项目背景</span></span><span class="p">P3</span></div>
+      <div><span><span class="n">02</span><span class="t">当前存在的痛点问题</span></span><span class="p">P4</span></div>
+      <div><span><span class="n">03</span><span class="t">需求分析与目标用户群体</span></span><span class="p">P5</span></div>
+      <div><span><span class="n">04</span><span class="t">功能需求清单与验收标准</span></span><span class="p">P6</span></div>
+      <div><span><span class="n">05</span><span class="t">使用的开发工具与技术栈</span></span><span class="p">P7</span></div>
+      <div><span><span class="n">06</span><span class="t">技术方案与系统实现</span></span><span class="p">P8–P10</span></div>
+      <div><span><span class="n">07</span><span class="t">作品功能逐一说明</span></span><span class="p">P11–P14</span></div>
+      <div><span><span class="n">08</span><span class="t">AI 功能的核心作用</span></span><span class="p">P15</span></div>
+      <div><span><span class="n">09</span><span class="t">完整使用说明与交互指南</span></span><span class="p">P16–P18</span></div>
+      <div><span><span class="n">10</span><span class="t">应用前景与商业模式</span></span><span class="p">P19</span></div>
+      <div><span><span class="n">11</span><span class="t">风险、合规与后续工程</span></span><span class="p">P19</span></div>
+      <div><span><span class="n">12</span><span class="t">结语与附录</span></span><span class="p">P20</span></div>
+    </div>
+    <div>
+      <div class="card">
+        <h5>一页速览：知野替教师做了什么</h5>
+        <p><b>输入</b>：一节 40 分钟课堂的录音 + 一句补讲目标（如“根据这节分数课，为明天准备 5 分钟补讲”）。<br />
+        <b>执行</b>：本地语音转写 → 提取带时间戳的课堂证据 → 归纳学习缺口 → 生成四项成果。<br />
+        <b>输出</b>：学生复习卡、教师课堂报告、5 分钟补讲教案、3 题针对性练习，全部可编辑、可追溯。<br />
+        <b>门槛</b>：教师确认并发布前，学生与家长看不到任何 AI 内容；课堂转写与教师报告永不公开。</p>
+      </div>
+      <div class="card" style="margin-top:6pt">
+        <h5>为什么它是“智能体”而不是聊天机器人</h5>
+        <p>它有明确目标（goal）、固定五步计划、可追踪的工具调用、真实的失败状态与单步重试，以及不可跳过的人工确认关卡。所有产出必须是结构化 schema，无效或无证据支撑的结果不能进入发布环节。</p>
+      </div>
+    </div>
+  </div>
+  <h3 class="blk">作品当前状态（不含未实现能力）</h3>
+  <table>
+    <tr><th style="width:16%">维度</th><th style="width:42%">已实现并可验证</th><th>明确未实现 / 边界</th></tr>
+    <tr><td>运行形态</td><td>React 前端 + FastAPI 本地 AI 服务，一键启动；Vercel 静态演示站可访问</td><td>公网演示站 AI 默认关闭，且不跨设备共享教学数据</td></tr>
+    <tr><td>教学闭环</td><td>录音→转写→AI 初稿→教师审核→发布→学生复习/任务→班级聚合回流</td><td>无数据库、无账号体系，角色切换不是身份认证</td></tr>
+    <tr><td>AI 能力</td><td>FunASR 转写、PaddleOCR 识题、DeepSeek 11 类结构化生成，全部带 schema 校验</td><td>未接入检索增强、未做多智能体协作</td></tr>
+    <tr><td>工程质量</td><td>前端 45 个测试文件 181 项通过；本地 AI 63 项通过；typecheck、生产构建、依赖审计通过</td><td>真实课堂音频的端到端验收需项目负责人提供获准脱敏录音</td></tr>
+  </table>
+  <div class="note">本文所有功能描述均可在仓库源码与 <code>docs/evidence/</code> 逐日验收记录中核对；所有商业数字均标注“待验证假设”。</div>
+</section>
+
+<!-- ============ P3 背景 ============ -->
+<section class="sheet">
+  <div class="kicker">01 BACKGROUND</div>
+  <h2 class="sec-title">一、项目背景</h2>
+  <p class="sec-sub">教育数字化已解决“资源有没有”，尚未解决“课后个性化复盘有没有人做”。</p>
+  <div class="rule"></div>
+
+  <h3 class="blk">1.1 政策与产业背景</h3>
+  <p>国家教育数字化战略行动、智慧教育平台与“双减”政策先后落地，乡村学校的<b>硬件与资源</b>短板正在被补齐：一块白板、一根网线、一台笔记本已能进入课堂。但数字化的下半场是<b>应用</b>——把技术嵌进教师每天真实发生的工作流，而不是再增加一个需要学习的工具。</p>
+  <p>与此同时，生成式 AI 在 2024–2026 年迅速普及。乡村教师面对的矛盾非常具体：<b>不用 AI，课后复盘做不完；直接用通用大模型，又不敢把课堂录音和学生照片交出去，也更不敢让模型直接对学生下结论。</b></p>
+
+  <h3 class="blk">1.2 乡村小学的真实约束</h3>
+  <div class="grid2">
+    <div class="card"><h5>时间被切片</h5><p>一名村小数学教师通常带 2 个以上班级，周课时 18–25 节。课后可用于个别辅导、批改与复盘的时间被压缩到每天 30–60 分钟，且常被行政事务打断。</p></div>
+    <div class="card"><h5>学情靠印象</h5><p>哪个知识点卡住、卡在哪一步，教师多凭记忆判断。缺少可回溯的证据，补讲选题只能“凭经验猜”，导致重复讲已经会的内容。</p></div>
+    <div class="card"><h5>材料从零做</h5><p>一次针对性补讲需要：定位卡点、写教案、找或编 3 道变式题。即便熟练教师也需 1–2 小时，且与本周本班实际错情脱节。</p></div>
+    <div class="card"><h5>学生无人可问</h5><p>课后学生遇到不会的题，家里无人能辅导，只能带到第二天。问题堆积到下周，知识点已断层。</p></div>
+  </div>
+
+  <h3 class="blk">1.3 生成式 AI 的机会与错位</h3>
+  <p>通用聊天机器人能“回答问题”，但无法<b>接管流程</b>：它不会去听一节完整的课，不会把结论锚定到课堂原话，不会在教师确认前拦住发布，也不会在模型失败时告诉教师“是哪一步失败、能否只重试这一步”。把这些能力拼起来，才是一个能上岗的<b>数字员工</b>。</p>
+  <p>知野的选择是：<b>让 AI 做草稿与取证，让人做决定。</b>系统接管“录音—转写—证据—复盘—成稿”的重活，把“是否讲给学生”的判断权完整留给教师。</p>
+
+  <h3 class="blk">1.4 产品定位与赛事契合点</h3>
+  <div class="note"><b>定位：</b>面向乡村小学教师的<b>课堂复盘数字员工</b>。教师提交课堂录音与补讲目标，系统自主规划并执行课堂转写、证据提取、卡点归纳、补讲材料生成与交付；教师只在对学生或家长发布前审核。</div>
+  <table>
+    <tr><th style="width:26%">iCAN AI 应用创新挑战赛关注点</th><th>知野的对应设计</th></tr>
+    <tr><td>目标驱动，而非一问一答</td><td>一次任务有明确 <code>goal</code>（补讲目标）与固定五步执行计划</td></tr>
+    <tr><td>工具调用可观测</td><td>转写、证据提取、卡点归因、成果生成均为独立工具步骤，各有状态、摘要、耗时与错误</td></tr>
+    <tr><td>失败可恢复</td><td>四类真实失败（无麦克风、空录音、无模型 Key、网络断开）保留已成功步骤，仅重试失败步骤</td></tr>
+    <tr><td>人机协同边界清晰</td><td>教师确认是学生/家长可见内容的唯一门槛；AI 推断与课堂证据分区显示</td></tr>
+    <tr><td>儿童数据安全</td><td>音频与题图只在本地处理，仅文本交给云端模型；密钥不进入浏览器；原始音频即用即删</td></tr>
+  </table>
+</section>
+
+<!-- ============ P4 痛点 ============ -->
+<section class="sheet">
+  <div class="kicker">02 PAIN POINTS</div>
+  <h2 class="sec-title">二、当前存在的痛点问题</h2>
+  <p class="sec-sub">七个痛点来自教师课后工作的真实时序，按“发生频率 × 单次耗时”排序。</p>
+  <div class="rule"></div>
+  <table>
+    <tr><th style="width:5%">#</th><th style="width:17%">痛点</th><th style="width:30%">具体表现</th><th style="width:23%">直接后果</th><th>现有方案的不足</th></tr>
+    <tr><td>P1</td><td><b>课后复盘吃掉整块时间</b></td><td>40 分钟课的转写、要点归纳、报告撰写需 20–30 分钟手工完成</td><td>教师加班，或干脆不做复盘</td><td>通用听转写工具只给文本，不给教学结论</td></tr>
+    <tr><td>P2</td><td><b>学情判断缺证据</b></td><td>哪个知识点、哪一步卡住只能凭印象</td><td>补讲选题不准，重复讲已会内容</td><td>在线组卷平台只有分数，没有过程证据</td></tr>
+    <tr><td>P3</td><td><b>补讲材料从零制作</b></td><td>定位卡点→写教案→编 3 道变式题，1–2 小时</td><td>材料与本周本班错情脱节</td><td>教辅题库按教材编排，不对应本班卡点</td></tr>
+    <tr><td>P4</td><td><b>学生提问得不到及时回应</b></td><td>课后无人可问，家长辅导能力有限</td><td>问题堆积，知识点断层</td><td>拍照搜题类 App 直接给答案，不引导思考</td></tr>
+    <tr><td>P5</td><td><b>家长信息不对称</b></td><td>家长只看到分数，看不到“卡在哪一步”</td><td>家校沟通低效、焦虑传导</td><td>班级群消息刷屏，无结构化摘要</td></tr>
+    <tr><td>P6</td><td><b>儿童数据与内容安全风险</b></td><td>学生语音、题图、姓名上传到不明服务</td><td>学校与教师不敢用，家长不信任</td><td>多数产品未做本地化处理与教师审核门槛</td></tr>
+    <tr><td>P7</td><td><b>弱网与公用设备</b></td><td>乡村网络不稳定，常用共用电脑</td><td>上传中断、成果丢失</td><td>纯云端工具断网即不可用</td></tr>
+  </table>
+
+  <h3 class="blk">2.1 痛点的根因拆解</h3>
+  <div class="grid3">
+    <div class="card"><h5>流程未被接管</h5><p>复盘是一串动作，不是一次问答。工具只覆盖其中一环，剩下的手工环节依旧消耗教师整块时间。</p></div>
+    <div class="card"><h5>结论未锚定事实</h5><p>模型可以生成通顺的建议，但若不能回到“课堂上到底说了什么”，建议就无法被教师采信。</p></div>
+    <div class="card"><h5>发布缺少门槛</h5><p>面向儿童的内容一旦缺少人工确认，幻觉与不当推断会直接作用到学生身上。</p></div>
+  </div>
+
+  <h3 class="blk">2.2 知野的针对性回应</h3>
+  <table>
+    <tr><th style="width:8%">痛点</th><th>知野的机制</th><th style="width:30%">可验证结果</th></tr>
+    <tr><td>P1</td><td>浏览器录音 → 本地 FunASR 转写 → DeepSeek 结构化成稿，一次执行交付四项成果</td><td>教师只做审核与编辑，不做转写与归纳</td></tr>
+    <tr><td>P2</td><td>课堂证据 <code>EvidenceItem</code>（原话 + 起止秒 + 来源）与推断 <code>InferenceItem</code> 分离存储</td><td>每条建议可回到转写原话与时间点</td></tr>
+    <tr><td>P3</td><td>根据卡点生成补讲教案与 3 题练习，可一键转为班级任务</td><td>补讲材料与本班本课绑定</td></tr>
+    <tr><td>P4</td><td>拍照识题 → 选择卡点 → 分层提示 → 复述 → 迁移题 → 错题本</td><td>先提示后讲解，不给一步到位的答案</td></tr>
+    <tr><td>P5</td><td>家长摘要由教师生成并确认后发布，仅含聚合指标</td><td>不展示孩子完整提问与 AI 对话</td></tr>
+    <tr><td>P6</td><td>ASR/OCR 本地运行，音频题图即用即删；密钥只在本机环境变量</td><td>公开演示站无法调用本机 AI，也无密钥可窃</td></tr>
+    <tr><td>P7</td><td>原型数据保存在浏览器，断网可继续编辑与查看；失败有中文原因与重试</td><td>断网不伪装成功</td></tr>
+  </table>
+</section>
+
+<!-- ============ P5 需求分析 ============ -->
+<section class="sheet">
+  <div class="kicker">03 REQUIREMENTS</div>
+  <h2 class="sec-title">三、需求分析与目标用户群体</h2>
+  <p class="sec-sub">从三个角色的真实一天出发，倒推功能边界。</p>
+  <div class="rule"></div>
+
+  <h3 class="blk">3.1 典型场景</h3>
+  <div class="grid3">
+    <div class="card"><h5>李老师 · 村小数学教师</h5><p>下午第三节课讲“分数的基本性质”。放学后她打开知野教师端，点击“开始新课堂录音”（课堂音频投屏播放即可回采），输入目标“为明天准备 5 分钟补讲”。3 分钟后看到转写、证据、复习卡草稿与补讲方案；她把方案改成“用米尺和厘米尺做一次单位方向对照练习”，确认发布。</p></div>
+    <div class="card"><h5>林晓雨 · 五年级学生</h5><p>晚上写作业遇到单位换算题，打开“拍照答疑”，拍下题目，选择“卡在某一步”。系统先给提示，她复述思路后拿到一道变式题，题目自动进入错题本。她只看到老师发布的复习卡和自己的错题。</p></div>
+    <div class="card"><h5>家长 · 监护人</h5><p>周末打开“学习近况”，看到本周学到什么、主动完成的事、一条鼓励建议和老师的留言。看不到排名、同学对比，也看不到孩子和 AI 的完整对话。</p></div>
+  </div>
+
+  <h3 class="blk">3.2 目标用户群体</h3>
+  <table>
+    <tr><th style="width:14%">群体</th><th style="width:30%">画像</th><th style="width:26%">核心诉求</th><th>使用频次与场景</th></tr>
+    <tr><td><b>核心用户</b><br />乡村小学数学教师</td><td>28–45 岁，带 2 个以上班级，非信息技术背景，常用手机 + 一台公用电脑</td><td>把课后复盘时间从 30 分钟降到 5 分钟；补讲有据可依</td><td>每天 1–2 次，课后 10 分钟内；教室、办公室</td></tr>
+    <tr><td><b>直接受益</b><br />4–6 年级学生</td><td>识字量有限，需拼音辅助；课后无人辅导</td><td>有步骤地被引导想明白，而不是直接看答案</td><td>每天 1 次，居家写作业时；以手机为主</td></tr>
+    <tr><td><b>间接用户</b><br />家长/监护人</td><td>关心但不知如何介入，易被分数引发焦虑</td><td>知道孩子卡在哪一步、能做什么</td><td>每周 1–2 次；手机</td></tr>
+    <tr><td><b>组织用户</b><br />学校管理者与保护负责人</td><td>需履行儿童保护与数据合规责任</td><td>风险表达被安全转交，全程可审计</td><td>按需；电脑</td></tr>
+    <tr><td><b>潜在付费方</b><br />区域教育局、出版社、公益项目</td><td>需要可规模复制的教师减负工具</td><td>按校部署、成本可控、数据合规</td><td>采购决策周期长</td></tr>
+  </table>
+
+  <h3 class="blk">3.3 需求分层</h3>
+  <table>
+    <tr><th style="width:22%">层次</th><th>内容</th></tr>
+    <tr><td>功能需求（F）</td><td>课堂录音与转写、复盘成果生成、证据追溯、教师审核发布、失败可见与重试、备课与任务生成、学生分层答疑、结果回流、家长摘要、儿童保护与审计、四端工作台、拼音与无障碍（见第 4 节清单）</td></tr>
+    <tr><td>非功能需求（N）</td><td><b>可复现</b>：锁文件 + 一键启动，空目录可从 README 跑通；<b>可解释</b>：结论必须可回溯到课堂原话；<b>安全</b>：本地优先、最小留存、密钥隔离、教师确认门槛；<b>可用</b>：1440×900 一屏看清流程、WCAG 2.1 AA、拼音辅助；<b>可承受失败</b>：真实阶段与中文错误，禁止假进度与伪装成功</td></tr>
+    <tr><td>明确不做</td><td>通用聊天机器人、第二个智能体、自动对外发布、未经验证的外部搜索、把课堂事实与模型推断混排、学生画像与排名</td></tr>
+  </table>
+  <div class="warn"><b>需求取舍原则：</b>任何“看起来很聪明”的功能，如果不能说出它替教师省下的具体动作、不能回溯到证据、或者绕过了教师确认，就不做。</div>
+</section>
+
+<!-- ============ P6 功能需求 ============ -->
+<section class="sheet">
+  <div class="kicker">04 FUNCTIONAL REQUIREMENTS</div>
+  <h2 class="sec-title">四、功能需求清单与验收标准</h2>
+  <p class="sec-sub">P0 = 参赛主链路必备；P1 = 完整闭环所需。每条都有可执行验收标准。</p>
+  <div class="rule"></div>
+  <table>
+    <tr><th style="width:7%">编号</th><th style="width:20%">需求</th><th>说明与验收标准</th><th style="width:8%">优先级</th></tr>
+    <tr><td>FR-01</td><td>课堂录音与转写</td><td>浏览器 MediaRecorder 录音（可暂停/继续），本地 FunASR 转写为带时间戳的证据条目；空音频不得发出请求，无麦克风权限给出中文原因与重试</td><td><span class="tag tag-p0">P0</span></td></tr>
+    <tr><td>FR-02</td><td>四项复盘成果</td><td>一次执行交付学生复习卡、教师课堂报告、5 分钟补讲教案、3 题针对性练习；缺一不可进入发布环节</td><td><span class="tag tag-p0">P0</span></td></tr>
+    <tr><td>FR-03</td><td>证据可追溯</td><td>每条建议携带 <code>evidenceIds</code>，点击可展开转写原话与起止时间；AI 推断使用独立标签，不得伪装成课堂事实</td><td><span class="tag tag-p0">P0</span></td></tr>
+    <tr><td>FR-04</td><td>教师审核与发布</td><td>复习卡可编辑、保存；发布前弹窗明示“学生将看到什么、什么不会公开”；状态 <code>DRAFT→CONFIRMED→PUBLISHED</code>，学生端未发布不可见</td><td><span class="tag tag-p0">P0</span></td></tr>
+    <tr><td>FR-05</td><td>失败可见与单步重试</td><td>无麦克风、空录音、无模型 Key、网络断开四类失败显示具体中文原因；已成功步骤与成果保留，仅重试失败步骤</td><td><span class="tag tag-p0">P0</span></td></tr>
+    <tr><td>FR-06</td><td>备课与任务生成</td><td>AI 教案草稿（流程/示例/误区/建议/延伸）、三题练习、任务草稿均可逐段编辑；测验题答案必须属于选项，判断题归一化为“正确/错误”</td><td><span class="tag tag-p1">P1</span></td></tr>
+    <tr><td>FR-07</td><td>学生分层答疑</td><td>拍照识题（OCR 置信度 &lt;0.65 要求重拍）→ 选卡点 → 分层提示 → 学生复述 → 变式题 → 写入错题本；不能跳过前置步骤直达答案</td><td><span class="tag tag-p1">P1</span></td></tr>
+    <tr><td>FR-08</td><td>学生结果回流</td><td>按任务聚合匿名提交人数与完成率，&lt;70% 标记“需要再练”，生成下一课教师草稿，不自动推送、不展示个人答案</td><td><span class="tag tag-p1">P1</span></td></tr>
+    <tr><td>FR-09</td><td>家长摘要</td><td>教师生成并确认后家长可见；仅含主题、鼓励与教师留言，不含排名、同学对比、完整对话</td><td><span class="tag tag-p1">P1</span></td></tr>
+    <tr><td>FR-10</td><td>儿童保护与审计</td><td>保护性表达不作为普通消息发送，转人工确认；风险案例仅展示最少必要上下文，不作诊断与贴标签；处置全程写审计</td><td><span class="tag tag-p1">P1</span></td></tr>
+    <tr><td>FR-11</td><td>四端工作台</td><td>教师（8 页）、学生（8 页）、家长（2 页）、管理（4 页）；同一浏览器内可切换角色用于演示</td><td><span class="tag tag-p1">P1</span></td></tr>
+    <tr><td>FR-12</td><td>拼音与无障碍</td><td>学生端可开启拼音辅助（含 AI 回复逐句注音）；AI 状态使用 <code>aria-live="polite"</code>；可点区域 ≥44px；颜色不是唯一状态信息</td><td><span class="tag tag-p1">P1</span></td></tr>
+    <tr><td>NFR-01</td><td>可复现</td><td>空目录按 README 执行 <code>pnpm install --frozen-lockfile</code> → <code>pnpm test</code> → <code>pnpm build</code> → <code>pytest</code> 全部通过</td><td><span class="tag tag-p0">P0</span></td></tr>
+    <tr><td>NFR-02</td><td>安全</td><td>浏览器不含模型密钥；AI 服务校验来源；公网模式邀请码换取 8 小时令牌并限流；临时文件即用即删</td><td><span class="tag tag-p0">P0</span></td></tr>
+    <tr><td>NFR-03</td><td>可观测</td><td>任务有五步状态与摘要；无假进度条；失败信息可指导下一步动作</td><td><span class="tag tag-p0">P0</span></td></tr>
+    <tr><td>NFR-04</td><td>响应式</td><td>1440×900 下主计划与成果同屏；&lt;768px 切换底部导航，每端最多 5 个入口</td><td><span class="tag tag-p1">P1</span></td></tr>
+    <tr><td>NFR-05</td><td>成本可控</td><td>公网演示 AI 可一键停用；模型调用受速率限制，避免演示被刷量</td><td><span class="tag tag-p1">P1</span></td></tr>
+  </table>
+</section>
+
+<!-- ============ P7 开发工具 ============ -->
+<section class="sheet">
+  <div class="kicker">05 TOOLCHAIN</div>
+  <h2 class="sec-title">五、使用的开发工具与技术栈</h2>
+  <p class="sec-sub">全部为开源或主流商用服务；本地零许可费用，模型按量付费。</p>
+  <div class="rule"></div>
+  <table>
+    <tr><th style="width:15%">类别</th><th style="width:26%">工具 / 框架</th><th style="width:14%">版本</th><th>用途与选型理由</th></tr>
+    <tr><td>前端框架</td><td>React + TypeScript</td><td>19.2 / 5.9</td><td>四端共用一套组件与类型；联合类型路由把“角色—页面—参数”约束在编译期</td></tr>
+    <tr><td>构建与开发服务器</td><td>Vite</td><td>8.0</td><td>毫秒级热更新；<code>pnpm build</code> 产出可托管静态包</td></tr>
+    <tr><td>样式与设计系统</td><td>Tailwind CSS + 自建设计令牌</td><td>4.2</td><td>暖白/松绿/谷穗金三色令牌；玻璃表面、状态胶囊、抽屉等 12 个基础组件复用</td></tr>
+    <tr><td>测试</td><td>Vitest + Testing Library + jsdom</td><td>4.1 / 16.3</td><td>45 个测试文件 181 项，覆盖状态机、权限、schema 校验、四端页面渲染</td></tr>
+    <tr><td>图标</td><td>lucide-react</td><td>1.25</td><td>线性图标统一视觉重量</td></tr>
+    <tr><td>本地 AI 服务</td><td>Python + FastAPI + Pydantic v2</td><td>3.12 / 0.139</td><td>异步上传、强类型请求体、结构化校验；与前端解耦，可独立部署为 Docker</td></tr>
+    <tr><td>语音识别（ASR）</td><td>FunASR（SenseVoiceSmall + fsmn-vad + ct-punc）</td><td>1.4</td><td>中文课堂语音本地转写，带时间戳；模型惰性加载，CPU 可跑</td></tr>
+    <tr><td>文字识别（OCR）</td><td>PaddleOCR</td><td>3.x</td><td>题图本地识别，子进程隔离，原生崩溃不会拖垮 API</td></tr>
+    <tr><td>大语言模型</td><td>DeepSeek API（deepseek-v4-flash）</td><td>—</td><td>结构化 JSON 生成，temperature 0.2；仅接收文本，不接收音频与图片</td></tr>
+    <tr><td>数据契约</td><td>Prisma + 自建 <code>@zhiye/domain</code></td><td>—</td><td>19 个模型的 schema 与迁移；领域层实现状态机、权限判定、事件与会话 Cookie</td></tr>
+    <tr><td>包管理与工程</td><td>pnpm workspace + tsc 项目引用</td><td>10.28</td><td>单锁文件、可冻结安装；<code>tsc -b</code> 全量类型检查</td></tr>
+    <tr><td>CI / 部署</td><td>GitHub Actions + Docker + Render + Vercel</td><td>—</td><td>两个 CI 作业（前端与契约 / 本地 AI）；Render 常驻 Docker 承载公网 AI；Vercel 托管静态演示站</td></tr>
+    <tr><td>文档与协作</td><td>Markdown 规格 + 逐日证据</td><td>—</td><td>SPEC、UI-UX、设计说明、实施计划、8 份逐日验收记录，全部随仓库提交</td></tr>
+  </table>
+  <h3 class="blk">5.1 本地环境要求</h3>
+  <table>
+    <tr><th style="width:24%">组件</th><th style="width:30%">要求</th><th>说明</th></tr>
+    <tr><td>Node.js</td><td>20.19+ 或 22.12+</td><td>运行 Vite 与 Vitest</td></tr>
+    <tr><td>pnpm</td><td>10.28.0</td><td><code>corepack prepare pnpm@10.28.0 --activate</code></td></tr>
+    <tr><td>Python</td><td>3.11–3.12（题图 OCR 推荐 3.12）</td><td>安装 <code>services/local-ai/requirements.txt</code></td></tr>
+    <tr><td>FFmpeg</td><td>需在 PATH 中</td><td>浏览器录音格式转写需要</td></tr>
+    <tr><td>DeepSeek API Key</td><td>仅写入本机 <code>.env.local</code></td><td>不提交 Git、不入截图录屏</td></tr>
+    <tr><td>浏览器</td><td>Chrome / Edge</td><td>需要 MediaRecorder 与麦克风权限</td></tr>
+    <tr><td>磁盘与网络</td><td>预留数 GB</td><td>ASR/OCR 模型首次运行需下载</td></tr>
+  </table>
+</section>
+
+<!-- ============ P8 技术方案 ============ -->
+<section class="sheet">
+  <div class="kicker">06 ARCHITECTURE</div>
+  <h2 class="sec-title">六、技术方案与系统实现（上）</h2>
+  <p class="sec-sub">一个前端、一个本地 AI 服务、三层契约；公网演示用邀请码把模型能力关在笼子里。</p>
+  <div class="rule"></div>
+
+  <h3 class="blk">6.1 总体架构</h3>
+  <div class="arch">
+    <div class="layer l-user"><b>用户层</b> · 教师端 / 学生端 / 家长端 / 管理端（React 单页应用，hash 路由 + 角色壳层）</div>
+    <div style="text-align:center;color:#8aa18d;font-size:8pt;margin:1pt 0">↓ HTTP / FormData（JSON 与文件）</div>
+    <div class="layer l-web"><b>Web 层</b> · Vite 静态前端（127.0.0.1:8443）｜原型数据存储 localStorage + 同源标签页同步｜AI 状态机与失败重试</div>
+    <div style="text-align:center;color:#8aa18d;font-size:8pt;margin:1pt 0">↓ REST（/analyze、/generate、/solve-image、/recap-jobs）</div>
+    <div class="layer l-ai"><b>本地 AI 服务层</b> · FastAPI（127.0.0.1:8787）｜来源白名单 / 邀请码鉴权 / 滑动窗口限流｜Pydantic 强校验｜OCR 子进程隔离｜临时文件即用即删</div>
+    <div style="text-align:center;color:#8aa18d;font-size:8pt;margin:1pt 0">↓</div>
+    <div class="layer l-model"><b>模型层</b> · FunASR（课堂转写，本地）｜PaddleOCR（题图识别，本地）｜DeepSeek（结构化生成，仅文本）</div>
+    <div class="layer l-data" style="margin-top:4pt"><b>契约层</b> · <code>packages/domain</code>（状态机 / 权限 / 事件 / 会话）｜<code>packages/db</code>（Prisma 19 模型 + 迁移 + 种子）｜<code>specs/SPEC.md</code>（接口与数据契约）</div>
+    <div class="cap">部署形态：① 本机双服务（演示与验收）② Render Docker 常驻公网 AI + 邀请码（新加坡区域，1c-2g）③ Vercel 静态演示站（仅浏览器内数据）</div>
+  </div>
+
+  <h3 class="blk">6.2 组件职责</h3>
+  <table>
+    <tr><th style="width:20%">组件</th><th>职责</th></tr>
+    <tr><td>React 四端</td><td>路由与角色壳层、录音状态机、AI 状态呈现、草稿编辑与发布确认、拼音与无障碍、原型数据持久化</td></tr>
+    <tr><td>FastAPI 服务</td><td>接收音频/图片/文本，调度本地模型，调用云端模型，返回严格结构化结果与可读错误</td></tr>
+    <tr><td>转写工具</td><td>FunASR 生成带时间戳的 <code>EvidenceItem</code> 列表；无有效人声时抛错并转为 422</td></tr>
+    <tr><td>识题工具</td><td>PaddleOCR 在独立进程识别题图，返回文本与置信度；置信度不足要求重拍</td></tr>
+    <tr><td>生成工具</td><td>11 类结构化生成任务，统一 prompt 契约 + JSON mode + schema 校验 + 一次补救重试</td></tr>
+    <tr><td>编排层</td><td><code>RecapJob</code> 五步执行、状态保留、单步重试（详见 6.3）</td></tr>
+    <tr><td>契约层</td><td>领域状态机与权限判定、Prisma 数据模型、接口规范，作为从原型走向真实服务的路线图</td></tr>
+  </table>
+
+  <h3 class="blk">6.3 智能体编排：RecapJob 五步契约</h3>
+  <table>
+    <tr><th style="width:16%">步骤</th><th style="width:24%">输入</th><th style="width:26%">输出</th><th>失败行为</th></tr>
+    <tr><td>1 transcribe</td><td>课堂音频（或文本）</td><td>证据列表（原话 + 起止秒）</td><td>无人声 → 任务失败，保留空结果并提示重录</td></tr>
+    <tr><td>2 extract-evidence</td><td>证据列表</td><td>校验后的证据列表</td><td>转写为空 → 失败，不进入后续步骤</td></tr>
+    <tr><td>3 identify-gaps</td><td>目标 + 证据</td><td>学习缺口推断（必须引用证据 ID）</td><td>目标为空或无证据 → 失败</td></tr>
+    <tr><td>4 generate-deliverables</td><td>目标 + 证据 + 缺口</td><td>四项成果（复习卡/报告/教案/练习）</td><td>模型失败 → 仅此步失败，前 3 步保留</td></tr>
+    <tr><td>5 teacher-review</td><td>四项成果</td><td>教师确认后发布或下载</td><td>未确认 → 学生端不可见</td></tr>
+  </table>
+  <div class="note"><b>状态机：</b>任务状态 <code>queued → running → needs-review / failed</code>；步骤状态 <code>pending → running → succeeded / failed / skipped</code>。<b>重试规则：</b>只允许重试 <code>failed</code> 步骤，上游成功结果作为输入复用——转写不会因为生成失败而重复执行，也不会重复计费。</div>
+</section>
+
+<!-- ============ P9 技术方案中 ============ -->
+<section class="sheet">
+  <div class="kicker">06 ARCHITECTURE (CONT.)</div>
+  <h2 class="sec-title">六、技术方案与系统实现（中）</h2>
+  <p class="sec-sub">结构化输出是防幻觉的第一道闸门；教师确认是第二道。</p>
+  <div class="rule"></div>
+
+  <h3 class="blk">6.4 结构化输出与防幻觉设计</h3>
+  <table>
+    <tr><th style="width:22%">机制</th><th style="width:44%">实现</th><th>拦住什么</th></tr>
+    <tr><td>严格 schema</td><td>所有上下文模型 <code>extra="forbid"</code>；字段类型、长度、上下界显式声明</td><td>模型自行加字段、把字符串写成数组</td></tr>
+    <tr><td>证据引用约束</td><td><code>InferenceItem.evidence_ids</code> 必须引用已存在的 <code>EvidenceItem</code>，否则 schema 拒绝</td><td>没有出处的“建议”</td></tr>
+    <tr><td>纯文本闸门</td><td><code>TextOnly</code> 拒绝控制字符、data URL / http(s) URL、SVG 标记、base64 编码的图片字节</td><td>提示注入与二进制夹带</td></tr>
+    <tr><td>业务规则校验</td><td>测验恰好 3 题、答案必须是选项之一、判断题归一化为“正确/错误”；迁移题答案必须在选项内</td><td>无法使用的题目草稿</td></tr>
+    <tr><td>低温与 JSON 模式</td><td>temperature 0.2，<code>response_format=json_object</code>；prompt 明确“不得编造未出现的事实、不得诊断学生”</td><td>发散与格式漂移</td></tr>
+    <tr><td>一次补救重试</td><td>关键任务在 schema 校验失败后，用同一份已批准上下文补一次强约束重试，仍失败则报错</td><td>截断的 JSON 直接抛给教师</td></tr>
+    <tr><td>前端二次校验</td><td><code>isCompleteLessonAnalysis</code> 等类型守卫在渲染前逐字段检查</td><td>不完整数据进入界面</td></tr>
+  </table>
+
+  <h3 class="blk">6.5 安全与隐私设计</h3>
+  <div class="grid2">
+    <div class="card"><h5>数据最小化</h5><p>音频与题图只进本地服务，处理完立即删除临时文件；只有转写文本与上下文交给云端模型。日志不写题目图片、课堂原文与敏感反馈正文。</p></div>
+    <div class="card"><h5>密钥隔离</h5><p>模型 Key 只存在于本机 <code>.env.local</code> 或 Render 私密环境变量；浏览器只持有 <code>VITE_</code> 公开参数，<code>/health</code> 只返回布尔值不泄露 Key。</p></div>
+    <div class="card"><h5>来源与鉴权</h5><p>AI 服务中间件校验 Origin 白名单；公网模式启用邀请码换取 HMAC-SHA256 签名令牌（8 小时），所有 AI 路由服务端验签。</p></div>
+    <div class="card"><h5>速率限制</h5><p>滑动窗口限流：全局 120 次/小时、单令牌 30 次/小时、邀请码兑换单 IP 10 次/15 分钟；超限返回 429 与 Retry-After。</p></div>
+    <div class="card"><h5>儿童保护</h5><p>保护性表达不作为普通消息发送，需人工确认后转交；风险案例仅展示最少必要上下文，不作诊断、不自动判断、不贴标签；处置全程写审计。</p></div>
+    <div class="card"><h5>崩溃隔离</h5><p>OCR 在独立子进程运行，原生崩溃不会拖垮 API；模型惰性加载，未配置 Key 时其他功能仍可启动。</p></div>
+  </div>
+
+  <h3 class="blk">6.6 失败边界（四类真实故障）</h3>
+  <table>
+    <tr><th style="width:20%">故障</th><th style="width:36%">界面表现</th><th>处理动作</th></tr>
+    <tr><td>无麦克风权限</td><td>“无法访问麦克风：…” + 状态“处理失败”</td><td>提供“重试录音”，不产生 AI 初稿</td></tr>
+    <tr><td>录音为空</td><td>“没有录到有效课堂音频，请检查麦克风权限后重试。”</td><td>请求根本不发出，节省算力与费用</td></tr>
+    <tr><td>未配置模型 Key</td><td>“未设置 DEEPSEEK_API_KEY”</td><td>转写仍可用；生成步骤失败并可重试</td></tr>
+    <tr><td>网络断开</td><td>“本地 AI 服务未启动，请运行 start-local-ai.ps1”</td><td>保留已成功步骤，恢复后仅重试失败步骤</td></tr>
+  </table>
+</section>
+
+<!-- ============ P10 技术方案下 ============ -->
+<section class="sheet">
+  <div class="kicker">06 ARCHITECTURE (CONT.)</div>
+  <h2 class="sec-title">六、技术方案与系统实现（下）</h2>
+  <p class="sec-sub">部署形态、可复现性与质量门禁。</p>
+  <div class="rule"></div>
+
+  <h3 class="blk">6.7 三种部署形态</h3>
+  <table>
+    <tr><th style="width:16%">形态</th><th style="width:26%">组成</th><th style="width:26%">适用</th><th>边界</th></tr>
+    <tr><td>本机演示</td><td><code>pnpm dev</code>（8443）+ <code>start-local-ai.ps1</code>（8787）</td><td>评委验收、真实录音演示、离线教学</td><td>数据只在本机；角色切换不是身份认证</td></tr>
+    <tr><td>公网 AI 服务</td><td>Render Docker（新加坡，1c-2g）+ 邀请码 + 限流</td><td>让公网演示站也能调用 AI</td><td>单进程内存限流与任务记录，重启即清空</td></tr>
+    <tr><td>静态演示站</td><td>Vercel 托管 <code>dist/</code></td><td>链接即看的三端界面</td><td>每访客数据仅在自己浏览器，AI 默认关闭</td></tr>
+  </table>
+  <div class="warn"><b>如实说明：</b>当前形态是<b>单机演示原型</b>。要让真实教师、学生、家长跨设备使用，必须先接入持久化后端与身份认证，按角色和班级在服务端授权，并为音频与题图建立存储、访问与删除规则。<code>packages/db</code> 与 <code>packages/domain</code> 已把这套契约写好，但前端尚未连接。</div>
+
+  <h3 class="blk">6.8 可复现性与质量门禁</h3>
+  <pre># 空目录从零复现（Windows PowerShell）
+git clone https://github.com/PaperY0/Zhiye
+cd Zhiye
+corepack enable; corepack prepare pnpm@10.28.0 --activate
+pnpm install --frozen-lockfile
+Copy-Item .env.example .env.local      # 只在本机填入 DEEPSEEK_API_KEY
+.\scripts\start-dev.ps1                # 同时启动前端、本地 AI 并打开教师端
+
+# 质量门禁（CI 中同样执行）
+pnpm test          # 45 个测试文件 / 181 项通过
+pnpm typecheck     # tsc -b 全量类型检查
+pnpm build         # 生产构建
+pnpm audit --audit-level moderate
+python -m pytest services/local-ai -q   # 63 项通过</pre>
+  <table>
+    <tr><th style="width:18%">层级</th><th>覆盖内容</th></tr>
+    <tr><td>单元 / 组件测试</td><td>录音状态机、课程状态机、任务状态机、练习评分、AI 草稿校验、教师设置、路由解析、四端页面渲染与无障碍标签</td></tr>
+    <tr><td>服务契约测试</td><td>11 类生成任务的上下文与响应 schema、防注入闸门、失败重试、五步编排与状态保留、邀请码与限流</td></tr>
+    <tr><td>领域与数据契约</td><td><code>confirmLessonArtifact</code> / <code>publishLessonArtifact</code> 状态机、权限判定、事件、会话 Cookie；Prisma schema 与种子数据</td></tr>
+    <tr><td>人工验收</td><td>逐日证据记录 + 1440×900 无头浏览器截图核对 + 演示脚本计时彩排</td></tr>
+  </table>
+
+  <h3 class="blk">6.9 目录结构</h3>
+  <pre>Zhiye/
+├─ src/                 React 前端：app（路由/原型存储/夹具）、features（四端页面）、
+│                       components（壳层/共享/工作区/拼音）、services（AI 客户端与设置）
+├─ services/local-ai/   FastAPI：server（接口与鉴权限流）、recap_tools（转写/证据/归因/生成）、
+│                       recap_job（五步编排与重试）、schemas（Pydantic 契约）、generation、ocr_worker
+├─ packages/domain/     领域状态机、权限、事件、会话 Cookie（含测试）
+├─ packages/db/         Prisma schema、迁移、种子数据
+├─ specs/               SPEC、UI-UX、设计提示词
+├─ docs/                部署与验收、演示讲稿、逐日证据、实施计划
+└─ scripts/             一键启动与部署脚本</pre>
+</section>
+
+<!-- ============ P11 功能：教师端 ============ -->
+<section class="sheet">
+  <div class="kicker">07 FEATURES · TEACHER</div>
+  <h2 class="sec-title">七、作品功能逐一说明（教师端）</h2>
+  <p class="sec-sub">教师端 8 个页面，围绕一条主线：把一节课变成可发布的教学资产。</p>
+  <div class="rule"></div>
+  <table>
+    <tr><th style="width:14%">页面</th><th style="width:36%">功能</th><th>关键交互</th></tr>
+    <tr><td><b>工作台</b></td><td>“现在要做”单卡导向：按课程状态优先级给出下一步动作；右侧待处理与班级动态</td><td>“查看并发布”“查看课堂依据”“回复新消息”“查看趋势与洞察”</td></tr>
+    <tr><td><b>课堂</b></td><td>课堂记录列表与状态筛选（待开始/进行中/处理中/失败/AI 初稿/已发布，带计数）</td><td>“开始新课堂录音”；删除可撤销；卡片显示时长、同步状态、学生可见性</td></tr>
+    <tr><td><b>课堂详情</b></td><td>四个标签页：课堂转写、学生复习卡、教师课堂报告、课程进度</td><td>复习卡编辑与保存；“确认并发布”二次确认；AI 进度建议可一键采纳；转写与报告永不公开</td></tr>
+    <tr><td><b>备课</b></td><td>教案列表与编辑器：课题与目标 → AI 起草流程/示例/误区/建议/延伸 → 逐段编辑</td><td>“从教辅带入课题”“用 AI 起草教学流程”（替换前确认）；可转课堂热身为任务</td></tr>
+    <tr><td><b>任务</b></td><td>班级任务创建与跟进：关联课堂/教案/题组，AI 补全任务草稿与三题</td><td>“用 AI 补全任务草稿”“重新生成三题”；保存即为草稿，不立即发给学生；逐份评分、发布、提醒</td></tr>
+    <tr><td><b>班级洞察</b></td><td>任务状态饼图、每项任务提交进度与正确率、询问次数与最新疑问</td><td>“查看全部任务”；仅显示班级聚合，不展示个人答案</td></tr>
+    <tr><td><b>学生档案</b></td><td>班级切换、概览、CSV 导入（姓名列必填、班级白名单校验）、学生增删改</td><td>批量导入不创建新画像系统</td></tr>
+    <tr><td><b>学生详情</b></td><td>时间线（已记录事实 / 待核实）、可核实事实、教师笔记、AI 家长摘要与观察草稿</td><td>无证据时拒绝生成；“采纳并发布 / 采纳观察 / 忽略草稿”；笔记仅教师可见</td></tr>
+  </table>
+  <div class="figrow">
+  <figure>
+    <img src="assets/opt/shot-workspace.jpg" alt="教师工作台：审核课堂复盘" />
+    <figcaption>图 1　教师工作台：一卡呈现“待确认”的课堂复盘，AI 草稿可编辑，右侧为待处理与班级动态</figcaption>
+  </figure>
+  <figure>
+    <img src="assets/opt/shot-lesson-detail.jpg" alt="课堂详情：课堂转写标签页" />
+    <figcaption>图 2　课堂详情：转写原文带说话人与时间区间，是后续所有建议的事实来源</figcaption>
+  </figure>
+  </div>
+</section>
+
+<!-- ============ P12 功能：教师端续 ============ -->
+<section class="sheet">
+  <div class="kicker">07 FEATURES · TEACHER (CONT.)</div>
+  <h2 class="sec-title">七、作品功能逐一说明（教师端 · 续）</h2>
+  <div class="rule"></div>
+  <div class="figrow">
+  <figure>
+    <img src="assets/opt/shot-planning.jpg" alt="备课页：教案编辑器" />
+    <figcaption>图 3　备课：课题与目标填写后，AI 起草各环节，教师逐段修改；教辅资源可按“教材—单元—课题”三级带入</figcaption>
+  </figure>
+  <figure>
+    <img src="assets/opt/shot-insights.jpg" alt="班级洞察：任务反馈" />
+    <figcaption>图 4　班级洞察：每项任务的学习反馈（提交进度、正确率、询问次数），数据为班级聚合</figcaption>
+  </figure>
+  </div>
+  <h3 class="blk">7.1 教师端的三个设计坚持</h3>
+  <div class="grid3">
+    <div class="card"><h5>一屏一件事</h5><p>每个页面只有一个主操作：录音、审核发布、生成任务、查看洞察。次要操作收进抽屉或次级按钮。</p></div>
+    <div class="card"><h5>草稿不是结论</h5><p>所有 AI 产出默认标记“AI 草稿 / AI 初稿 · 教师可编辑”，可改、可弃、可不发布。</p></div>
+    <div class="card"><h5>证据随手可查</h5><p>“查看课堂依据”一步展开转写原话与时间；AI 推断用独立标签，不与课堂事实混排。</p></div>
+  </div>
+  <h3 class="blk">7.2 消息与设置中的安全细节</h3>
+  <table>
+    <tr><th style="width:22%">场景</th><th>行为</th></tr>
+    <tr><td>学生发来保护性表达</td><td>教师端弹出确认：“不会作为普通消息发送”，可选择“转入保护流程演示”；系统不自动判断、不报警、不外发</td></tr>
+    <tr><td>新建家长会话</td><td>需填写监护人姓名以建立绑定关系，未绑定不出现会话</td></tr>
+    <tr><td>附件</td><td>明确标注“仅本地预览，不会上传”</td></tr>
+    <tr><td>教师设置影响 AI</td><td>姓名/班级/教材/章节作为默认值；详细程度、是否引用课堂证据、是否优先生活化例子控制表达方式；<b>“发布前需教师确认”可关闭以适配不同试点流程</b>；通知、保留期等字段不送入模型</td></tr>
+    <tr><td>重置演示数据</td><td>二次确认后恢复脱敏夹具，每次彩排从同一状态开始</td></tr>
+  </table>
+</section>
+
+<!-- ============ P13 功能：学生端 ============ -->
+<section class="sheet">
+  <div class="kicker">07 FEATURES · STUDENT</div>
+  <h2 class="sec-title">七、作品功能逐一说明（学生端）</h2>
+  <p class="sec-sub">学生端 8 个页面 + 全局陪伴助手，原则是“先提示、后讲解，给思考留空间”。</p>
+  <div class="rule"></div>
+  <table>
+    <tr><th style="width:16%">页面</th><th style="width:38%">功能</th><th>关键交互</th></tr>
+    <tr><td><b>首页</b></td><td>只展示老师已发布的复习卡、最新任务、最近错题与学习交流</td><td>“开始复习”“打开这项任务”“查看消息”；未发布内容不出现</td></tr>
+    <tr><td><b>复习卡详情</b></td><td>已发布课堂重点 + 知识点标签 + 自评</td><td>“我已理解 / 还需要练习（推荐任务）/ 我想问老师（跳转消息）”</td></tr>
+    <tr><td><b>拍照答疑</b></td><td>四步流程：上传题目 → 找到卡点 → 分层提示 → 巩固保存</td><td>“确认题目继续”“再给我一点提示”“我想看完整讲解”“我来复述”“保存到错题本”“再问一道题”</td></tr>
+    <tr><td><b>任务</b></td><td>只看面向自己的非草稿任务；测验在线作答自动评分</td><td>“开始任务 / 标记为已完成”；“这项任务有疑问？去询问 AI”</td></tr>
+    <tr><td><b>询问</b></td><td>按任务提问，按询问数排序；可逐题解答</td><td>“询问这项任务”“解答第 N 题”</td></tr>
+    <tr><td><b>错题本</b></td><td>按学科/知识点/时间/掌握度筛选与统计；三个来源（答疑、测验、任务询问）</td><td>改掌握状态、复习笔记、复习提醒（仅本地）</td></tr>
+    <tr><td><b>消息</b></td><td>仅本班教师私聊与教师管理的班级群</td><td>普通反馈快捷输入；“需要帮助”显示儿童保护指引，不作为普通消息发送</td></tr>
+    <tr><td><b>陪伴助手</b></td><td>全局悬浮“小野”，带拼音回复与页面跳转建议</td><td>回复可跳转拍照答疑、错题本、任务等；失败有本地兜底文案</td></tr>
+  </table>
+  <div class="figrow">
+  <figure>
+    <img src="assets/opt/shot-tutoring.jpg" alt="拍照答疑四步流程" />
+    <figcaption>图 5　拍照答疑：步骤条 + 题图置顶 + 拼音辅助；题图仅发送至本地 OCR 服务</figcaption>
+  </figure>
+  <figure>
+    <img src="assets/opt/shot-review.jpg" alt="未发布的复习卡对学生不可见" />
+    <figcaption>图 6　教师确认前，学生端显示“这张复习卡暂不可查看”——发布门槛由界面直接可见</figcaption>
+  </figure>
+  </div>
+</section>
+
+<!-- ============ P14 功能：家长+管理 ============ -->
+<section class="sheet">
+  <div class="kicker">07 FEATURES · GUARDIAN &amp; ADMIN</div>
+  <h2 class="sec-title">七、作品功能逐一说明（家长端与管理端）</h2>
+  <div class="rule"></div>
+  <h3 class="blk">7.3 家长端（2 页）</h3>
+  <table>
+    <tr><th style="width:16%">页面</th><th style="width:38%">功能</th><th>关键交互</th></tr>
+    <tr><td><b>学习近况</b></td><td>与孩子同步的学习动态：待完成/已提交任务、已解答疑问、复习记录；教师审核后发布的摘要；可以陪孩子回顾的主题</td><td>“联系老师”；摘要未确认时显示“还在等待教师确认”</td></tr>
+    <tr><td><b>联系老师</b></td><td>与本班教师沟通，展示教师留言与已读状态</td><td>会话列表按角色过滤，仅显示绑定学生相关内容</td></tr>
+  </table>
+  <div class="note"><b>家长端三条红线：</b>不显示排名与同学对比；不展示孩子的完整提问与 AI 对话；不显示未经教师确认的自动评价。每条都有对应测试断言。</div>
+  <div class="figrow">
+  <figure>
+    <img src="assets/opt/shot-parent-home.jpg" alt="家长端学习近况" />
+    <figcaption>图 7　家长端：聚合指标 + 教师确认后摘要，明示“只显示学习关注点，不展示完整提问与 AI 对话”</figcaption>
+  </figure>
+  <figure>
+    <img src="assets/opt/shot-admin-safety.jpg" alt="保护性反馈处置台" />
+    <figcaption>图 8　保护性反馈：进入前需确认“查看最少必要信息”，明示不作诊断、不自动判断、不贴标签</figcaption>
+  </figure>
+  </div>
+  <h3 class="blk">7.4 管理端（4 页）</h3>
+  <table>
+    <tr><th style="width:18%">页面</th><th>功能</th></tr>
+    <tr><td>管理概览</td><td>学校、班级与待处理风险的数量总览</td></tr>
+    <tr><td>保护性反馈</td><td>学生表达的人工核实台：仅展示最少必要上下文，可分配、备注、转交（年级/心理/校级负责人）、解决（二次确认）</td></tr>
+    <tr><td>审计记录</td><td>按操作人、操作类型、日期筛选；“只展示必要的操作元数据，不展示学生表达”</td></tr>
+    <tr><td>学校设置</td><td>学校与班级配置、数据保留期等字段（本地演示中仅保存在浏览器）</td></tr>
+  </table>
+</section>
+
+<!-- ============ P15 AI 核心作用 ============ -->
+<section class="sheet">
+  <div class="kicker">08 AI AT THE CORE</div>
+  <h2 class="sec-title">八、AI 功能在作品中的核心作用</h2>
+  <p class="sec-sub">AI 不是附加功能，而是把教师课后工作流整体接管的那一层。</p>
+  <div class="rule"></div>
+
+  <h3 class="blk">8.1 AI 能力矩阵（11 类结构化生成任务）</h3>
+  <table>
+    <tr><th style="width:16%">任务类型</th><th style="width:26%">输入</th><th style="width:30%">输出</th><th>使用者与确认要求</th></tr>
+    <tr><td>lesson-plan</td><td>教材、章节、目标、课堂情境、证据、教具</td><td>教案：流程/示例/误区/建议/延伸</td><td>教师，逐段编辑后保存</td></tr>
+    <tr><td>task-draft</td><td>标题、目标、来源教案、学习证据、任务类型</td><td>任务标题/目标/完成标准/内容/支持提示</td><td>教师，保存为草稿</td></tr>
+    <tr><td>quiz</td><td>标题、主题、难度、聚焦点</td><td>恰好 3 题（单选/判断），含答案</td><td>教师，学生端预览不含答案</td></tr>
+    <tr><td>remedial-plan</td><td>知识点、步骤、影响人数、趋势、证据</td><td>补讲方案：目标/步骤/示例/理解检查</td><td>教师，采纳后进教案</td></tr>
+    <tr><td>learning-reply</td><td>主题、复习卡、学生问题</td><td>解释/示例/知识卡/下一步</td><td>学生即时；标注 AI 解答</td></tr>
+    <tr><td>retell-follow-up</td><td>主题、学生复述</td><td>反馈与跟进问题</td><td>学生即时</td></tr>
+    <tr><td>tutoring</td><td>题干、卡点、学生尝试</td><td>提示/关键步骤/讲解/复述要求/迁移题</td><td>学生即时；先提示后讲解</td></tr>
+    <tr><td>task-inquiry</td><td>任务内容、学生疑问、题目与标准答案</td><td>解答/疑点名称/复习建议</td><td>学生即时；标准答案不改动</td></tr>
+    <tr><td>student-companion</td><td>学生消息、当前页面</td><td>回复 + 拼音 + 页面跳转动作</td><td>学生即时；禁止输出 URL</td></tr>
+    <tr><td>parent-summary</td><td>可核实事实列表</td><td>主题/鼓励/教师留言</td><td><b>教师确认后家长才可见</b></td></tr>
+    <tr><td>student-inference</td><td>事实与错题列表</td><td>证据/观察/建议支持</td><td><b>教师采纳后生效，禁止诊断贴标签</b></td></tr>
+  </table>
+
+  <h3 class="blk">8.2 AI 是执行者，不是聊天窗</h3>
+  <div class="flow">
+    <span class="node">教师目标</span><span class="arrow">→</span>
+    <span class="node">① 转写工具</span><span class="arrow">→</span>
+    <span class="node">② 证据提取</span><span class="arrow">→</span>
+    <span class="node">③ 卡点归因</span><span class="arrow">→</span>
+    <span class="node">④ 成果生成</span><span class="arrow">→</span>
+    <span class="node">教师审核</span><span class="arrow">→</span>
+    <span class="node">发布 / 下载</span><span class="arrow">→</span>
+    <span class="node">学生结果回流</span>
+  </div>
+  <p>每一步都是<b>可观测的工具调用</b>：有状态、有摘要、有耗时、有错误码；失败只影响该步，已成功的转写与证据被保留并复用。这与“打开一个对话框提问”有本质区别——前者替代的是工作流，后者只替代了一次搜索。</p>
+
+  <h3 class="blk">8.3 三条防幻觉机制</h3>
+  <div class="grid3">
+    <div class="card"><h5>① 事实与推断分区</h5><p>课堂证据（原话 + 时间）与 AI 推断（带引用）在界面上分开显示；schema 强制推断必须引用已有证据。</p></div>
+    <div class="card"><h5>② 只准依据给定上下文</h5><p>prompt 明确“不得编造课堂事实、学生表现或学生标签”；教师偏好只能改变表达方式，不能覆盖课堂事实。</p></div>
+    <div class="card"><h5>③ 人做最终判断</h5><p>AI 只产出草稿；学生与家长可见的任何内容都必须经过教师确认，未确认即不可见。</p></div>
+  </div>
+
+  <h3 class="blk">8.4 本地优先的模型分工</h3>
+  <table>
+    <tr><th style="width:22%">环节</th><th style="width:22%">模型</th><th>为什么这样分工</th></tr>
+    <tr><td>课堂转写</td><td>FunASR（本地）</td><td>音频不出本机，带时间戳，可直接作为证据；CPU 可运行</td></tr>
+    <tr><td>题图识别</td><td>PaddleOCR（本地）</td><td>学生照片不进云端；子进程隔离避免崩溃扩散</td></tr>
+    <tr><td>结构化生成</td><td>DeepSeek（云端）</td><td>只接收文本与上下文，成本低、JSON 稳定，可随时切换供应商</td></tr>
+  </table>
+  <div class="note"><b>可替换性：</b>所有模型调用都封装在统一工具契约之后（<code>transcribe_audio</code> / <code>extract_evidence</code> / <code>identify_learning_gaps</code> / <code>generate_deliverables</code>），换成 Qwen、通义或本地开源模型不需要改动前端与业务流程。</div>
+</section>
+
+<!-- ============ P16 使用说明 ============ -->
+<section class="sheet">
+  <div class="kicker">09 USER GUIDE</div>
+  <h2 class="sec-title">九、完整使用说明（安装与启动）</h2>
+  <p class="sec-sub">从空目录到看到第一个 AI 初稿，约 10 分钟（不含模型下载）。</p>
+  <div class="rule"></div>
+
+  <h3 class="blk">9.1 一键启动（推荐）</h3>
+  <pre># 1) 准备环境：Node 20.19+/22.12+、pnpm 10.28.0、Python 3.11–3.12、FFmpeg
+# 2) 安装依赖并准备环境变量
+pnpm install --frozen-lockfile
+Copy-Item .env.example .env.local
+# 3) 只在本机 .env.local 中填入 DEEPSEEK_API_KEY（不要提交、不要截图）
+
+# 4) 一条命令同时启动前端、本地 AI 并打开教师端
+.\scripts\start-dev.ps1
+
+# 打开 http://127.0.0.1:8443/#/teacher/classroom</pre>
+  <p>若 PowerShell 阻止脚本执行，先运行 <code>Set-ExecutionPolicy -Scope Process Bypass</code>。</p>
+
+  <h3 class="blk">9.2 分窗口启动（排查问题时使用）</h3>
+  <pre># 窗口一：本地 AI 服务（默认 127.0.0.1:8787）
+.\scripts\start-local-ai.ps1
+
+# 窗口二：前端
+pnpm dev
+
+# 健康检查
+curl.exe --noproxy '*' http://127.0.0.1:8787/health
+# {"ok":true,"asr":"local-funasr","deepseek":true,"inviteRequired":false}</pre>
+  <div class="note"><b>判断 AI 是否就绪：</b><code>/health</code> 返回 <code>deepseek:false</code> 表示未配置 Key 或服务未重载环境变量；此时转写可用，生成会失败并提示“未设置 DEEPSEEK_API_KEY”。首次运行 ASR/OCR 需下载本地模型，请预留磁盘与网络。</div>
+
+  <h3 class="blk">9.3 演示数据与入口</h3>
+  <table>
+    <tr><th style="width:26%">入口</th><th>说明</th></tr>
+    <tr><td>默认数据</td><td>可重复的脱敏验收数据：五年级（2）班、“分数的基本性质”课堂、学生林晓雨及配套任务、错题、会话、摘要与风险案例</td></tr>
+    <tr><td><code>?data=empty</code></td><td>查看空数据状态，用于检查空状态引导是否清晰</td></tr>
+    <tr><td>角色切换</td><td>欢迎页或左下角角色选择，切换教师 / 学生 / 家长 / 管理端；数据在同一浏览器内共享</td></tr>
+    <tr><td>重置演示</td><td>教师端“设置 → 重置演示数据”（二次确认），恢复到同一初始状态</td></tr>
+    <tr><td>公网演示站</td><td>zhiye-demo.vercel.app：只托管静态前端，AI 默认关闭，各访客数据仅在自己浏览器</td></tr>
+  </table>
+
+  <h3 class="blk">9.4 教师操作流程（7 步）</h3>
+  <table>
+    <tr><th style="width:6%">步</th><th style="width:22%">动作</th><th>界面反馈与注意点</th></tr>
+    <tr><td>1</td><td>课堂 → 开始新课堂录音</td><td>按当前设置班级创建课堂并打开录音面板；浏览器请求麦克风权限</td></tr>
+    <tr><td>2</td><td>开始录音（可暂停/继续）</td><td>状态变为“录音中”；演示时播放脱敏课堂音频即可</td></tr>
+    <tr><td>3</td><td>结束并生成 AI 初稿</td><td>状态进入“正在整理课堂内容”：先本地转写，再交给 DeepSeek 生成草稿</td></tr>
+    <tr><td>4</td><td>查看 AI 初稿</td><td>四个标签页：转写（原话+时间）、复习卡（AI 草稿可编辑）、教师报告（仅教师）、课程进度</td></tr>
+    <tr><td>5</td><td>核对证据并编辑</td><td>“查看课堂依据”展开原话；发现事实不足可直接修改或不发布</td></tr>
+    <tr><td>6</td><td>确认并发布</td><td>弹窗明示“学生将看到复习卡；转写与报告不会公开”；确认后状态变“已发布”</td></tr>
+    <tr><td>7</td><td>延伸：生成任务 / 新建教案 / 看回流</td><td>“根据课堂生成三题任务”；班级洞察查看提交进度与正确率，形成下一课草稿</td></tr>
+  </table>
+</section>
+
+<!-- ============ P17 使用说明续 ============ -->
+<section class="sheet">
+  <div class="kicker">09 USER GUIDE (CONT.)</div>
+  <h2 class="sec-title">九、完整使用说明（学生、家长与交互指南）</h2>
+  <div class="rule"></div>
+
+  <h3 class="blk">9.5 学生操作流程（6 步）</h3>
+  <table>
+    <tr><th style="width:6%">步</th><th style="width:22%">动作</th><th>界面反馈与注意点</th></tr>
+    <tr><td>1</td><td>首页看复习卡</td><td>只出现老师已发布内容；没有则显示“目前没有新的复习卡”</td></tr>
+    <tr><td>2</td><td>拍照答疑 → 选择题目图片</td><td>本地 OCR 识别；不清晰时要求重拍，识别后可先校对文本</td></tr>
+    <tr><td>3</td><td>选择卡点</td><td>“完全没思路 / 卡在某一步 / 核对思路 / 检查答案”，决定提示层级</td></tr>
+    <tr><td>4</td><td>按提示思考</td><td>“我想到了 / 再给我一点提示 / 我想看完整讲解”；讲解前需先尝试</td></tr>
+    <tr><td>5</td><td>复述并做变式题</td><td>“我来复述”后获得反馈与一道迁移题</td></tr>
+    <tr><td>6</td><td>保存到错题本</td><td>自动记录题目、卡点与复述；可在错题本改掌握度与复习笔记</td></tr>
+  </table>
+
+  <h3 class="blk">9.6 家长与管理端操作</h3>
+  <table>
+    <tr><th style="width:20%">角色</th><th>流程</th></tr>
+    <tr><td>家长</td><td>学习近况 → 查看聚合指标与教师确认后的摘要 → “可以陪孩子回顾”主题 → 需要时“联系老师”</td></tr>
+    <tr><td>管理端</td><td>管理概览 → 保护性反馈（先确认“查看最少必要信息”→ 分配 → 备注 → 转交 → 解决）→ 审计记录按人/操作/日期筛选</td></tr>
+  </table>
+
+  <h3 class="blk">9.7 交互指南</h3>
+  <div class="grid2">
+    <div class="card"><h5>状态一眼可读</h5><p>课程：待开始 / 录音中 / 已暂停 / 处理中 / 处理失败 / AI 初稿 / 已发布。状态同时用文字与颜色表达，不只靠颜色。</p></div>
+    <div class="card"><h5>没有假进度</h5><p>处理中显示真实阶段（“正在调用本地 FunASR 转写，再交给 DeepSeek 生成复盘”），不显示无意义百分比。</p></div>
+    <div class="card"><h5>失败给原因与出路</h5><p>每个失败都伴随中文原因与“重试录音 / 仅重试生成”等明确动作；已成功步骤与成果保留。</p></div>
+    <div class="card"><h5>删除可撤销</h5><p>课堂、教案删除后通过页面通知可立即撤销，不做静默破坏。</p></div>
+    <div class="card"><h5>拼音辅助</h5><p>学生端左下角“拼音辅助 · 已开启”，可为界面与 AI 回复逐句标注拼音，适合低年级与识字量不足的学生。</p></div>
+    <div class="card"><h5>无障碍</h5><p>键盘可完成主要流程；AI 状态用 <code>aria-live="polite"</code> 播报；图标按钮带可读标签；可点区域 ≥44px。</p></div>
+  </div>
+
+  <h3 class="blk">9.8 常见问题与故障处理</h3>
+  <table>
+    <tr><th style="width:30%">现象</th><th>原因与处理</th></tr>
+    <tr><td>“本地 AI 服务未启动”</td><td>未运行 <code>start-local-ai.ps1</code>；或端口 8787 被占用</td></tr>
+    <tr><td>“未设置 DEEPSEEK_API_KEY”</td><td>在 <code>.env.local</code> 填入 Key 后重启本地 AI 服务</td></tr>
+    <tr><td>“没有识别到清晰的人声”</td><td>录音太短、太轻或环境噪音大；靠近音源重录</td></tr>
+    <tr><td>“题目文字不清晰，请重新拍摄”</td><td>OCR 置信度 &lt;0.65；在光线充足处正面拍摄整题</td></tr>
+    <tr><td>公开演示版无 AI</td><td>公网站默认不提供 AI；本地运行或使用带邀请码的公网 AI 服务</td></tr>
+    <tr><td>换设备看不到数据</td><td>原型数据只保存在当前浏览器；正式服务需数据库与账号（见 6.7）</td></tr>
+  </table>
+</section>
+
+<!-- ============ P18 演示脚本 ============ -->
+<section class="sheet">
+  <div class="kicker">09 DEMO SCRIPT</div>
+  <h2 class="sec-title">九、五分钟演示脚本（路演用）</h2>
+  <p class="sec-sub">按此顺序讲，评委可在 30 秒内理解“智能体到底做了什么”。</p>
+  <div class="rule"></div>
+  <table>
+    <tr><th style="width:12%">时间</th><th style="width:26%">环节</th><th>讲解要点与操作</th></tr>
+    <tr><td>0:00–0:30</td><td>痛点</td><td>“一位村小数学老师每天只有不到一小时做课后复盘，而知野把其中 25 分钟变成 5 分钟审核。”</td></tr>
+    <tr><td>0:30–1:00</td><td>输入</td><td>教师端“课堂 → 开始新课堂录音”，输入目标“根据这节分数课，为明天准备 5 分钟补讲”</td></tr>
+    <tr><td>1:00–3:00</td><td>智能体执行</td><td>展示五步：转写 → 证据提取 → 卡点归因 → 成果生成 → 等待审核；强调“音频先在本机 FunASR 转写，再交给 DeepSeek 生成教师可审核草稿”</td></tr>
+    <tr><td>3:00–3:40</td><td>证据可追溯</td><td>展开两条转写证据（“分子和分母要同时乘同一个不为零的数”“如果只把分子乘二，分数是不是也一样？”），说明“为什么推荐补讲单位换算/不为零条件”</td></tr>
+    <tr><td>3:40–4:10</td><td>教师审核与交付</td><td>修改一处复习卡 → 确认并发布 → 下载补讲包；强调“教师确认是唯一发布门槛”</td></tr>
+    <tr><td>4:10–4:45</td><td>学生回流</td><td>切到学生端：只看到已发布复习卡；拍照答疑先提示后讲解；回到教师端班级洞察看聚合回流</td></tr>
+    <tr><td>4:45–5:00</td><td>技术与安全</td><td>“本地优先处理儿童数据、证据必须可回溯、失败可单步重试、未确认不发布”</td></tr>
+  </table>
+  <h3 class="blk">9.9 故障演示（加分项）</h3>
+  <table>
+    <tr><th style="width:26%">演示</th><th>要点</th></tr>
+    <tr><td>断开 DeepSeek</td><td>只有“生成补讲包”步骤失败，转写与证据保留，可“仅重试生成”</td></tr>
+    <tr><td>清空转写</td><td>明确提示“没有识别到清晰的人声”，不生成任何成果</td></tr>
+    <tr><td>拒绝麦克风</td><td>显示权限原因与“重试录音”，不产生 AI 初稿</td></tr>
+  </table>
+  <div class="note"><b>讲稿原则：</b>不把“看起来没问题”当完成；每个主张都对应一个可点击、可打开、可回放的结果。</div>
+</section>
+
+<!-- ============ P19 前景与商业 ============ -->
+<section class="sheet">
+  <div class="kicker">10 MARKET &amp; BUSINESS</div>
+  <h2 class="sec-title">十、应用前景与商业模式</h2>
+  <div class="rule"></div>
+
+  <h3 class="blk">10.1 应用前景</h3>
+  <table>
+    <tr><th style="width:20%">方向</th><th>判断与依据</th></tr>
+    <tr><td>政策顺风</td><td>教育数字化进入“应用深水区”，教师减负与因材施教是明确导向；乡村小规模学校的个性化辅导缺口最大</td></tr>
+    <tr><td>需求刚性</td><td>课后复盘是高频、耗时、可被结构化的动作，不依赖学校更换硬件，一台电脑即可开始</td></tr>
+    <tr><td>横向扩展</td><td>同一“录音→证据→草稿→教师确认”框架可复制到语文阅读、英语听说等学科；从单班到年级到区域教研平台</td></tr>
+    <tr><td>数据资产</td><td>在授权与脱敏前提下，班级级卡点聚合可反哺教材修订与教研，而非学生画像</td></tr>
+  </table>
+
+  <h3 class="blk">10.2 落地路径（四阶段）</h3>
+  <div class="flow">
+    <span class="node">① 单机演示原型（当前）</span><span class="arrow">→</span>
+    <span class="node">② 邀请码公网演示</span><span class="arrow">→</span>
+    <span class="node">③ 2–3 所试点校（数据库 + 认证 + 授权）</span><span class="arrow">→</span>
+    <span class="node">④ 区域推广（教育局采购 / 公益合作）</span>
+  </div>
+  <p>从②到③的关键工程在 SPEC 中已定义：PostgreSQL + Prisma、Auth.js 邀请码会话、服务端 RBAC 与监护关系校验、对象存储与 <code>deleteAfterAt</code> 保留策略、BullMQ 异步任务。</p>
+
+  <h3 class="blk">10.3 商业模式</h3>
+  <table>
+    <tr><th style="width:20%">收入来源</th><th style="width:34%">模式</th><th>说明</th></tr>
+    <tr><td>学校/区域订阅</td><td>按校年费（含教师端全部功能 + 学生/家长端）</td><td>主收入；按班级数分档，含部署与培训</td></tr>
+    <tr><td>区域教研服务</td><td>年度服务费（聚合看板 + 教研报告）</td><td>面向教育局与教研室，数据为班级级聚合</td></tr>
+    <tr><td>内容合作</td><td>与出版社教辅资源分成</td><td>“从教辅带入课题”已预留资源目录结构</td></tr>
+    <tr><td>公益与硬件捆绑</td><td>公益项目资助、随乡村学校设备打包</td><td>降低首次采购门槛</td></tr>
+  </table>
+  <h3 class="blk">10.4 成本结构（示例测算，均为待验证假设）</h3>
+  <table>
+    <tr><th style="width:24%">项目</th><th style="width:26%">估算</th><th>说明</th></tr>
+    <tr><td>公网 AI 常驻实例</td><td>约 US$0.20/小时 ≈ US$146/月</td><td>Render 新加坡 1c-2g；可按需启用以降低闲置成本</td></tr>
+    <tr><td>模型调用</td><td>按量计费</td><td>单次复盘约 1 次转写（本地）+ 1–4 次结构化生成；温度 0.2、限长控制成本</td></tr>
+    <tr><td>存储与带宽</td><td>随规模线性增长</td><td>音频即用即删，仅保留元数据与成果</td></tr>
+    <tr><td>交付与支持</td><td>试点期主要成本</td><td>教师培训、校本流程适配、反馈闭环</td></tr>
+  </table>
+  <div class="warn"><b>价值主张（可向评委量化）：</b>一节课的课后整理从约 25–30 分钟降至约 5 分钟审核；补讲材料与本班本课绑定；学生提问在当天得到有步骤的回应。<b>具体提效倍数需在试点校用真实课时数据测量，本文不给出未经验证的数字。</b></div>
+</section>
+
+<!-- ============ P20 风险与结语 ============ -->
+<section class="sheet">
+  <div class="kicker">11 RISKS &amp; 12 CLOSING</div>
+  <h2 class="sec-title">十一、风险与合规 · 十二、结语</h2>
+  <div class="rule"></div>
+  <h3 class="blk">11.1 风险与缓解</h3>
+  <table>
+    <tr><th style="width:24%">风险</th><th style="width:32%">影响</th><th>缓解措施</th></tr>
+    <tr><td>尚无持久化后端与认证</td><td>不能存放真实学生资料</td><td>如实标注为演示原型；SPEC 与 Prisma/domain 契约已就绪，试点前完成接入</td></tr>
+    <tr><td>模型幻觉</td><td>错误结论影响教学</td><td>证据引用约束 + schema 校验 + 教师确认门槛 + 推断单独标注</td></tr>
+    <tr><td>录音与儿童数据授权</td><td>合规与信任风险</td><td>只用获准脱敏音频；本地处理、最小留存、审计留痕、即用即删</td></tr>
+    <tr><td>公网成本与滥用</td><td>费用不可控</td><td>邀请码 + 令牌过期 + 多层限流 + 可一键停用公网 AI</td></tr>
+    <tr><td>公网演示数据隔离</td><td>访客误解为真实服务</td><td>页面与文档明示“数据只在本浏览器、不跨设备”</td></tr>
+    <tr><td>教师采纳门槛</td><td>功能闲置</td><td>保留教师既有习惯：可编辑、可弃用、可只用手工整理；设置项可调节确认强度</td></tr>
+  </table>
+
+  <h3 class="blk">12.1 结语</h3>
+  <p>知野没有把聊天机器人塞进课堂，而是把“录音—转写—证据—复盘—审核—发布”这条教师每天都要走一遍的工作流整体接管。它用结构化契约约束模型的表达，用证据引用约束模型的依据，用教师确认约束模型的出口；失败时它说清楚哪一步坏了、能不能只修那一步。</p>
+  <p>这让 AI 在课堂里的位置变得清晰：<b>做草稿、做取证、做重复劳动；把判断、取舍和面对学生的责任，留给教师。</b></p>
+
+  <h3 class="blk">附录 A　验证证据</h3>
+  <table>
+    <tr><th style="width:34%">项目</th><th>结果</th></tr>
+    <tr><td>前端测试</td><td>45 个测试文件 / 181 项通过（Vitest + Testing Library）</td></tr>
+    <tr><td>本地 AI 服务测试</td><td>63 项通过（pytest，含 schema、防注入、编排、鉴权限流）</td></tr>
+    <tr><td>类型检查 / 构建 / 审计</td><td><code>tsc -b</code>、<code>vite build</code>、<code>pnpm audit --audit-level moderate</code> 通过</td></tr>
+    <tr><td>CI</td><td>GitHub Actions 两个作业：前端与契约、本地 AI</td></tr>
+    <tr><td>逐日证据</td><td><code>docs/evidence/day-01 … day-08</code>，含失败边界与人工验收步骤</td></tr>
+  </table>
+
+  <h3 class="blk">附录 B　关键术语</h3>
+  <table>
+    <tr><th style="width:22%">术语</th><th>含义</th></tr>
+    <tr><td>RecapJob</td><td>一次可追踪的复盘任务，含目标、五步计划、证据、推断与四项成果</td></tr>
+    <tr><td>EvidenceItem</td><td>课堂证据：原话 + 起止秒 + 来源，不可变</td></tr>
+    <tr><td>InferenceItem</td><td>AI 推断：必须引用已有证据 ID，界面单独标注</td></tr>
+    <tr><td>DRAFT→CONFIRMED→PUBLISHED</td><td>成果状态机：草稿 → 教师确认 → 对学生/家长发布</td></tr>
+    <tr><td>卡点（stuckPoint）</td><td>学生自选的困难类型：完全没思路 / 卡在某一步 / 核对思路 / 检查答案</td></tr>
+  </table>
+  <div class="note" style="margin-top:6pt"><b>仓库与演示：</b>github.com/PaperY0/Zhiye ｜ zhiye-demo.vercel.app ｜ 本地运行见第 9 节。<br />
+  本文档由项目源码、规格与逐日验收记录整理而成；所有未验证数字均已标注为假设。</div>
+</section>
+
+</body>
+</html>

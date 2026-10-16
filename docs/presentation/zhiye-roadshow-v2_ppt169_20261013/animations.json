@@ -1,0 +1,273 @@
+{
+  "version": 1,
+  "slides": {
+    "05_zhiye": {
+      "groups": {
+        "product-title": {
+          "effect": "entrance_fade",
+          "order": 1,
+          "duration": 0.32,
+          "trigger": "with-previous"
+        },
+        "input-output": {
+          "effect": "entrance_fade",
+          "order": 2,
+          "duration": 0.32,
+          "trigger": "after-previous"
+        },
+        "product-focus": {
+          "effect": "entrance_float",
+          "order": 3,
+          "duration": 0.48,
+          "trigger": "on-click"
+        },
+        "full-interface": {
+          "effect": "entrance_fade",
+          "order": 4,
+          "duration": 0.28,
+          "trigger": "after-previous"
+        }
+      }
+    },
+    "10_zhiye": {
+      "groups": {
+        "verification-heading": {
+          "effect": "entrance_fade",
+          "order": 1,
+          "duration": 0.28,
+          "trigger": "with-previous"
+        },
+        "metric-front": {
+          "effect": "entrance_fade",
+          "order": 2,
+          "duration": 0.38,
+          "trigger": "on-click"
+        },
+        "metric-ai": {
+          "effect": "entrance_fade",
+          "order": 3,
+          "duration": 0.38,
+          "trigger": "after-previous"
+        },
+        "engineering-scope": {
+          "effect": "entrance_fade",
+          "order": 4,
+          "duration": 0.3,
+          "trigger": "after-previous"
+        },
+        "field-validation": {
+          "effect": "entrance_float",
+          "order": 5,
+          "duration": 0.44,
+          "trigger": "on-click"
+        }
+      }
+    },
+    "02_zhiye": {
+      "groups": {
+        "teacher-load": {
+          "effect": "entrance_fade",
+          "order": 1,
+          "trigger": "on-click",
+          "duration": 0.3
+        },
+        "scenario-takeaway": {
+          "effect": "entrance_fade",
+          "order": 2,
+          "trigger": "after-previous",
+          "duration": 0.3
+        }
+      }
+    },
+    "03_zhiye": {
+      "groups": {
+        "gap-0": {
+          "effect": "entrance_fade",
+          "order": 1,
+          "trigger": "on-click",
+          "duration": 0.3
+        },
+        "gap-1": {
+          "effect": "entrance_fade",
+          "order": 2,
+          "trigger": "after-previous",
+          "duration": 0.3
+        },
+        "gap-2": {
+          "effect": "entrance_fade",
+          "order": 3,
+          "trigger": "after-previous",
+          "duration": 0.3
+        }
+      }
+    },
+    "04_zhiye": {
+      "groups": {
+        "loop-1": {
+          "effect": "entrance_fade",
+          "order": 1,
+          "trigger": "on-click",
+          "duration": 0.24
+        },
+        "loop-2": {
+          "effect": "entrance_fade",
+          "order": 2,
+          "trigger": "after-previous",
+          "duration": 0.24
+        },
+        "loop-3": {
+          "effect": "entrance_fade",
+          "order": 3,
+          "trigger": "after-previous",
+          "duration": 0.24
+        },
+        "loop-4": {
+          "effect": "entrance_fade",
+          "order": 4,
+          "trigger": "after-previous",
+          "duration": 0.24
+        },
+        "loop-5": {
+          "effect": "entrance_fade",
+          "order": 5,
+          "trigger": "after-previous",
+          "duration": 0.24
+        },
+        "loop-return": {
+          "effect": "entrance_fade",
+          "order": 6,
+          "trigger": "on-click",
+          "duration": 0.3
+        }
+      }
+    },
+    "06_zhiye": {
+      "groups": {
+        "lesson-screen": {
+          "effect": "entrance_float",
+          "order": 1,
+          "trigger": "on-click",
+          "duration": 0.42
+        },
+        "evidence-facts": {
+          "effect": "entrance_fade",
+          "order": 2,
+          "trigger": "after-previous",
+          "duration": 0.3
+        },
+        "evidence-inference": {
+          "effect": "entrance_fade",
+          "order": 3,
+          "trigger": "after-previous",
+          "duration": 0.3
+        },
+        "evidence-note": {
+          "effect": "entrance_fade",
+          "order": 4,
+          "trigger": "on-click",
+          "duration": 0.3
+        }
+      }
+    },
+    "07_zhiye": {
+      "groups": {
+        "approval-actions": {
+          "effect": "entrance_fade",
+          "order": 1,
+          "trigger": "on-click",
+          "duration": 0.3
+        },
+        "unpublished-evidence": {
+          "effect": "entrance_float",
+          "order": 2,
+          "trigger": "after-previous",
+          "duration": 0.42
+        },
+        "approval-takeaway": {
+          "effect": "entrance_fade",
+          "order": 3,
+          "trigger": "on-click",
+          "duration": 0.3
+        }
+      }
+    },
+    "08_zhiye": {
+      "groups": {
+        "learning-support": {
+          "effect": "entrance_fade",
+          "order": 1,
+          "trigger": "on-click",
+          "duration": 0.3
+        },
+        "feedback-screen": {
+          "effect": "entrance_float",
+          "order": 2,
+          "trigger": "after-previous",
+          "duration": 0.42
+        }
+      }
+    },
+    "09_zhiye": {
+      "groups": {
+        "agent-1": {
+          "effect": "entrance_fade",
+          "order": 1,
+          "trigger": "on-click",
+          "duration": 0.24
+        },
+        "agent-2": {
+          "effect": "entrance_fade",
+          "order": 2,
+          "trigger": "after-previous",
+          "duration": 0.24
+        },
+        "agent-3": {
+          "effect": "entrance_fade",
+          "order": 3,
+          "trigger": "after-previous",
+          "duration": 0.24
+        },
+        "agent-4": {
+          "effect": "entrance_fade",
+          "order": 4,
+          "trigger": "after-previous",
+          "duration": 0.24
+        },
+        "agent-boundary": {
+          "effect": "entrance_fade",
+          "order": 5,
+          "trigger": "on-click",
+          "duration": 0.3
+        }
+      }
+    },
+    "11_zhiye": {
+      "groups": {
+        "prototype-boundary": {
+          "effect": "entrance_fade",
+          "order": 1,
+          "trigger": "on-click",
+          "duration": 0.3
+        },
+        "audio-trial": {
+          "effect": "entrance_fade",
+          "order": 2,
+          "trigger": "after-previous",
+          "duration": 0.3
+        },
+        "teacher-trial": {
+          "effect": "entrance_fade",
+          "order": 3,
+          "trigger": "after-previous",
+          "duration": 0.3
+        },
+        "trial-metrics": {
+          "effect": "entrance_fade",
+          "order": 4,
+          "trigger": "on-click",
+          "duration": 0.3
+        }
+      }
+    }
+  }
+}

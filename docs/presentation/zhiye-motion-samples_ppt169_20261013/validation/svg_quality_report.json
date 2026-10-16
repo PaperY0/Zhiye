@@ -1,0 +1,368 @@
+{
+  "schema": "ppt-master.svg-quality-report.v1",
+  "stage": "final",
+  "target": "D:\\Project\\Zhiye\\docs\\presentation\\zhiye-motion-samples_ppt169_20261013",
+  "source_fingerprint": {
+    "algorithm": "sha256",
+    "digest": "617ef4c1c125b49d5d3e2247482c7935391e34e358d4ebe0cab0b2435f92bc5d",
+    "file_count": 3,
+    "files": [
+      {
+        "file": "01_cover.svg",
+        "sha256": "a19543deaa5be8216913b3b9fc03976464371fa8fa5f655671c12017347211b6"
+      },
+      {
+        "file": "02_product.svg",
+        "sha256": "77e5be46a691624e3a3f1fb47bc881cef262035afb3f78e522a035576c284046"
+      },
+      {
+        "file": "03_validation.svg",
+        "sha256": "a840ff77046de3370fb98536e8047e285b0fd9fbbb96b57cc2d0bfbf5a4306ec"
+      }
+    ]
+  },
+  "summary": {
+    "total": 3,
+    "passed": 1,
+    "warnings": 2,
+    "errors": 0
+  },
+  "issue_types": {},
+  "categories": {
+    "blocking": {
+      "count": 0,
+      "issues": []
+    },
+    "introduced": {
+      "count": 2,
+      "issues": [
+        {
+          "file": "01_cover.svg",
+          "message": "Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Ma Shan Zheng): Ma Shan Zheng, KaiTi"
+        },
+        {
+          "file": "03_validation.svg",
+          "message": "Detected 1 paragraph-like line run(s) split across sibling <text> elements (<g id=\"field-validation\"> x=918.0, y=579.0..619.0, 2 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy=\"0\". Keep semantically independent text frames separate."
+        }
+      ]
+    },
+    "inherited": {
+      "count": 0,
+      "issues": []
+    },
+    "source-import": {
+      "count": 0,
+      "summary": {
+        "warning_count": 0,
+        "by_code": {}
+      }
+    }
+  },
+  "drift": {
+    "colors": {
+      "#3F6B45": [
+        "01_cover.svg"
+      ],
+      "#FFFFFF": [
+        "01_cover.svg"
+      ]
+    },
+    "fonts": {
+      "Ma Shan Zheng, KaiTi": [
+        "01_cover.svg"
+      ],
+      "Noto Sans SC, Microsoft YaHei, Arial": [
+        "01_cover.svg",
+        "02_product.svg",
+        "03_validation.svg"
+      ]
+    },
+    "sizes": {
+      "12": [
+        "02_product.svg",
+        "03_validation.svg"
+      ],
+      "42": [
+        "03_validation.svg"
+      ],
+      "48": [
+        "02_product.svg"
+      ],
+      "56": [
+        "02_product.svg"
+      ]
+    }
+  },
+  "carrier_receipt": {
+    "scope": "informational-not-a-quota",
+    "pages": 3,
+    "totals": {
+      "text_elements": 41,
+      "image_placements": 3,
+      "icons": 0,
+      "svg_geometry_elements": 8,
+      "preset_shapes": 0,
+      "page_frame_elements": 2,
+      "marker_uses": 0,
+      "inline_emphasis_runs": 0,
+      "gradient_uses": 1,
+      "filter_uses": 0,
+      "text_effects": 0
+    },
+    "pages_with": {
+      "images": 2,
+      "icons": 0,
+      "presets": 0,
+      "charts": 0,
+      "tables": 0,
+      "formulas": 0,
+      "inline_emphasis_runs": 0,
+      "gradient_uses": 1,
+      "filter_uses": 0,
+      "text_effects": 0
+    },
+    "relationship_pages": 0,
+    "geometry_elements": {
+      "circle": 0,
+      "ellipse": 0,
+      "line": 3,
+      "path": 0,
+      "polygon": 0,
+      "polyline": 0,
+      "rect": 5
+    },
+    "preset_names": {},
+    "native_objects": {
+      "chart": 0,
+      "formula_block": 0,
+      "formula_inline": 0,
+      "other": 0,
+      "table": 0
+    },
+    "image_page_max_frame_share_range": [
+      0.3227,
+      1.0
+    ]
+  },
+  "project_issues": {
+    "template": [],
+    "animation": [],
+    "illustration": [],
+    "communication_trace": [],
+    "pptx_structure": []
+  },
+  "files": [
+    {
+      "file": "01_cover.svg",
+      "path": "D:\\Project\\Zhiye\\docs\\presentation\\zhiye-motion-samples_ppt169_20261013\\svg_output\\01_cover.svg",
+      "exists": true,
+      "errors": [],
+      "warnings": [
+        "Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Ma Shan Zheng): Ma Shan Zheng, KaiTi"
+      ],
+      "info": {
+        "viewbox": "0 0 1280 720",
+        "carrier_receipt": {
+          "text_elements": 8,
+          "images": {
+            "placements": 1,
+            "files": [
+              "zhiye-kite-valley.png"
+            ],
+            "max_frame_share": 1.0
+          },
+          "icons": 0,
+          "effects": {
+            "inline_emphasis_runs": 0,
+            "gradient_uses": 1,
+            "filter_uses": 0,
+            "text_effects": 0
+          },
+          "geometry": {
+            "svg_elements": {
+              "rect": 1,
+              "circle": 0,
+              "ellipse": 0,
+              "line": 0,
+              "polyline": 0,
+              "polygon": 0,
+              "path": 0
+            },
+            "preset_shapes": 0,
+            "preset_names": {},
+            "page_frame_elements": 1,
+            "marker_uses": {
+              "start": 0,
+              "mid": 0,
+              "end": 0
+            }
+          },
+          "native_objects": {
+            "chart": 0,
+            "table": 0,
+            "formula_block": 0,
+            "formula_inline": 0,
+            "other": 0
+          }
+        },
+        "fonts": [
+          "Ma Shan Zheng, KaiTi",
+          "Noto Sans SC, Microsoft YaHei, Arial"
+        ],
+        "text_elements": 8,
+        "tspan_elements": 0,
+        "contextual_values": {
+          "colors": [
+            "#3F6B45",
+            "#FFFFFF"
+          ],
+          "font_families": [
+            "Ma Shan Zheng, KaiTi",
+            "Noto Sans SC, Microsoft YaHei, Arial"
+          ]
+        }
+      },
+      "passed": true,
+      "source_sha256": "a19543deaa5be8216913b3b9fc03976464371fa8fa5f655671c12017347211b6"
+    },
+    {
+      "file": "02_product.svg",
+      "path": "D:\\Project\\Zhiye\\docs\\presentation\\zhiye-motion-samples_ppt169_20261013\\svg_output\\02_product.svg",
+      "exists": true,
+      "errors": [],
+      "warnings": [],
+      "info": {
+        "viewbox": "0 0 1280 720",
+        "carrier_receipt": {
+          "text_elements": 14,
+          "images": {
+            "placements": 2,
+            "files": [
+              "shot-workspace.jpg"
+            ],
+            "max_frame_share": 0.3227
+          },
+          "icons": 0,
+          "effects": {
+            "inline_emphasis_runs": 0,
+            "gradient_uses": 0,
+            "filter_uses": 0,
+            "text_effects": 0
+          },
+          "geometry": {
+            "svg_elements": {
+              "rect": 2,
+              "circle": 0,
+              "ellipse": 0,
+              "line": 1,
+              "polyline": 0,
+              "polygon": 0,
+              "path": 0
+            },
+            "preset_shapes": 0,
+            "preset_names": {},
+            "page_frame_elements": 0,
+            "marker_uses": {
+              "start": 0,
+              "mid": 0,
+              "end": 0
+            }
+          },
+          "native_objects": {
+            "chart": 0,
+            "table": 0,
+            "formula_block": 0,
+            "formula_inline": 0,
+            "other": 0
+          }
+        },
+        "fonts": [
+          "Noto Sans SC, Microsoft YaHei, Arial"
+        ],
+        "text_elements": 14,
+        "tspan_elements": 0,
+        "contextual_values": {
+          "font_families": [
+            "Noto Sans SC, Microsoft YaHei, Arial"
+          ]
+        },
+        "sparse_typography_sizes": {
+          "12": 2,
+          "48": 1,
+          "56": 1
+        }
+      },
+      "passed": true,
+      "source_sha256": "77e5be46a691624e3a3f1fb47bc881cef262035afb3f78e522a035576c284046"
+    },
+    {
+      "file": "03_validation.svg",
+      "path": "D:\\Project\\Zhiye\\docs\\presentation\\zhiye-motion-samples_ppt169_20261013\\svg_output\\03_validation.svg",
+      "exists": true,
+      "errors": [],
+      "warnings": [
+        "Detected 1 paragraph-like line run(s) split across sibling <text> elements (<g id=\"field-validation\"> x=918.0, y=579.0..619.0, 2 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy=\"0\". Keep semantically independent text frames separate."
+      ],
+      "info": {
+        "viewbox": "0 0 1280 720",
+        "carrier_receipt": {
+          "text_elements": 19,
+          "images": {
+            "placements": 0,
+            "files": [],
+            "max_frame_share": 0.0
+          },
+          "icons": 0,
+          "effects": {
+            "inline_emphasis_runs": 0,
+            "gradient_uses": 0,
+            "filter_uses": 0,
+            "text_effects": 0
+          },
+          "geometry": {
+            "svg_elements": {
+              "rect": 2,
+              "circle": 0,
+              "ellipse": 0,
+              "line": 2,
+              "polyline": 0,
+              "polygon": 0,
+              "path": 0
+            },
+            "preset_shapes": 0,
+            "preset_names": {},
+            "page_frame_elements": 1,
+            "marker_uses": {
+              "start": 0,
+              "mid": 0,
+              "end": 0
+            }
+          },
+          "native_objects": {
+            "chart": 0,
+            "table": 0,
+            "formula_block": 0,
+            "formula_inline": 0,
+            "other": 0
+          }
+        },
+        "fonts": [
+          "Noto Sans SC, Microsoft YaHei, Arial"
+        ],
+        "text_elements": 19,
+        "tspan_elements": 1,
+        "contextual_values": {
+          "font_families": [
+            "Noto Sans SC, Microsoft YaHei, Arial"
+          ]
+        },
+        "sparse_typography_sizes": {
+          "12": 2,
+          "42": 1
+        }
+      },
+      "passed": true,
+      "source_sha256": "a840ff77046de3370fb98536e8047e285b0fd9fbbb96b57cc2d0bfbf5a4306ec"
+    }
+  ]
+}

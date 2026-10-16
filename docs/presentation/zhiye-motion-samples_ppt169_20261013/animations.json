@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "slides": {
+    "02_product": {
+      "groups": {
+        "product-title": { "effect": "entrance_fade", "order": 1, "duration": 0.32, "trigger": "with-previous" },
+        "input-output": { "effect": "entrance_fade", "order": 2, "duration": 0.32, "trigger": "after-previous" },
+        "product-focus": { "effect": "entrance_float", "order": 3, "duration": 0.48, "trigger": "on-click" },
+        "full-interface": { "effect": "entrance_fade", "order": 4, "duration": 0.28, "trigger": "after-previous" }
+      }
+    },
+    "03_validation": {
+      "groups": {
+        "verification-heading": { "effect": "entrance_fade", "order": 1, "duration": 0.28, "trigger": "with-previous" },
+        "metric-front": { "effect": "entrance_fade", "order": 2, "duration": 0.38, "trigger": "on-click" },
+        "metric-ai": { "effect": "entrance_fade", "order": 3, "duration": 0.38, "trigger": "after-previous" },
+        "engineering-scope": { "effect": "entrance_fade", "order": 4, "duration": 0.30, "trigger": "after-previous" },
+        "field-validation": { "effect": "entrance_float", "order": 5, "duration": 0.44, "trigger": "on-click" }
+      }
+    }
+  }
+}

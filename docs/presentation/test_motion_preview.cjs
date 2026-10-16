@@ -1,0 +1,24 @@
+const {chromium}=require('C:/Users/16617/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const path=require('path');
+(async()=>{
+const dir=path.join(__dirname,'zhiye-motion-samples_ppt169_20261013');
+const browser=await chromium.launch({channel:'msedge',headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});
+const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+await page.goto('file:///'+path.join(dir,'知野-动效预览.html').replaceAll('\\','/'));
+await page.evaluate(()=>document.fonts.ready);
+await page.click('#play');await page.waitForFunction(()=>document.querySelector('#status').textContent==='4 / 4 步');
+await page.waitForTimeout(550);
+await page.screenshot({path:path.join(dir,'产品页-动效终态.png'),fullPage:true});
+await page.click('[data-page="2"]');await page.click('#play');await page.waitForTimeout(100);await page.click('[data-page="1"]');await page.waitForTimeout(500);
+const reset=await page.$eval('#product-title',e=>getComputedStyle(e).opacity);
+if(reset!=='0')throw Error('Interrupted reset failed: '+reset);
+await page.click('[data-page="2"]');await page.click('#reduce');await page.click('#play');await page.waitForFunction(()=>document.querySelector('#status').textContent==='5 / 5 步');
+await page.screenshot({path:path.join(dir,'验证页-动效终态.png'),fullPage:true});
+await page.setViewportSize({width:390,height:844});
+const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
+if(overflow)throw Error('Mobile horizontal overflow');
+if(errors.length)throw Error(errors.join('\n'));
+console.log('PASS: playback, interruption, reduced motion, mobile width, no script errors');
+await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});
